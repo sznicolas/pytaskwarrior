@@ -1,13 +1,26 @@
 from __future__ import annotations
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any, Union
+from datetime import datetime
+from typing import Optional, List, Dict, Any
 from uuid import UUID, uuid4
 import json
+from os import environ, getenv, path
 import subprocess
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
+
+
+"""
+A taskrc must exist for `task`, by default ~/.taskrc.
+As we are in a non interactive mode, we better use a custom taskrc file to set our conf
+especially `confirmation=off`
+This is the default, overridable by TASKRC env, and next by taskrc_path in TaskWarrior.__init()"""
+DEFAULT_TASKRC = 'api_taskrc_path'
+DEFAULT_CONFIG_OVERRIDES = { # we must at least have confirmation off. To be improved and simplified.
+    "confirmation": "off",
+    "json.array": "TRUE",
+    "verbose": "nothing"
+}
 
 class TaskStatus(Enum):
     PENDING = "pending"
@@ -16,11 +29,13 @@ class TaskStatus(Enum):
     WAITING = "waiting"
     RECURRING = "recurring"
 
+
 class TaskPriority(Enum):
     HIGH = "H"
     MEDIUM = "M"
     LOW = "L"
     NONE = ""
+
 
 @dataclass
 class Task:
@@ -118,16 +133,17 @@ class Task:
             udas={k: v for k, v in data.items() if k not in cls.__dataclass_fields__ and k != "id"}
         )
 
-class TaskWarriorAPI:
+
+class TaskWarrior:
     """Python API for Taskwarrior using shell commands."""
-    
-    def __init__(self, config_filename: str = "~/.taskrc", config_overrides: Optional[Dict[str, Any]] = None):
-        self.config_filename = os.path.expanduser(config_filename)
-        self.config_overrides = config_overrides or {
-            "confirmation": "no",
-            "json.array": "TRUE",
-            "verbose": "nothing"
-        }
+    def __init__(self, taskrc_path: str = None, config_overrides: Optional[Dict[str, Any]] = None):
+        if taskrc_path:
+            self.taskrc_path = taskrc_path
+        else:
+            self.taskrc_path = getenv('TASKRC', path.join(path.dirname(__file__), DEFAULT_TASKRC))
+        environ['TASKRC'] = self.taskrc_path
+        self.config_overrides = config_overrides or DEFAULT_CONFIG_OVERRIDES
+
         self._validate_taskwarrior()
 
     def _validate_taskwarrior(self) -> None:
@@ -140,6 +156,8 @@ class TaskWarriorAPI:
     def _run_task_command(self, args: List[str], input_data: Optional[bytes] = None) -> subprocess.CompletedProcess:
         """Execute a Taskwarrior command with arguments."""
         cmd = ["task"] + args
+        ' '.join([ f'{k}={v}' for k, v in self.config_overrides.items()])
+
         try:
             return subprocess.run(
                 cmd,
@@ -147,7 +165,7 @@ class TaskWarriorAPI:
                 capture_output=True,
                 text=True,
                 check=True,
-                env={**os.environ, "TASKRC": self.config_filename}
+                env={**os.environ}
             )
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Taskwarrior command failed: {e.stderr}")
@@ -167,7 +185,7 @@ class TaskWarriorAPI:
     def task_add(self, task: Task) -> Task:
         """Add a new task to Taskwarrior."""
         task_data = task.to_dict()
-        input_data = json.dumps(task_data).encode()
+        input_data = json.dumps(task_data)
         result = self._run_task_command(["import"], input_data=input_data)
         # Fetch the newly added task to get its ID
         tasks = self.load_tasks()
@@ -181,7 +199,7 @@ class TaskWarriorAPI:
         """Update an existing task in Taskwarrior."""
         task_data = task.to_dict()
         task_data["modified"] = datetime.now().isoformat()
-        input_data = json.dumps(task_data).encode()
+        input_data = json.dumps(task_data)
         self._run_task_command(["import"], input_data=input_data)
         return task
 
@@ -246,47 +264,3 @@ class TaskWarriorAPI:
                 if task.uuid == uuid:
                     return task
         return None
-
-def main():
-    # Example usage
-    api = TaskWarriorAPI()
-
-    # Create a new task
-    task = Task(
-        description="Write Taskwarrior API documentation",
-        due=datetime.now() + timedelta(days=7),
-        priority=TaskPriority.HIGH,
-        project="Work",
-        tags=["docs", "api"]
-    )
-    added_task = api.task_add(task)
-    print(f"Added task: {added_task}")
-
-    # Update task
-    added_task.project = "Development"
-    api.task_update(added_task)
-    print(f"Updated task: {added_task}")
-
-    # Filter tasks
-    filtered_tasks = api.filter_tasks(status="pending", project="Development")
-    print(f"Filtered tasks: {filtered_tasks}")
-
-    # Add recurring task
-    recurring_task = Task(
-        description="Weekly team meeting",
-        due=datetime.now() + timedelta(days=7),
-        tags=["meeting"]
-    )
-    api.add_recurring_task(recurring_task, recur="weekly")
-    print(f"Added recurring task: {recurring_task}")
-
-    # Set and apply context
-    api.set_context("work", "project:Development")
-    api.apply_context("work")
-
-    # Mark task as done
-    api.task_done(added_task.uuid)
-    print(f"Marked task {added_task.uuid} as done")
-
-if __name__ == "__main__":
-    main()

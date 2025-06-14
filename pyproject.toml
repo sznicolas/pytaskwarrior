@@ -1,0 +1,17 @@
+[project]
+name = "pytaskwarrior"
+version = "0.1.0"
+description = "Taskwarrior wrapper python module"
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = [ "taskwarrior" ]
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+    "pytest-mock>=3.14.1",
+]
+
+[project.urls]
+homepage = "https://github.com/sznicolas/pytaskwarrior/"
