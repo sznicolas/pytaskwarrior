@@ -1,0 +1,4 @@
+confirmation=off
+context.work.read=project:Development
+context.work.write=project:Development
+news.version=99.99.99

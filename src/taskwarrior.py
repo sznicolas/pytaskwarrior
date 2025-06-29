@@ -1,292 +1,326 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any, Union
-from uuid import UUID, uuid4
+from uuid import UUID
 import json
+from os import environ, getenv, path
 import subprocess
-import os
-from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
+import shutil
+from typing import List, Union
 
-class TaskStatus(Enum):
+import isodate
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+
+"""
+A taskrc must exist for `task`, by default ~/.taskrc.
+As we are in a non interactive mode, we better use a custom taskrc file to set our conf
+especially `confirmation=off`
+This is the default, overridable by TASKRC env, and next by taskrc_path in TaskWarrior.__init()"""
+DEFAULT_TASKRC = 'taskrc_path'
+DEFAULT_CONFIG_OVERRIDES = { # we must at least have confirmation off. !!! Not implemented yet. To be improved and simplified.
+    "confirmation": "off",
+    "json.array": "TRUE",
+    "verbose": "nothing"
+}
+
+# Enums for TaskWarrior-specific fields
+class TaskStatus(str, Enum):
+    """Task status as defined by TaskWarrior."""
     PENDING = "pending"
     COMPLETED = "completed"
     DELETED = "deleted"
     WAITING = "waiting"
     RECURRING = "recurring"
 
-class TaskPriority(Enum):
+class Priority(str, Enum):
+    """Task priority levels in TaskWarrior."""
     HIGH = "H"
     MEDIUM = "M"
     LOW = "L"
     NONE = ""
 
-@dataclass
-class Task:
-    """Task structure based on Taskwarrior RFC (task.md)."""
-    description: str
-    status: TaskStatus = TaskStatus.PENDING
-    uuid: UUID = field(default_factory=uuid4)
-    entry: datetime = field(default_factory=datetime.now)
-    modified: Optional[datetime] = None
-    due: Optional[datetime] = None
-    wait: Optional[datetime] = None
-    until: Optional[datetime] = None
-    scheduled: Optional[datetime] = None
-    start: Optional[datetime] = None
-    end: Optional[datetime] = None
-    priority: TaskPriority = TaskPriority.NONE
-    project: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
-    annotations: List[Dict[str, Any]] = field(default_factory=list)
-    depends: List[UUID] = field(default_factory=list)
-    recur: Optional[str] = None
-    mask: Optional[str] = None
-    imask: Optional[float] = None
-    parent: Optional[UUID] = None
-    udas: Dict[str, Any] = field(default_factory=dict)
+class RecurrencePeriod(str, Enum):
+    """Supported recurrence periods for tasks."""
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    YEARLY = "yearly"
+    QUARTERLY = "quarterly"
+    SEMIANNUALLY = "semiannually"
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert Task to dictionary for Taskwarrior JSON export/import."""
-        task_dict = {
-            "description": self.description,
-            "status": self.status.value,
-            "uuid": str(self.uuid),
-            "entry": self.entry.isoformat(),
-        }
-        if self.modified:
-            task_dict["modified"] = self.modified.isoformat()
-        if self.due:
-            task_dict["due"] = self.due.isoformat()
-        if self.wait:
-            task_dict["wait"] = self.wait.isoformat()
-        if self.until:
-            task_dict["until"] = self.until.isoformat()
-        if self.scheduled:
-            task_dict["scheduled"] = self.scheduled.isoformat()
-        if self.start:
-            task_dict["start"] = self.start.isoformat()
-        if self.end:
-            task_dict["end"] = self.end.isoformat()
-        if self.priority != TaskPriority.NONE:
-            task_dict["priority"] = self.priority.value
-        if self.project:
-            task_dict["project"] = self.project
-        if self.tags:
-            task_dict["tags"] = self.tags
-        if self.annotations:
-            task_dict["annotations"] = self.annotations
-        if self.depends:
-            task_dict["depends"] = [str(uuid) for uuid in self.depends]
-        if self.recur:
-            task_dict["recur"] = self.recur
-        if self.mask:
-            task_dict["mask"] = self.mask
-        if self.imask is not None:
-            task_dict["imask"] = self.imask
-        if self.parent:
-            task_dict["parent"] = str(self.parent)
-        if self.udas:
-            task_dict.update(self.udas)
-        return task_dict
+def parse_datetime_or_timedelta(val):
+    """Returns a string, date time or iso 8601 duration"""
+    if isinstance(val, timedelta):
+        return isodate.duration_isoformat(val)
+    else:
+        return str(val)
 
+# Pydantic Models
+class Task(BaseModel):
+    """Represents a TaskWarrior task.
+    timedelta looks like `[±]P[DD]DT[HH]H[MM]M[SS]S` (ISO 8601 format for timedelta)"""
+    model_config = ConfigDict(use_enum_values=True, validate_assignment=True)
+
+    index: int = Field(default=None, alias='id', description="READONLY Task index of a task in the working set, which can change when tasks are completed or deleted.")
+    uuid: UUID = Field(default=None, description="READONLY Unique identifier for the task. Cannot be set when adding task")
+    description: str = Field(..., description="Task description (required).")
+    status: TaskStatus = Field(default=TaskStatus.PENDING, description="Current status of the task.")
+    priority: Priority = Field(default=Priority.NONE, description="Priority of the task (H, M, L, or empty).")
+    due: Union[datetime, timedelta] = Field(default=None, description="Due date and time for the task.")
+    entry: datetime = Field(default_factory=datetime.now, description="READONLY Task creation date and time.")
+    start: datetime = Field(default=None, description="READONLY Task started date and time.")
+    end: datetime = Field(default=None, description="READONLY Task done date and time.")
+    modified: datetime = Field(default=None, description="READONLY Last modification date and time.")
+    tags: List[str] = Field(default_factory=list, description="List of tags associated with the task.")
+    project: str = Field(default=None, description="Project the task belongs to.")
+    depends: List[UUID] = Field(default_factory=list, description="List of UUIDs of tasks this task depends on.")
+    # parent: Optional[UUID] = Field(default=None, description="UUID of the template task")
+    recur: RecurrencePeriod = Field(default=None, description="Recurrence period for recurring tasks.")
+    scheduled: Union[datetime, timedelta] = Field(default=None, description="Schedule the earlier time the task can be done. Masked when using the `ready` filter")
+    wait: Union[datetime, timedelta] = Field(default=None, description="The task is hidden until the date.")
+    until: Union[datetime, timedelta] = Field(default=None, description="Expiration date for recurring tasks.")
+    #annotations: List[Annotation ({'entry': datetime, 'description': str}] = Field(default_factory=list, description="List of annotations for the task.")
+    context: str = Field(default=None, description="Context filter for the task.")
+    # Urgency should be readonly
+    # urgency: Optional[float] = Field(default=None, description="Computed urgency score by TaskWarrior.")
+#    udas: Dict[str, Any] = Field(default_factory=dict) #TODO: Review UDA usage
+
+    @field_validator("description")
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Task:
-        """Create Task from Taskwarrior JSON dictionary."""
-        return cls(
-            description=data.get("description", ""),
-            status=TaskStatus(data.get("status", "pending")),
-            uuid=UUID(data.get("uuid", str(uuid4()))),
-            entry=datetime.fromisoformat(data.get("entry", datetime.now().isoformat())),
-            modified=datetime.fromisoformat(data["modified"]) if data.get("modified") else None,
-            due=datetime.fromisoformat(data["due"]) if data.get("due") else None,
-            wait=datetime.fromisoformat(data["wait"]) if data.get("wait") else None,
-            until=datetime.fromisoformat(data["until"]) if data.get("until") else None,
-            scheduled=datetime.fromisoformat(data["scheduled"]) if data.get("scheduled") else None,
-            start=datetime.fromisoformat(data["start"]) if data.get("start") else None,
-            end=datetime.fromisoformat(data["end"]) if data.get("end") else None,
-            priority=TaskPriority(data.get("priority", "")),
-            project=data.get("project"),
-            tags=data.get("tags", []),
-            annotations=data.get("annotations", []),
-            depends=[UUID(dep) for dep in data.get("depends", [])],
-            recur=data.get("recur"),
-            mask=data.get("mask"),
-            imask=data.get("imask"),
-            parent=UUID(data["parent"]) if data.get("parent") else None,
-            udas={k: v for k, v in data.items() if k not in cls.__dataclass_fields__ and k != "id"}
-        )
+    def description_must_not_be_empty(cls, v):
+        if not v.strip():
+            raise ValueError("Description cannot be empty")
+        return v.strip()
 
-class TaskWarriorAPI:
-    """Python API for Taskwarrior using shell commands."""
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v):
+        return [tag.strip() for tag in v if tag.strip()]
+
+    @field_validator('*', mode='before')
+    @classmethod
+    def modify_date_format(cls, v, info):
+        field_type = cls.model_fields[info.field_name].annotation
+        if (field_type == datetime or field_type == Union[datetime, timedelta]) and isinstance(v, str):
+            if isinstance(v, (datetime, timedelta)):
+                return v
+            # Try parsing as datetime (format: yyyymmddThhmmssZ)
+            try:
+                return datetime.fromisoformat(v)
+            except ValueError:
+                # Try parsing as duration (example format: P21DT1H10M49S)
+                try:
+                    isodate.parse_duration(v)
+                except isodate.ISO8601Error:
+                    raise ValueError("Could not parse until as datetime or timedelta")
+        return v
     
-    def __init__(self, config_filename: str = "~/.taskrc", config_overrides: Optional[Dict[str, Any]] = None):
-        self.config_filename = os.path.expanduser(config_filename)
-        self.config_overrides = config_overrides or {
-            "confirmation": "no",
-            "json.array": "TRUE",
-            "verbose": "nothing"
-        }
+    @field_serializer('uuid')
+    def serialize_uuid(self, uuid: UUID, _info):
+        return str(uuid)
+
+#    class Config:
+#        use_enum_values = True  # Store enum values as strings
+#        json_encoders = {
+#            datetime: lambda v: v.isoformat(),
+#            UUID: str,
+#        }
+
+
+class TaskWarrior:
+    """A Python API wrapper for TaskWarrior, interacting via CLI commands."""
+    def __init__(
+            self,
+            taskrc_path: str = None,
+            #            config_overrides: dict[str, str] = None,
+            task_cmd: str = None
+            ):
+        """
+        Initialize the TaskWarrior API.
+
+        Args:
+            taskrc_path: Optional path to the .taskrc file. If None, uses default.
+            TODO: implement this: config_overrides: Optional dict passed to `task`. As it overrides the defauts, should have at least `confirmation: off
+            task_cmd: Optional path to the command.
+        """
+        if taskrc_path:
+            self.taskrc_path = taskrc_path
+        else:
+            self.taskrc_path = getenv('TASKRC', path.join(path.dirname(__file__), DEFAULT_TASKRC))
+        environ['TASKRC'] = self.taskrc_path
+#        self.config_overrides = config_overrides or DEFAULT_CONFIG_OVERRIDES
+        if not task_cmd:
+            self.task_cmd = shutil.which('task')
+            if self.task_cmd is None:
+                raise RuntimeError("Taskwarrior is not found in PATH.")
+        else:
+            self.task_cmd = task_cmd
         self._validate_taskwarrior()
 
     def _validate_taskwarrior(self) -> None:
         """Ensure Taskwarrior is installed and accessible."""
         try:
-            subprocess.run(["task", "--version"], capture_output=True, check=True)
+            subprocess.run([self.task_cmd, "--version"], capture_output=True, check=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
             raise RuntimeError("Taskwarrior is not installed or not found in PATH.")
 
-    def _run_task_command(self, args: List[str], input_data: Optional[bytes] = None) -> subprocess.CompletedProcess:
-        """Execute a Taskwarrior command with arguments."""
-        cmd = ["task"] + args
+    def _build_args(self, task: Task) -> dict:
+        args = []
+        if task.description:
+            args.extend(task.description.split())
+        if task.priority:
+            args.extend(["priority:" + task.priority])
+        if task.due:
+            args.extend(["due:" + parse_datetime_or_timedelta(task.due)])
+        if task.until:
+            args.extend(["until:" + parse_datetime_or_timedelta(task.until)])
+        if task.scheduled:
+            args.extend(["scheduled:" + parse_datetime_or_timedelta(task.scheduled)])
+        if task.wait:
+            args.extend(["wait:" + parse_datetime_or_timedelta(task.wait)])
+        if task.project:
+            args.extend(["project:" + task.project])
+        if task.tags:
+            args.extend([f"+{tag}" for tag in task.tags])
+        if task.recur:
+            args.extend(["recur:" + task.recur])
+        if task.depends:
+            args.extend(["depends:" + ",".join(str(uuid) for uuid in task.depends)])
+        if task.context:
+            args.extend(["context:" + task.context])
+        return args
+
+    def _run_task_command(self, args: List[str]) -> subprocess.CompletedProcess:
+        """
+        Execute a TaskWarrior command via subprocess.
+
+        Args:
+            args: List of command arguments to append to the base task command.
+
+        Returns:
+            subprocess.CompletedProcess: Result of the command execution.
+
+        Raises:
+            RuntimeError: If the command fails.
+        """
+#        ' '.join([ f'rc.{k}={v}' for k, v in self.config_overrides.items()])
+
+        command = [self.task_cmd] + args
         try:
-            return subprocess.run(
-                cmd,
-                input=input_data,
+            result = subprocess.run(
+                command,
                 capture_output=True,
                 text=True,
                 check=True,
-                env={**os.environ, "TASKRC": self.config_filename}
+                env={**environ}
             )
+            return result
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Taskwarrior command failed: {e.stderr}")
+            raise RuntimeError(f"TaskWarrior command failed: {e.stderr}")
 
-    def load_tasks(self, command: str = "all") -> Dict[str, List[Task]]:
-        """Load tasks from Taskwarrior database."""
-        result = self._run_task_command(["export", command])
+
+    def add_task(self, task: Task) -> Task:
+        # TODO: if exists annotaion, must be set after the task creation.
+        args = ['add']
+        args += self._build_args(task)
+        result = self._run_task_command(args)
+        task_id = None
+        for line in result.stdout.splitlines():
+            if 'Created task' in line:
+                task_id = int(line.removeprefix('Created task ').split()[0].strip("."))
+        return self.get_task(task_id)
+
+    def modify_task(self, task: Task) -> Task:
+        """
+        Modify an existing task in TaskWarrior.
+
+        Args:
+            task: Task object with updated fields.
+
+        Returns:
+            Task: Updated task object.
+
+        Raises:
+            ValueError: If task ID or UUID is missing.
+        """
+        try:
+            self.get_task(task.uuid)
+        except RuntimeError:
+            raise ValueError("Task UUID required to modify a task")
+        args = [str(task.uuid), 'modify']
+        args += self._build_args(task)
+        self._run_task_command(args)
+        return self.get_task(task.uuid)
+
+    def get_task(self, task_id_or_uuid: str) -> Task:
+        """
+        Retrieve a task by ID or UUID.
+
+        Args:
+            task_id_or_uuid: Task ID or UUID.
+
+        Returns:
+            Task: Task object.
+
+        Raises:
+            RuntimeError: If task is not found.
+        """
+        result = self._run_task_command([str(task_id_or_uuid), "export"])
         tasks_data = json.loads(result.stdout)
-        return {
-            "pending": [Task.from_dict(task) for task in tasks_data if task.get("status") == "pending"],
-            "completed": [Task.from_dict(task) for task in tasks_data if task.get("status") == "completed"],
-            "deleted": [Task.from_dict(task) for task in tasks_data if task.get("status") == "deleted"],
-            "waiting": [Task.from_dict(task) for task in tasks_data if task.get("status") == "waiting"],
-            "recurring": [Task.from_dict(task) for task in tasks_data if task.get("status") == "recurring"]
-        }
+        if not tasks_data:
+            raise RuntimeError(f"Task {task_id_or_uuid} not found.")
+        return Task(**tasks_data[0])
 
-    def task_add(self, task: Task) -> Task:
-        """Add a new task to Taskwarrior."""
-        task_data = task.to_dict()
-        input_data = json.dumps(task_data).encode()
-        result = self._run_task_command(["import"], input_data=input_data)
-        # Fetch the newly added task to get its ID
-        tasks = self.load_tasks()
-        for status, task_list in tasks.items():
-            for t in task_list:
-                if t.uuid == task.uuid:
-                    return t
-        raise RuntimeError("Failed to retrieve added task.")
+    def get_tasks(self, filter_args: List[str]) -> List[Task]:
+        """
+        Retrieves all tasks matching.
 
-    def task_update(self, task: Task) -> Task:
-        """Update an existing task in Taskwarrior."""
-        task_data = task.to_dict()
-        task_data["modified"] = datetime.now().isoformat()
-        input_data = json.dumps(task_data).encode()
-        self._run_task_command(["import"], input_data=input_data)
-        return task
+        Args:
+            filter_args: filter list as accepted by task
 
-    def task_delete(self, uuid: UUID) -> None:
+        Returns:
+            List[Task]: matching tasks
+        """
+        # sanitize
+        args = []
+        for arg in filter_args:
+            args.append(str(arg))
+        result = self._run_task_command(args + ["export"])
+        tasks = json.loads(result.stdout)
+        return [Task(**task) for task in tasks]
+
+    def delete_task(self, uuid: UUID) -> None:
         """Delete a task by UUID."""
         self._run_task_command([str(uuid), "delete"])
 
-    def task_done(self, uuid: UUID) -> None:
+    def purge_task(self, uuid: UUID) -> None:
+        """Delete a task by UUID."""
+        self._run_task_command([str(uuid), "purge"])
+
+    def done_task(self, uuid: UUID) -> None:
         """Mark a task as done by UUID."""
         self._run_task_command([str(uuid), "done"])
 
-    def task_start(self, uuid: UUID) -> None:
+    def start_task(self, uuid: UUID) -> None:
         """Start a task by UUID."""
         self._run_task_command([str(uuid), "start"])
 
-    def task_stop(self, uuid: UUID) -> None:
+    def stop_task(self, uuid: UUID) -> None:
         """Stop a task by UUID."""
         self._run_task_command([str(uuid), "stop"])
 
-    def task_annotate(self, uuid: UUID, annotation: str) -> None:
+    def annotate_task(self, uuid: UUID, annotation: str) -> None:
         """Add an annotation to a task."""
         self._run_task_command([str(uuid), "annotate", annotation])
 
-    def filter_tasks(self, **filters: Any) -> List[Task]:
-        """Filter tasks using Taskwarrior filter syntax."""
-        filter_args = []
-        for key, value in filters.items():
-            if isinstance(value, list):
-                for v in value:
-                    filter_args.append(f"{key}:{v}")
-            else:
-                filter_args.append(f"{key}:{value}")
-        result = self._run_task_command(filter_args + ["export"])
-        tasks_data = json.loads(result.stdout)
-        return [Task.from_dict(task) for task in tasks_data]
-
-    def set_context(self, context: str, filter_str: str) -> None:
-        """Define a context with a filter."""
-        self._run_task_command(["context", "define", context, filter_str])
-
-    def apply_context(self, context: str) -> None:
-        """Apply a context to filter tasks."""
-        self._run_task_command(["context", context])
-
-    def remove_context(self) -> None:
-        """Remove the current context."""
-        self._run_task_command(["context", "none"])
-
-    def add_recurring_task(self, task: Task, recur: str, until: Optional[datetime] = None) -> Task:
-        """Add a recurring task with a recurrence period."""
-        task.recur = recur
-        if until:
-            task.until = until
-        task.status = TaskStatus.RECURRING
-        return self.task_add(task)
-
-    def get_task(self, uuid: UUID) -> Optional[Task]:
-        """Retrieve a task by UUID."""
-        tasks = self.load_tasks()
-        for status, task_list in tasks.items():
-            for task in task_list:
-                if task.uuid == uuid:
-                    return task
-        return None
-
-def main():
-    # Example usage
-    api = TaskWarriorAPI()
-
-    # Create a new task
-    task = Task(
-        description="Write Taskwarrior API documentation",
-        due=datetime.now() + timedelta(days=7),
-        priority=TaskPriority.HIGH,
-        project="Work",
-        tags=["docs", "api"]
-    )
-    added_task = api.task_add(task)
-    print(f"Added task: {added_task}")
-
-    # Update task
-    added_task.project = "Development"
-    api.task_update(added_task)
-    print(f"Updated task: {added_task}")
-
-    # Filter tasks
-    filtered_tasks = api.filter_tasks(status="pending", project="Development")
-    print(f"Filtered tasks: {filtered_tasks}")
-
-    # Add recurring task
-    recurring_task = Task(
-        description="Weekly team meeting",
-        due=datetime.now() + timedelta(days=7),
-        tags=["meeting"]
-    )
-    api.add_recurring_task(recurring_task, recur="weekly")
-    print(f"Added recurring task: {recurring_task}")
-
-    # Set and apply context
-    api.set_context("work", "project:Development")
-    api.apply_context("work")
-
-    # Mark task as done
-    api.task_done(added_task.uuid)
-    print(f"Marked task {added_task.uuid} as done")
-
-if __name__ == "__main__":
-    main()
+#    def define_context(self, context: str, filter_str: str) -> None:
+#        """Define a context with a filter."""
+#        self._run_task_command(["context", "define", context, filter_str])
+#
+#    def apply_context(self, context: str) -> None:
+#        """Apply a context to filter tasks."""
+#        self._run_task_command(["context", context])
+#
+#    def remove_context(self) -> None:
+#        """Remove the current context."""
+#        self._run_task_command(["context", "none"])
