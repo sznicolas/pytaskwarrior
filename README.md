@@ -1,16 +1,50 @@
 # pytaskwarrior
-Python module wrapping Taskwarrior
+Python module wrapping Taskwarrior.
 
-Still in development, tested with task version 2.6.2 (deb)
+## Getting started
+You must have a `task` command installed. So [install it](https://taskwarrior.org/download/) or build it since the debian available package is an old one (2.6.2).
 
-## Howto
+### Build taskwarrior 3.4.1
+
+Get the [Dockerfile](taskwarrior.bin)
+
+```
+cd taskwarrior.bin ; docker build -t taskwarrior_bin .
+id=$(docker create taskwarrior_bin)
+docker cp $id:/root/code/taskwarrior/build/src/task task
+docker rm -v $id
+```
+### Build for Docker
+Clone this repository, then build the docker image:
+```
+docker build -t pytaskwarrior .
+```
+
+Note: The task command should be in taskwarrior.bin, so if it not the case you can either adapt the Dockerfile to install it, or build the `task` command as explained above.
+
+### Run in Docker
+```
+docker run -it  --rm pytaskwarrior bash
+```
+Note: For persistency we can mount a volume. The data resides in `./.task`
+```
+docker run -it  -v $PWD:/tw --rm pytaskwarrior bash
+```
+
+### Test it
 For now:
 
-- `docker build -t mytaskwarrior .`
-- `drit -v $PWD:/tw mytaskwarrior bash`
 - `python test_exec.py`
 - `cd .. && pytest`
-- `cd - && python # import taskwarrior`
+- `cd - && python # import taskwarrior and play`
 
+## Use `taskwarrior` module
+You MUST have a `taskrc` file that is configured to allow `task` command without confirmation. By default [this one](src/taskrc) is used. You can set TASKRC and TASKDATA in your environment.
+```
+from taskwarrior import TaskWarrior, Task
 
-[Initial](https://github.com/sznicolas/pytaskwarrior/commit/f75a4bd0a66569f9e25a9ae563488129058e393b#diff-93f277324bed04c85a561677dccc3beb1afb2148c17c54aaa54393f9ecdb04cb) onboarding code by Grok.
+tw = TaskWarrior()
+task = Task(description='First task')
+tw.add_task(task)
+print(tw.get_tasks())
+```
