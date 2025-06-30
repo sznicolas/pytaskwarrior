@@ -2,7 +2,7 @@
 Python module wrapping Taskwarrior.
 
 ## Getting started
-You must have a `task` command installed. So [install it](https://taskwarrior.org/download/) or build it since the debian available package is an old one (2.6.2).
+As this is a wrapper, you must have a `task` command installed. So [install it](https://taskwarrior.org/download/) or build it since the debian available package is an old one (2.6.2).
 
 ### Build taskwarrior 3.4.1
 
@@ -39,7 +39,7 @@ For now:
 - `cd - && python # import taskwarrior and play`
 
 ## Use `taskwarrior` module
-You MUST have a `taskrc` file that is configured to allow `task` command without confirmation. By default [this one](src/taskrc) is used. You can set TASKRC and TASKDATA in your environment.
+You MUST have a `taskrc` file that is configured to allow `task` command **without confirmation**. By default [this one](src/pytaskrc) is used. You can set TASKRC and TASKDATA in your environment. It's a good practice to use another taskrc than your .taskrc you're using in your CLI.
 ```
 from taskwarrior import TaskWarrior, Task
 

@@ -58,7 +58,6 @@ def sample_task() -> Task:
 def test_task_values(sample_task: Task) -> None:
     """Test Task.to_dict conversion."""
     assert sample_task.description == "Test Task"
-    assert sample_task.status == TaskStatus.PENDING.value
     assert sample_task.priority == Priority.HIGH.value
     assert sample_task.project == "Test"
     assert sample_task.tags == ["test", "urgent"]

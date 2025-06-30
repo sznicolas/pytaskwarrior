@@ -7,7 +7,7 @@ RUN pip install uv
 ARG PRJDIR=/tw APPDIR=${PRJDIR}/src
 ENV PATH="${PRJDIR}/.venv/bin:$PATH" \
     VIRTUAL_ENV=${PRJDIR}/.venv
-ENV TASKRC=${APPDIR}/taskrc TASKDATA=/tw/.task  PYTHONPATH=$APPDIR
+ENV TASKRC=${APPDIR}/pytaskrc TASKDATA=/tw/.task  PYTHONPATH=$APPDIR
 # Install Taskwarrior
 COPY taskwarrior.bin/task /usr/local/bin
 COPY src $APPDIR
