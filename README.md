@@ -39,7 +39,7 @@ For now:
 - `cd - && python # import taskwarrior and play`
 
 ## Use `taskwarrior` module
-You MUST have a `taskrc` file that is configured to allow `task` command without confirmation. By default [this one](src/taskrc) is used. You can set TASKRC and TASKDATA in your environment.
+You MUST have a `taskrc` file that is configured to allow `task` command **without confirmation**. By default [this one](src/pytaskrc) is used. You can set TASKRC and TASKDATA in your environment. It's a good practice to use another taskrc than your .taskrc you're using in your CLI.
 ```
 from taskwarrior import TaskWarrior, Task
 

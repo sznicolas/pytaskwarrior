@@ -16,7 +16,12 @@ A taskrc must exist for `task`, by default ~/.taskrc.
 As we are in a non interactive mode, we better use a custom taskrc file to set our conf
 especially `confirmation=off`
 This is the default, overridable by TASKRC env, and next by taskrc_path in TaskWarrior.__init()"""
-DEFAULT_TASKRC = 'taskrc_path'
+DEFAULT_TASKRCPATH = 'pytaskrc'
+DEFAULT_TASKRC_CONTENT = """
+# Default configuration set by pytaskwarrior
+confirmation=0
+news.version=99.99.99 # disable news output
+"""
 DEFAULT_CONFIG_OVERRIDES = { # we must at least have confirmation off. !!! Not implemented yet. To be improved and simplified.
     "confirmation": "off",
     "json.array": "TRUE",
@@ -146,8 +151,14 @@ class TaskWarrior:
         if taskrc_path:
             self.taskrc_path = taskrc_path
         else:
-            self.taskrc_path = getenv('TASKRC', path.join(path.dirname(__file__), DEFAULT_TASKRC))
+            self.taskrc_path = getenv('TASKRC', path.join(path.dirname(__file__), DEFAULT_TASKRCPATH))
         environ['TASKRC'] = self.taskrc_path
+        try:
+            with open(self.taskrc_path, 'x') as file:
+                print(f'Warning; taskrc file "{self.taskrc_path}" not found. Create it')
+                file.write(DEFAULT_TASKRC_CONTENT)
+        except FileExistsError:
+            ...
 #        self.config_overrides = config_overrides or DEFAULT_CONFIG_OVERRIDES
         if not task_cmd:
             self.task_cmd = shutil.which('task')

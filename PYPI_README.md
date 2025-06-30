@@ -8,7 +8,7 @@ pip install pytaskwarrior
 ```
 
 ## Use `taskwarrior` module
-You MUST have a `taskrc` file that is configured to allow `task` command without confirmation. By default [this one](src/taskrc) is used. You can set TASKRC and TASKDATA in your environment.
+You MUST have a `taskrc` file that is configured to allow `task` command without confirmation. By default `pytaskrc` in the current directory is created and used. You can set TASKRC and TASKDATA in your environment.
 ```
 from taskwarrior import TaskWarrior, Task, Priority
 
