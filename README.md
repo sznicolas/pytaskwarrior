@@ -2,7 +2,7 @@
 Python module wrapping Taskwarrior.
 
 ## Getting started
-You must have a `task` command installed. So [install it](https://taskwarrior.org/download/) or build it since the debian available package is an old one (2.6.2).
+As this is a wrapper, you must have a `task` command installed. So [install it](https://taskwarrior.org/download/) or build it since the debian available package is an old one (2.6.2).
 
 ### Build taskwarrior 3.4.1
 
