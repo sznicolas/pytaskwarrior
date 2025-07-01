@@ -16,7 +16,7 @@ A taskrc must exist for `task`, by default ~/.taskrc.
 As we are in a non interactive mode, we better use a custom taskrc file to set our conf
 especially `confirmation=off`
 This is the default, overridable by TASKRC env, and next by taskrc_path in TaskWarrior.__init()"""
-DEFAULT_TASKRCPATH = 'pytaskrc'
+DEFAULT_TASKRCPATH = '/tmp/pytaskrc'
 DEFAULT_TASKRC_CONTENT = """
 # Default configuration set by pytaskwarrior
 confirmation=0
