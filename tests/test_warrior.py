@@ -6,7 +6,8 @@ import subprocess
 
 import pytest
 from pydantic import ValidationError
-from taskwarrior import TaskWarrior, Task, TaskStatus, Priority, RecurrencePeriod
+from taskwarrior import TaskWarrior
+from twmodels import Task, TaskStatus, Priority, RecurrencePeriod
 
 
 @pytest.fixture
@@ -164,6 +165,20 @@ def test_recurring_task(tw: TaskWarrior, sample_task: Task) -> None:
 #    with pytest.raises(RuntimeError, match=r"Task .* not found."):
 #        tw.get_tasks([f'parent:{str(recurring_task.uuid)}'])
 
+def test_projects(tw: TaskWarrior, sample_task: Task) -> None:
+    added_task = tw.add_task(sample_task)
+    assert added_task.project == 'Test'
+    assert 'Test' in tw.get_projects()
+
+def test_tags(tw: TaskWarrior, sample_task: Task) -> None:
+    added_task = tw.add_task(sample_task)
+    assert 'test' in added_task.tags
+    assert 'test' in tw.get_tags()
+
+def test_calc(tw: TaskWarrior, sample_task: Task) -> None:
+    result = tw.calc('P1D + P1D')
+    assert result == 'P2D'
+    assert tw.calc('P1Y + P1D') == 'P366D'
 
 #def test_context_management(tw: TaskWarrior, sample_task: Task) -> None:
 #    """Test setting, applying, and removing context."""
@@ -179,7 +194,6 @@ def test_recurring_task(tw: TaskWarrior, sample_task: Task) -> None:
 
 
 def test_validate_assigment(tw: TaskWarrior, sample_task: Task) -> None:
-
     with pytest.raises(ValidationError):
         sample_task.until = 'arheuh'
 
