@@ -49,7 +49,7 @@ def sample_task() -> Task:
     return Task(
         description="Test Task",
         due=datetime.now() + timedelta(days=1),
-        priority=Priority.HIGH,
+        priority='H',
         project="Test",
         tags=["test", "urgent"]
         # TODO: add other values like udas...

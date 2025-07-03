@@ -1,5 +1,12 @@
-from .twmodels  import Task, TaskStatus, Priority, RecurrencePeriod
+from .twmodels  import Task, TWTask, TaskStatus, Priority, RecurrencePeriod
 from .taskwarrior import TaskWarrior
 
-__all__ = ['TaskWarrior', 'Task', 'TaskStatus', 'Priority', 'RecurrencePeriod']
+__all__ = [
+        'TaskWarrior',
+        'Task',
+        'TWTask',
+        'TaskStatus',
+        'Priority',
+        'RecurrencePeriod'
+]
 
