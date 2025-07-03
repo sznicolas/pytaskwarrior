@@ -2,7 +2,8 @@
 from datetime import datetime, timedelta
 from pprint import pp
 
-from taskwarrior import Priority, TaskWarrior, Task
+from taskwarrior import TaskWarrior
+from twmodels import Priority, Task
 
 
 def main():

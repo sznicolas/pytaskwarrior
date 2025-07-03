@@ -11,7 +11,8 @@ ENV TASKRC=${APPDIR}/pytaskrc TASKDATA=/tw/.task  PYTHONPATH=$APPDIR
 # Install Taskwarrior
 COPY taskwarrior.bin/task /usr/local/bin
 COPY src $APPDIR
-COPY uv.lock pyproject.toml tests $PRJDIR
+COPY uv.lock pyproject.toml $PRJDIR
+COPY tests $PRJDIR/tests
 COPY .venv $PRJDIR/.venv
 
 WORKDIR $APPDIR
