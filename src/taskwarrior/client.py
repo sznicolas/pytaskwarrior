@@ -182,6 +182,36 @@ class TaskWarrior:
         tasks_data = json.loads(result.stdout)
         return [Task.model_validate(task_data) for task_data in tasks_data]
     
+    def get_recurring_task(self, uuid: UUID) -> Task:
+        """Get the recurring task (parent) by its UUID."""
+        # Get the parent recurring task
+        result = self._run_task_command([str(uuid), "export", "status:recurring"])
+        
+        if result.returncode == 0:
+            tasks_data = json.loads(result.stdout)
+            if tasks_data:
+                return Task.model_validate(tasks_data[0])
+        
+        # If not found as recurring, try to get it normally
+        return self.get_task(uuid)
+    
+    def get_recurring_instances(self, uuid: UUID) -> List[Task]:
+        """Get all instances of a recurring task."""
+        # Get child tasks that are instances of the recurring parent
+        result = self._run_task_command([f"parent:{str(uuid)}", "export"])
+        
+        if result.returncode != 0:
+            # Check if it's a "no matches" error that we should handle gracefully
+            if "No matches" in result.stderr or "Unable to find report that matches" in result.stderr:
+                return []
+            raise RuntimeError(f"Failed to get recurring instances: {result.stderr}")
+        
+        if not result.stdout.strip():
+            return []
+            
+        tasks_data = json.loads(result.stdout)
+        return [Task.model_validate(task_data) for task_data in tasks_data]
+    
     def delete_task(self, uuid: UUID) -> None:
         """Delete a task."""
         result = self._run_task_command([str(uuid), "delete"])
