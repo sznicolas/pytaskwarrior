@@ -191,6 +191,9 @@ class TaskWarrior:
                 return []
             raise RuntimeError(f"Failed to get tasks: {result.stderr}")
         
+        if not result.stdout.strip():
+            return []
+            
         tasks_data = json.loads(result.stdout)
         return [Task.model_validate(task_data) for task_data in tasks_data]
     
