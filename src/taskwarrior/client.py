@@ -67,12 +67,23 @@ class TaskWarrior:
                 continue
             elif field_name == "tags" and value:
                 # Handle tags correctly - use proper TaskWarrior syntax
-                args.append(f"tags={','.join(value)}")
+                if isinstance(value, list):
+                    args.append(f"tags={','.join(str(v) for v in value)}")
+                elif isinstance(value, str):
+                    # If it's already a string (comma-separated), use as-is
+                    args.append(f"tags={value}")
+                else:
+                    # For other types, convert to string
+                    args.append(f"tags={str(value)}")
             elif field_name == "depends" and value:
                 args.extend([f"depends+={dep}" for dep in value])
             else:
                 if isinstance(value, (list, tuple)):
-                    args.append(f"{field_name}={','.join(str(v) for v in value)}")
+                    # For lists that aren't tags, join them properly
+                    if field_name == "tags":
+                        args.append(f"tags={','.join(str(v) for v in value)}")
+                    else:
+                        args.append(f"{field_name}={','.join(str(v) for v in value)}")
                 elif isinstance(value, UUID):
                     args.append(f"{field_name}={str(value)}")
                 elif hasattr(value, 'total_seconds'):
@@ -81,13 +92,8 @@ class TaskWarrior:
                     args.append(f"{field_name}={int(total_days)}d")
                 else:
                     # Convert to string for other types
-                    # For fields that might contain spaces, we need to quote them properly
                     str_value = str(value)
-                    if ' ' in str_value and field_name != "description":
-                        # Quote fields that contain spaces (but not description which is special)
-                        args.append(f'{field_name}="{str_value}"')
-                    else:
-                        args.append(f"{field_name}={str_value}")
+                    args.append(f"{field_name}={str_value}")
         
         logger.debug(f"Built arguments: {args}")
         return args
