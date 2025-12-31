@@ -184,15 +184,47 @@ def test_validate_assigment(tw: TaskWarrior, sample_task: Task) -> None:
     with pytest.raises(ValidationError):
         sample_task.until = 'arheuh'
 
+def test_shell_injection_protection(tw: TaskWarrior) -> None:
+    """Test that shell injection is properly handled in task descriptions."""
+    # Test with potentially dangerous characters in description
+    dangerous_description = "Test task; rm -rf /tmp"
+    
+    # This should not execute the command, but rather add a task with that description
+    sample_task = Task(
+        description=dangerous_description,
+        priority=Priority.HIGH,
+        project="Test"
+    )
+    
+    # Add the task
+    added_task = tw.add_task(sample_task)
+    assert added_task.description == dangerous_description
+    
+    # Verify the task was actually created with that description
+    retrieved_task = tw.get_task(added_task.uuid)
+    assert retrieved_task.description == dangerous_description
+    
+    # Clean up
+    tw.delete_task(added_task.uuid)
+    
 def test_run_task_command_failure(tw: TaskWarrior) -> None:
     """Test handling of Taskwarrior command failure."""
-    # Test with a command that will definitely fail
-    result = tw._run_task_command(['invalid-command'])
+    # Test with a truly invalid executable that doesn't exist
+    # This should fail at the subprocess level, not just return "No matches"
     
-    # Check that it returns a non-zero exit code
-    assert result.returncode != 0
+    # Save original task_cmd to restore later
+    original_task_cmd = tw.task_cmd
     
-    # Test that the command actually fails with RuntimeError when we try to use it
-    with pytest.raises(RuntimeError, match=r'TaskWarrior command failed: .*'):
-        # This should fail because we're trying to run a non-existent task
-        tw._run_task_command(['invalid-command'])
+    try:
+        # Temporarily set task_cmd to a non-existent binary
+        tw.task_cmd = "this-binary-does-not-exist"
+        
+        # This should fail at the subprocess level
+        result = tw._run_task_command(["version"])
+        
+        # Check that it returns a non-zero exit code
+        assert result.returncode != 0
+        
+    finally:
+        # Restore original task_cmd
+        tw.task_cmd = original_task_cmd
