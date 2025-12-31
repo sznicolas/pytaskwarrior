@@ -115,7 +115,7 @@ class Task(BaseModel):
             except ValueError:
                 # Try parsing as duration
                 try:
-                    isodate.parse_duration(v)
+                    return isodate.parse_duration(v)
                 except isodate.ISO8601Error:
                     raise ValueError("Could not parse as datetime or timedelta")
         return v
@@ -124,3 +124,25 @@ class Task(BaseModel):
     def serialize_uuid(self, uuid: UUID) -> str:
         """Serialize UUID to string."""
         return str(uuid)
+    
+    @field_serializer('due', 'scheduled', 'wait', 'until')
+    def serialize_datetime_or_timedelta(self, value: Union[datetime, timedelta]) -> str:
+        """Serialize datetime or timedelta fields to appropriate format."""
+        if isinstance(value, datetime):
+            return value.isoformat()
+        elif isinstance(value, timedelta):
+            # Convert timedelta to ISO duration format
+            return isodate.duration_isoformat(value)
+        else:
+            # For other types, convert to string
+            return str(value)
+    
+    @field_serializer('tags')
+    def serialize_tags(self, tags: List[str]) -> str:
+        """Serialize tags to comma-separated string."""
+        return ','.join(tags)
+    
+    @field_serializer('depends')
+    def serialize_depends(self, depends: List[UUID]) -> str:
+        """Serialize dependencies to comma-separated string of UUIDs."""
+        return ','.join(str(dep) for dep in depends)
