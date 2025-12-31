@@ -155,9 +155,7 @@ class TaskWarriorAdapter:
                     return task
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
-                raise RuntimeError(
-                    f"Invalid response from TaskWarrior: {result.stdout}"
-                )
+                raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
 
         # If that fails, check if it's a deleted task
         try:
