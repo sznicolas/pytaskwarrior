@@ -1,3 +1,5 @@
+from typing import List, Optional, Union
+
 from .services.date_calculation_service import DateCalculationService
 from .services.task_service import TaskService
 from src.task import Task
