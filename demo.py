@@ -116,17 +116,15 @@ def main():
                 print(
                     f"   - {task.description} (ID: {task.uuid}, Status: {task.status})"
                 )
-        taskr = Task(
-            description="Demo task 2 +custotag",
+        task = Task(
+            description="Demo task 2",
             priority=Priority.MEDIUM,
             project="demo",
             due=datetime.now() + timedelta(days=1),
-            until="P3W",
-            recur=RecurrencePeriod.WEEKLY,
             tags=["personal", "todo"],
         )
-        recurring_task = tw.add_task(taskr)
-        print("Reccuring task: ", recurring_task)
+        created_task = tw.add_task(task)
+        print("Reccuring task: ", created_task)
         print("\n=== Demo Complete ===")
 
 
