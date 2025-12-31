@@ -1,6 +1,7 @@
 import json
 import logging
 import subprocess
+import shlex
 from typing import List, Optional, Union
 from uuid import UUID
 
@@ -68,32 +69,32 @@ class TaskWarrior:
             elif field_name == "tags" and value:
                 # Handle tags correctly - use proper TaskWarrior syntax
                 if isinstance(value, list):
-                    args.append(f"tags={','.join(str(v) for v in value)}")
+                    args.append(f"tags={','.join(shlex.quote(str(v)) for v in value)}")
                 elif isinstance(value, str):
                     # If it's already a string (comma-separated), use as-is
                     args.append(f"tags={value}")
                 else:
-                    # For other types, convert to string
-                    args.append(f"tags={str(value)}")
+                    # For other types, convert to string and quote
+                    args.append(f"tags={shlex.quote(str(value))}")
             elif field_name == "depends" and value:
-                args.extend([f"depends+={dep}" for dep in value])
+                args.extend([f"depends+={shlex.quote(str(dep))}" for dep in value])
             else:
                 if isinstance(value, (list, tuple)):
-                    # For lists that aren't tags, join them properly
+                    # For lists that aren't tags, join them properly and quote each element
                     if field_name == "tags":
-                        args.append(f"tags={','.join(str(v) for v in value)}")
+                        args.append(f"tags={','.join(shlex.quote(str(v)) for v in value)}")
                     else:
-                        args.append(f"{field_name}={','.join(str(v) for v in value)}")
+                        args.append(f"{field_name}={','.join(shlex.quote(str(v)) for v in value)}")
                 elif isinstance(value, UUID):
-                    args.append(f"{field_name}={str(value)}")
+                    args.append(f"{field_name}={shlex.quote(str(value))}")
                 elif hasattr(value, 'total_seconds'):
                     # Handle timedelta objects by converting to days
                     total_days = value.total_seconds() / (24 * 3600)
                     args.append(f"{field_name}={int(total_days)}d")
                 else:
-                    # Convert to string for other types
+                    # Convert to string for other types and quote
                     str_value = str(value)
-                    args.append(f"{field_name}={str_value}")
+                    args.append(f"{field_name}={shlex.quote(str_value)}")
         
         logger.debug(f"Built arguments: {args}")
         return args
@@ -361,7 +362,9 @@ class TaskWarrior:
         """Add an annotation to a task."""
         logger.info(f"Annotating task {uuid} with: {annotation}")
         
-        result = self._run_task_command([str(uuid), "annotate", annotation])
+        # Sanitize the annotation to prevent command injection
+        sanitized_annotation = shlex.quote(annotation)
+        result = self._run_task_command([str(uuid), "annotate", sanitized_annotation])
         
         if result.returncode != 0:
             error_msg = f"Failed to annotate task: {result.stderr}"
@@ -374,7 +377,10 @@ class TaskWarrior:
         """Set a context."""
         logger.info(f"Setting context '{context}' with filter: {filter_str}")
         
-        result = self._run_task_command(["context", "add", context, filter_str])
+        # Sanitize both context and filter_str to prevent command injection
+        sanitized_context = shlex.quote(context)
+        sanitized_filter = shlex.quote(filter_str)
+        result = self._run_task_command(["context", "add", sanitized_context, sanitized_filter])
         
         if result.returncode != 0:
             error_msg = f"Failed to set context: {result.stderr}"
@@ -387,7 +393,9 @@ class TaskWarrior:
         """Apply a context."""
         logger.info(f"Applying context: {context}")
         
-        result = self._run_task_command(["context", "apply", context])
+        # Sanitize the context to prevent command injection
+        sanitized_context = shlex.quote(context)
+        result = self._run_task_command(["context", "apply", sanitized_context])
         
         if result.returncode != 0:
             error_msg = f"Failed to apply context: {result.stderr}"
