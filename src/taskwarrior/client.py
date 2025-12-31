@@ -66,8 +66,8 @@ class TaskWarrior:
             if field_name == "uuid":
                 continue
             elif field_name == "tags" and value:
-                # Handle tags correctly - they should be added as tag values, not "tags+=tag"
-                args.extend([f"+{tag}" for tag in value])
+                # Handle tags correctly - use proper TaskWarrior syntax
+                args.append(f"tags={','.join(value)}")
             elif field_name == "depends" and value:
                 args.extend([f"depends+={dep}" for dep in value])
             else:
