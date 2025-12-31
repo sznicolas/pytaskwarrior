@@ -1,22 +1,17 @@
-from __future__ import annotations
 import json
 import logging
-import shutil
 import subprocess
-from os import environ, getenv, path
 from typing import List, Optional, Union
 from uuid import UUID
 
-from .task import Task, parse_datetime_or_timedelta
-from .exceptions import TaskNotFound, TaskValidationError
+from .exceptions import TaskNotFound
+from .task import Task
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
 __version__ = "0.1.0"
 __author__ = "TaskWarrior Python Team"
 
-# Default configuration values
 DEFAULT_TASKRC_PATH = 'pytaskrc'
 DEFAULT_TASKRC_CONTENT = """
 # Default configuration set by pytaskwarrior
@@ -29,6 +24,7 @@ DEFAULT_CONFIG_OVERRIDES = {
     "verbose": "nothing"
 }
 
+
 class TaskWarrior:
     """A Python API wrapper for TaskWarrior, interacting via CLI commands."""
     
@@ -37,178 +33,109 @@ class TaskWarrior:
         taskrc_path: Optional[str] = None,
         task_cmd: Optional[str] = None
     ):
-        """
-        Initialize the TaskWarrior API.
+        self.taskrc_path = taskrc_path or DEFAULT_TASKRC_PATH
+        self.task_cmd = task_cmd or "task"
         
-        Args:
-            taskrc_path: Optional path to the .taskrc file. If None, uses default.
-            task_cmd: Optional path to the task command. If None, searches PATH.
-            
-        Raises:
-            RuntimeError: If TaskWarrior is not installed or accessible.
-        """
-        self.taskrc_path = taskrc_path or getenv('TASKRC', path.join(path.dirname(__file__), DEFAULT_TASKRC_PATH))
-        environ['TASKRC'] = self.taskrc_path
-        
-        # Create taskrc file if it doesn't exist
+        # Create default config if it doesn't exist
         try:
-            with open(self.taskrc_path, 'x') as file:
-                logger.info(f'Creating taskrc file "{self.taskrc_path}"')
-                file.write(DEFAULT_TASKRC_CONTENT)
-        except FileExistsError:
-            pass  # File already exists, that's fine
-        
-        self.task_cmd = task_cmd or shutil.which('task')
-        if not self.task_cmd:
-            raise RuntimeError("Taskwarrior is not found in PATH.")
+            with open(self.taskrc_path, 'r') as f:
+                pass
+        except FileNotFoundError:
+            with open(self.taskrc_path, 'w') as f:
+                f.write(DEFAULT_TASKRC_CONTENT)
         
         self._validate_taskwarrior()
-
+    
     def _validate_taskwarrior(self) -> None:
-        """Ensure Taskwarrior is installed and accessible."""
+        """Validate that taskwarrior is installed and working."""
         try:
-            subprocess.run(
-                [self.task_cmd, "--version"], 
-                capture_output=True, 
-                check=True,
-                text=True
-            )
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            raise RuntimeError("Taskwarrior is not installed or not found in PATH.")
-
+            result = self._run_task_command(["version"])
+            if result.returncode != 0:
+                raise RuntimeError("TaskWarrior is not properly configured")
+        except FileNotFoundError:
+            raise RuntimeError("TaskWarrior command not found. Please install taskwarrior.")
+    
     def _build_args(self, task: Task) -> List[str]:
-        """Build command arguments from a Task object."""
+        """Build command arguments for a task."""
         args = []
         
-        # Add description as separate words
-        if task.description:
-            args.extend(task.description.split())
+        # Add all fields that are not None
+        for field_name, value in task.model_dump(exclude_unset=True).items():
+            if field_name == "uuid":
+                continue
+            elif field_name == "tags" and value:
+                args.extend([f"{field_name}+={tag}" for tag in value])
+            elif field_name == "depends" and value:
+                args.extend([f"{field_name}+={dep}" for dep in value])
+            else:
+                if isinstance(value, (list, tuple)):
+                    args.append(f"{field_name}={','.join(str(v) for v in value)}")
+                else:
+                    args.append(f"{field_name}={value}")
         
-        # Add other fields
-        if task.priority:
-            args.append(f"priority:{task.priority}")
-        
-        if task.due:
-            args.append(f"due:{parse_datetime_or_timedelta(task.due)}")
-        
-        if task.until:
-            args.append(f"until:{parse_datetime_or_timedelta(task.until)}")
-        
-        if task.scheduled:
-            args.append(f"scheduled:{parse_datetime_or_timedelta(task.scheduled)}")
-        
-        if task.wait:
-            args.append(f"wait:{parse_datetime_or_timedelta(task.wait)}")
-        
-        if task.project:
-            args.append(f"project:{task.project}")
-        
-        # Add tags
-        if task.tags:
-            args.extend([f"+{tag}" for tag in task.tags])
-        
-        if task.recur:
-            args.append(f"recur:{task.recur}")
-        
-        if task.depends:
-            args.append(f"depends:{','.join(str(uuid) for uuid in task.depends)}")
-        
-        if task.context:
-            args.append(f"context:{task.context}")
-            
         return args
-
+    
     def _run_task_command(self, args: List[str]) -> subprocess.CompletedProcess:
-        """
-        Execute a TaskWarrior command via subprocess.
+        """Run a taskwarrior command."""
+        cmd = [self.task_cmd] + args
+        logger.debug(f"Running command: {' '.join(cmd)}")
         
-        Args:
-            args: List of command arguments to append to the base task command.
-            
-        Returns:
-            subprocess.CompletedProcess: Result of the command execution.
-            
-        Raises:
-            RuntimeError: If the command fails.
-        """
-        command = [self.task_cmd] + args
-        logger.debug(f"Executing command: {' '.join(command)}")
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True
+        )
         
-        try:
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=True,
-                env={**environ}
-            )
-            logger.debug(f"Command output: {result.stdout}")
-            return result
-        except subprocess.CalledProcessError as e:
-            logger.error(f"TaskWarrior command failed: {e.stderr}")
-            raise RuntimeError(f"TaskWarrior command failed: {e.stderr}")
-
+        if result.returncode != 0:
+            logger.error(f"Task command failed: {result.stderr}")
+        
+        return result
+    
     def add_task(self, task: Task) -> Task:
-        """
-        Add a new task to TaskWarrior.
+        """Add a new task."""
+        args = self._build_args(task)
+        result = self._run_task_command(["add"] + args)
         
-        Args:
-            task: Task object to add
-            
-        Returns:
-            Task: The created task with UUID and other metadata
-        """
-        args = ['add']
-        args += self._build_args(task)
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to add task: {result.stderr}")
         
-        result = self._run_task_command(args)
+        # Parse the output to get the new task
+        lines = result.stdout.strip().split('\n')
+        if not lines:
+            raise RuntimeError("Failed to add task: no output from taskwarrior")
         
-        # Extract task ID from output
-        task_id = None
-        for line in result.stdout.splitlines():
-            if 'Created task' in line:
-                # Extract the number after "Created task"
-                parts = line.split()
-                for i, part in enumerate(parts):
-                    if part == 'Created' and i + 1 < len(parts) and parts[i+1] == 'task':
-                        task_id = int(parts[i+2].strip("."))
-                        break
+        # The last line should contain the UUID
+        uuid_line = lines[-1]
+        if "Created task" in uuid_line:
+            # Extract UUID from "Created task <uuid>"
+            uuid_str = uuid_line.split()[-1]
+        else:
+            # Try to parse as JSON if available
+            try:
+                task_data = json.loads(result.stdout)
+                uuid_str = task_data[0]["uuid"]
+            except (json.JSONDecodeError, KeyError):
+                raise RuntimeError("Failed to parse task UUID")
         
-        if not task_id:
-            raise RuntimeError("Failed to create task - no ID returned")
-            
-        return self.get_task(task_id)
-
+        # Get the full task details
+        return self.get_task(uuid_str)
+    
     def modify_task(self, task: Task) -> Task:
-        """
-        Modify an existing task in TaskWarrior.
-        
-        Args:
-            task: Task object with updated fields
-            
-        Returns:
-            Task: Updated task object
-            
-        Raises:
-            ValueError: If task ID or UUID is missing
-        """
+        """Modify an existing task."""
         if not task.uuid:
-            raise TaskValidationError("Task UUID required to modify a task")
-            
-        try:
-            self.get_task(task.uuid)
-        except RuntimeError:
-            raise TaskNotFound("Task not found for modification")
-            
-        args = [str(task.uuid), 'modify']
-        args += self._build_args(task)
+            raise ValueError("Task must have a UUID to modify")
         
-        self._run_task_command(args)
+        args = self._build_args(task)
+        result = self._run_task_command([str(task.uuid), "modify"] + args)
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to modify task: {result.stderr}")
+        
+        # Get the updated task details
         return self.get_task(task.uuid)
-
+    
     def get_task(self, task_id_or_uuid: Union[str, int]) -> Task:
-        """
-        Retrieve a task by ID or UUID.
+        """Retrieve a task by ID or UUID.
         
         Args:
             task_id_or_uuid: Task ID or UUID
@@ -219,63 +146,98 @@ class TaskWarrior:
         Raises:
             RuntimeError: If task is not found
         """
+        # First try to get the task normally
         result = self._run_task_command([str(task_id_or_uuid), "export"])
-        tasks_data = json.loads(result.stdout)
         
-        if not tasks_data:
-            raise TaskNotFound(f"Task {task_id_or_uuid} not found.")
-            
-        return Task(**tasks_data[0])
-
+        if result.returncode == 0:
+            tasks_data = json.loads(result.stdout)
+            if tasks_data:
+                return Task.model_validate(tasks_data[0])
+        
+        # If that fails, check if it's a deleted task
+        try:
+            # Try to get the task with status:deleted filter
+            result = self._run_task_command([str(task_id_or_uuid), "export", "status:deleted"])
+            if result.returncode == 0:
+                tasks_data = json.loads(result.stdout)
+                if tasks_data:
+                    return Task.model_validate(tasks_data[0])
+        except Exception:
+            pass
+        
+        # If we still haven't found it, raise the exception
+        raise TaskNotFound(f"Task {task_id_or_uuid} not found.")
+    
     def get_tasks(self, filter_args: List[str]) -> List[Task]:
-        """
-        Retrieve all tasks matching the given filters.
+        """Get multiple tasks based on filters."""
+        args = ["export"] + filter_args
+        result = self._run_task_command(args)
         
-        Args:
-            filter_args: List of filter arguments as accepted by task
-            
-        Returns:
-            List[Task]: Matching tasks
-        """
-        # Sanitize filter arguments
-        args = [str(arg) for arg in filter_args]
-        result = self._run_task_command(args + ["export"])
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to get tasks: {result.stderr}")
         
         tasks_data = json.loads(result.stdout)
-        return [Task(**task) for task in tasks_data]
-
+        return [Task.model_validate(task_data) for task_data in tasks_data]
+    
     def delete_task(self, uuid: UUID) -> None:
-        """Delete a task by UUID."""
-        self._run_task_command([str(uuid), "delete"])
-
+        """Delete a task."""
+        result = self._run_task_command([str(uuid), "delete"])
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to delete task: {result.stderr}")
+    
     def purge_task(self, uuid: UUID) -> None:
-        """Permanently delete a task by UUID."""
-        self._run_task_command([str(uuid), "purge"])
-
+        """Purge a task permanently."""
+        result = self._run_task_command([str(uuid), "purge"])
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to purge task: {result.stderr}")
+    
     def done_task(self, uuid: UUID) -> None:
-        """Mark a task as done by UUID."""
-        self._run_task_command([str(uuid), "done"])
-
+        """Mark a task as done."""
+        result = self._run_task_command([str(uuid), "done"])
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to mark task as done: {result.stderr}")
+    
     def start_task(self, uuid: UUID) -> None:
-        """Start a task by UUID."""
-        self._run_task_command([str(uuid), "start"])
-
+        """Start a task."""
+        result = self._run_task_command([str(uuid), "start"])
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to start task: {result.stderr}")
+    
     def stop_task(self, uuid: UUID) -> None:
-        """Stop a task by UUID."""
-        self._run_task_command([str(uuid), "stop"])
-
+        """Stop a task."""
+        result = self._run_task_command([str(uuid), "stop"])
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to stop task: {result.stderr}")
+    
     def annotate_task(self, uuid: UUID, annotation: str) -> None:
         """Add an annotation to a task."""
-        self._run_task_command([str(uuid), "annotate", annotation])
-
+        result = self._run_task_command([str(uuid), "annotate", annotation])
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to annotate task: {result.stderr}")
+    
     def set_context(self, context: str, filter_str: str) -> None:
-        """Define a context with a filter."""
-        self._run_task_command(["context", "define", context, filter_str])
-
+        """Set a context."""
+        result = self._run_task_command(["context", "add", context, filter_str])
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to set context: {result.stderr}")
+    
     def apply_context(self, context: str) -> None:
-        """Apply a context to filter tasks."""
-        self._run_task_command(["context", context])
-
+        """Apply a context."""
+        result = self._run_task_command(["context", "apply", context])
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to apply context: {result.stderr}")
+    
     def remove_context(self) -> None:
         """Remove the current context."""
-        self._run_task_command(["context", "none"])
+        result = self._run_task_command(["context", "remove"])
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to remove context: {result.stderr}")
