@@ -4,6 +4,7 @@ from typing import List, Optional, Union
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .exceptions import TaskNotFound, TaskValidationError
 from .services.date_calculation_service import DateCalculationService
+from .services.task_service import TaskService
 
 class TaskWarrior:
     """A Python API wrapper for TaskWarrior, interacting via CLI commands."""
@@ -18,6 +19,7 @@ class TaskWarrior:
         self.taskrc_path = taskrc_path
         self.adapter = TaskWarriorAdapter(taskrc_path)
         self.date_service = DateCalculationService()
+        self.task_service = TaskService(self.adapter)
     
     def _run_task_command(self, args: List[str]) -> subprocess.CompletedProcess:
         """
@@ -68,19 +70,19 @@ class TaskWarrior:
     
     def add_task(self, task) -> "Task":
         """Add a new task."""
-        return self.adapter.add_task(task)
+        return self.task_service.add_task(task)
     
     def modify_task(self, task) -> "Task":
         """Modify an existing task."""
-        return self.adapter.modify_task(task)
+        return self.task_service.modify_task(task)
     
     def get_task(self, task_id_or_uuid: Union[str, int]) -> "Task":
         """Get a specific task by ID or UUID."""
-        return self.adapter.get_task(task_id_or_uuid)
+        return self.task_service.get_task(task_id_or_uuid)
     
     def get_tasks(self, filter_args: List[str]) -> List["Task"]:
         """Get tasks matching the given filters."""
-        return self.adapter.get_tasks(filter_args)
+        return self.task_service.get_tasks(filter_args)
     
     def get_recurring_task(self, uuid) -> "Task":
         """Get a recurring task by UUID."""
@@ -92,24 +94,24 @@ class TaskWarrior:
     
     def delete_task(self, uuid) -> None:
         """Delete a task."""
-        self.adapter.delete_task(uuid)
+        self.task_service.delete_task(uuid)
     
     def purge_task(self, uuid) -> None:
         """Purge a task."""
-        self.adapter.purge_task(uuid)
+        self.task_service.purge_task(uuid)
     
     def done_task(self, uuid) -> None:
         """Mark a task as done."""
-        self.adapter.done_task(uuid)
+        self.task_service.done_task(uuid)
     
     def start_task(self, uuid) -> None:
         """Start a task."""
-        self.adapter.start_task(uuid)
+        self.task_service.start_task(uuid)
     
     def stop_task(self, uuid) -> None:
         """Stop a task."""
-        self.adapter.stop_task(uuid)
+        self.task_service.stop_task(uuid)
     
     def annotate_task(self, uuid, annotation: str) -> None:
         """Add an annotation to a task."""
-        self.adapter.annotate_task(uuid, annotation)
+        self.task_service.annotate_task(uuid, annotation)
