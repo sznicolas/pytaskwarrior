@@ -187,7 +187,7 @@ def test_validate_assigment(tw: TaskWarrior, sample_task: Task) -> None:
 def test_shell_injection_protection(tw: TaskWarrior) -> None:
     """Test that shell injection is properly handled in task descriptions."""
     # Test with potentially dangerous characters in description
-    dangerous_description = "Test task; rm -rf /tmp"
+    dangerous_description = "Test task; rm  /tmp/toto_123"
     
     # This should not execute the command, but rather add a task with that description
     sample_task = Task(
