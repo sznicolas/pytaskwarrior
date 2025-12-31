@@ -201,7 +201,7 @@ class TaskWarriorAdapter:
                 return []
             error_msg = f"Failed to get tasks: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskNotFound(error_msg)
 
         if not result.stdout.strip():
             logger.debug("No tasks returned (empty response)")
@@ -214,7 +214,7 @@ class TaskWarriorAdapter:
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise RuntimeError(f"Invalid response from TaskWarrior: {result.stdout}")
+            raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
 
     def get_recurring_task(self, uuid: UUID) -> Task:
         """Get the recurring task (parent) by its UUID."""
@@ -253,7 +253,7 @@ class TaskWarriorAdapter:
                 return []
             error_msg = f"Failed to get recurring instances: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskNotFound(error_msg)
 
         if not result.stdout.strip():
             logger.debug("No recurring instances returned (empty response)")
@@ -266,7 +266,7 @@ class TaskWarriorAdapter:
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise RuntimeError(f"Invalid response from TaskWarrior: {result.stdout}")
+            raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
 
     def delete_task(self, uuid: UUID) -> None:
         """Delete a task."""
