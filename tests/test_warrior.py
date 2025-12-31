@@ -220,10 +220,8 @@ def test_run_task_command_failure(tw: TaskWarrior) -> None:
         tw.task_cmd = "this-binary-does-not-exist"
         
         # This should fail at the subprocess level
-        result = tw._run_task_command(["version"])
-        
-        # Check that it returns a non-zero exit code
-        assert result.returncode != 0
+        with pytest.raises(FileNotFoundError):
+            result = tw._run_task_command(["version"])
         
     finally:
         # Restore original task_cmd
