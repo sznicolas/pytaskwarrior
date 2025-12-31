@@ -81,7 +81,13 @@ class TaskWarrior:
                     args.append(f"{field_name}={int(total_days)}d")
                 else:
                     # Convert to string for other types
-                    args.append(f"{field_name}={value}")
+                    # For fields that might contain spaces, we need to quote them properly
+                    str_value = str(value)
+                    if ' ' in str_value and field_name != "description":
+                        # Quote fields that contain spaces (but not description which is special)
+                        args.append(f'{field_name}="{str_value}"')
+                    else:
+                        args.append(f"{field_name}={str_value}")
         
         logger.debug(f"Built arguments: {args}")
         return args
