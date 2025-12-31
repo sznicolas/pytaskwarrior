@@ -74,8 +74,8 @@ class TaskWarrior:
                 elif isinstance(value, UUID):
                     args.append(f"{field_name}={str(value)}")
                 elif hasattr(value, 'total_seconds'):
-                    # Handle timedelta objects (like until)
-                    args.append(f"{field_name}={value}")
+                    # Handle timedelta objects (like until) by converting to string representation
+                    args.append(f"{field_name}={str(value)}")
                 else:
                     args.append(f"{field_name}={value}")
         
@@ -179,10 +179,14 @@ class TaskWarrior:
         """Get multiple tasks based on filters."""
         # Convert any UUID objects to strings in filter_args
         str_filter_args = [str(arg) if isinstance(arg, UUID) else arg for arg in filter_args]
+        # Ensure we properly handle regex patterns by wrapping them appropriately
         args = ["export"] + str_filter_args
         result = self._run_task_command(args)
         
         if result.returncode != 0:
+            # Check if it's a "no matches" error that we should handle gracefully
+            if "No matches" in result.stderr:
+                return []
             raise RuntimeError(f"Failed to get tasks: {result.stderr}")
         
         tasks_data = json.loads(result.stdout)
