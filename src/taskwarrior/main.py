@@ -5,6 +5,7 @@ from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .exceptions import TaskNotFound, TaskValidationError
 from .services.date_calculation_service import DateCalculationService
 from .services.task_service import TaskService
+from ..task import Task  # Import Task here
 
 class TaskWarrior:
     """A Python API wrapper for TaskWarrior, interacting via CLI commands."""
