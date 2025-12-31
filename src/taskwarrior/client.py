@@ -71,6 +71,11 @@ class TaskWarrior:
             else:
                 if isinstance(value, (list, tuple)):
                     args.append(f"{field_name}={','.join(str(v) for v in value)}")
+                elif isinstance(value, UUID):
+                    args.append(f"{field_name}={str(value)}")
+                elif hasattr(value, 'total_seconds'):
+                    # Handle timedelta objects (like until)
+                    args.append(f"{field_name}={value}")
                 else:
                     args.append(f"{field_name}={value}")
         
