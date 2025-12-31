@@ -107,7 +107,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to add task: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskValidationError(error_msg)
 
         # Get the latest added task
         tasks = self.get_tasks(filter_args=["+LATEST"])
@@ -132,7 +132,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to modify task: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskValidationError(error_msg)
 
         # Get the updated task details
         updated_task = self.get_task(task.uuid)
@@ -277,7 +277,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to delete task: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskNotFound(error_msg)
 
         logger.info(f"Successfully deleted task with UUID: {uuid}")
 
@@ -290,7 +290,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to purge task: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskNotFound(error_msg)
 
         logger.info(f"Successfully purged task with UUID: {uuid}")
 
@@ -303,7 +303,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to mark task as done: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskNotFound(error_msg)
 
         logger.info(f"Successfully completed task with UUID: {uuid}")
 
@@ -316,7 +316,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to start task: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskNotFound(error_msg)
 
         logger.info(f"Successfully started task with UUID: {uuid}")
 
@@ -329,7 +329,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to stop task: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskNotFound(error_msg)
 
         logger.info(f"Successfully stopped task with UUID: {uuid}")
 
@@ -344,6 +344,6 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to annotate task: {result.stderr}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise TaskNotFound(error_msg)
 
         logger.info(f"Successfully annotated task with UUID: {uuid}")
