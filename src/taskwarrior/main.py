@@ -15,8 +15,10 @@ class TaskWarrior:
         Initialize the TaskWarrior API wrapper.
 
         Args:
+            task_cmd: Path to the task command (can be full path or just "task")
             taskrc_path: Path to the taskrc configuration file
         """
+        self.task_cmd = task_cmd
         self.taskrc_path = taskrc_path
         self.date_service = DateCalculationService()
         self.adapter = TaskWarriorAdapter(task_cmd=task_cmd, taskrc_path=self.taskrc_path)

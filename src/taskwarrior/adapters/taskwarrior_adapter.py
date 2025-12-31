@@ -21,7 +21,10 @@ class TaskWarriorAdapter:
     def _run_task_command(self, args: List[str]) -> subprocess.CompletedProcess:
         """Run a taskwarrior command."""
         # Prepend the taskrc path to all commands
-        cmd = [self.task_cmd, f"rc:{self.taskrc_path}"] + args
+        cmd = [self.task_cmd]
+        if self.taskrc_path:
+            cmd.extend([f"rc:{self.taskrc_path}"])
+        cmd.extend(args)
         logger.debug(f"Running command: {' '.join(cmd)}")
 
         try:
