@@ -84,7 +84,7 @@ class TaskWarrior:
         Example:
             >>> pending_tasks = client.get_tasks(["status:pending"])
         """
-        return self.task_service.get_tasks(filter_args)
+        return self.adapter.get_tasks(filter_args)
 
     def get_recurring_task(self, uuid: str) -> Task:
         """
@@ -99,7 +99,7 @@ class TaskWarrior:
         Example:
             >>> recurring_task = client.get_recurring_task("123e4567-e89b-12d3-a456-426614174000")
         """
-        return self.task_service.get_recurring_task(uuid)
+        return self.adapter.get_recurring_task(uuid)
 
     def get_recurring_instances(self, uuid: str) -> List[Task]:
         """
@@ -114,7 +114,7 @@ class TaskWarrior:
         Example:
             >>> instances = client.get_recurring_instances("123e4567-e89b-12d3-a456-426614174000")
         """
-        return self.task_service.get_recurring_instances(uuid)
+        return self.adapter.get_recurring_instances(uuid)
 
     def delete_task(self, uuid: str) -> None:
         """

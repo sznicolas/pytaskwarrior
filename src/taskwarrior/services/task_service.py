@@ -43,11 +43,11 @@ class TaskService:
     
     def get_recurring_task(self, uuid: UUID) -> Task:
         """Get a recurring task by UUID."""
-        return self.adapter.get_recurring_task(uuid)
+        return self._execute_task_operation(self.adapter.get_recurring_task, uuid)
     
     def get_recurring_instances(self, uuid: UUID) -> List[Task]:
         """Get instances of a recurring task."""
-        return self.adapter.get_recurring_instances(uuid)
+        return self._execute_task_operation(self.adapter.get_recurring_instances, uuid)
     
     def delete_task(self, uuid: UUID) -> None:
         """Delete a task."""
