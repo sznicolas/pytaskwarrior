@@ -5,6 +5,7 @@ import shutil
 import subprocess
 from os import environ, getenv, path
 from typing import List, Optional, Union
+from uuid import UUID
 
 from .task import Task, parse_datetime_or_timedelta
 from .exceptions import TaskNotFound, TaskValidationError
