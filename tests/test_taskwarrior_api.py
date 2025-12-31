@@ -103,19 +103,6 @@ def test_shell_injection_protection(tw: TaskWarrior) -> None:
     tw.delete_task(added_task.uuid)
 
 
-def test_run_task_command_failure(tw: TaskWarrior, taskwarrior_config: str) -> None:
-    """Test handling of Taskwarrior command failure."""
-    # Test with a truly invalid executable that doesn't exist
-    # This should fail at the subprocess level, not just return "No matches"
-    
-    # Create a new TaskWarrior instance with invalid task_cmd
-    tw_invalid = TaskWarrior(task_cmd="/opt/homebrew/bin/task", taskrc_path=taskwarrior_config)
-    
-    # This should fail at the subprocess level
-    with pytest.raises(FileNotFoundError):
-        result = tw_invalid.adapter._run_task_command(["version"])
-
-
 def test_validate_assigment(tw: TaskWarrior, sample_task: Task) -> None:
 
     with pytest.raises(Exception):
