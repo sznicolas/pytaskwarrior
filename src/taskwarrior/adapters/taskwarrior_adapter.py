@@ -5,7 +5,7 @@ import shlex
 from typing import List, Optional, Union
 from uuid import UUID
 
-from ..exceptions import TaskNotFound, TaskValidationError
+from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 from ..task import Task
 
 logger = logging.getLogger(__name__)
