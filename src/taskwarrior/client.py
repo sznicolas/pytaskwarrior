@@ -74,8 +74,9 @@ class TaskWarrior:
                 elif isinstance(value, UUID):
                     args.append(f"{field_name}={str(value)}")
                 elif hasattr(value, 'total_seconds'):
-                    # Handle timedelta objects (like until) by converting to string representation
-                    args.append(f"{field_name}={str(value)}")
+                    # Handle timedelta objects by converting to days
+                    total_days = value.total_seconds() / (24 * 3600)
+                    args.append(f"{field_name}={int(total_days)}d")
                 else:
                     args.append(f"{field_name}={value}")
         
@@ -185,7 +186,7 @@ class TaskWarrior:
         
         if result.returncode != 0:
             # Check if it's a "no matches" error that we should handle gracefully
-            if "No matches" in result.stderr:
+            if "No matches" in result.stderr or "Unable to find report that matches" in result.stderr:
                 return []
             raise RuntimeError(f"Failed to get tasks: {result.stderr}")
         
