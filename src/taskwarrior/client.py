@@ -77,7 +77,8 @@ class TaskWarrior:
     
     def _run_task_command(self, args: List[str]) -> subprocess.CompletedProcess:
         """Run a taskwarrior command."""
-        cmd = [self.task_cmd] + args
+        # Prepend the taskrc path to all commands
+        cmd = [self.task_cmd, f"rc:{self.taskrc_path}"] + args
         logger.debug(f"Running command: {' '.join(cmd)}")
         
         result = subprocess.run(
@@ -170,7 +171,9 @@ class TaskWarrior:
     
     def get_tasks(self, filter_args: List[str]) -> List[Task]:
         """Get multiple tasks based on filters."""
-        args = ["export"] + filter_args
+        # Convert any UUID objects to strings in filter_args
+        str_filter_args = [str(arg) if isinstance(arg, UUID) else arg for arg in filter_args]
+        args = ["export"] + str_filter_args
         result = self._run_task_command(args)
         
         if result.returncode != 0:
