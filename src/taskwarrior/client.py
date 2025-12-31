@@ -104,30 +104,11 @@ class TaskWarrior:
         """Add a new task."""
         args = self._build_args(task)
         result = self._run_task_command(["add"] + args)
-        
         if result.returncode != 0:
             raise RuntimeError(f"Failed to add task: {result.stderr}")
         
-        # Parse the output to get the new task
-        lines = result.stdout.strip().split('\n')
-        if not lines:
-            raise RuntimeError("Failed to add task: no output from taskwarrior")
-        
-        # The last line should contain the UUID
-        uuid_line = lines[-1]
-        if "Created task" in uuid_line:
-            # Extract UUID from "Created task <uuid>"
-            uuid_str = uuid_line.split()[-1]
-        else:
-            # Try to parse as JSON if available
-            try:
-                task_data = json.loads(result.stdout)
-                uuid_str = task_data[0]["uuid"]
-            except (json.JSONDecodeError, KeyError):
-                raise RuntimeError("Failed to parse task UUID")
-        
-        # Get the full task details
-        return self.get_task(uuid_str)
+        task = self.get_tasks(filter_args=["+LATEST"])[0]
+        return task
     
     def modify_task(self, task: Task) -> Task:
         """Modify an existing task."""
@@ -182,7 +163,7 @@ class TaskWarrior:
         # Convert any UUID objects to strings in filter_args
         str_filter_args = [str(arg) if isinstance(arg, UUID) else arg for arg in filter_args]
         # Ensure we properly handle regex patterns by wrapping them appropriately
-        args = ["export"] + str_filter_args
+        args = str_filter_args + ["export"]
         result = self._run_task_command(args)
         
         if result.returncode != 0:
