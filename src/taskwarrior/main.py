@@ -1,6 +1,6 @@
 from .services.date_calculation_service import DateCalculationService
 from .services.task_service import TaskService
-from ..task import Task
+from src.task import Task
 
 class TaskWarrior:
     """A Python API wrapper for TaskWarrior, interacting via CLI commands."""
