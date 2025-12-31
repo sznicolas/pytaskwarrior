@@ -151,7 +151,7 @@ class TaskWarrior:
         # If that fails, check if it's a deleted task
         try:
             # Try to get the task with status:deleted filter
-            result = self._run_task_command([str(task_id_or_uuid), "export", "status:deleted"])
+            result = self._run_task_command([str(task_id_or_uuid), "status:deleted", "export"])
             if result.returncode == 0:
                 tasks_data = json.loads(result.stdout)
                 if tasks_data:
@@ -185,7 +185,7 @@ class TaskWarrior:
     def get_recurring_task(self, uuid: UUID) -> Task:
         """Get the recurring task (parent) by its UUID."""
         # Get the parent recurring task
-        result = self._run_task_command([str(uuid), "export", "status:recurring"])
+        result = self._run_task_command([str(uuid), "status:recurring", "export"])
         
         if result.returncode == 0:
             tasks_data = json.loads(result.stdout)

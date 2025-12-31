@@ -154,57 +154,16 @@ def test_recurring_task(tw: TaskWarrior, sample_task: Task) -> None:
     """Test adding a recurring task."""
     sample_task.until = 'P3W'
     sample_task.recur = RecurrencePeriod.WEEKLY
-    recurring_task = tw.add_task(sample_task)
+    task = tw.add_task(sample_task)
+    recurring_task = tw.get_recurring_task(task.parent)
     assert recurring_task.recur == "weekly"
     # Recurring tasks should have status 'recurring' when created
     assert recurring_task.status == TaskStatus.RECURRING
-    # Check that the child task was created
-    tasks = tw.get_tasks([f'parent:{str(recurring_task.uuid)}'])
-    assert len(tasks) == 1
-
-
-def test_get_recurring_task(tw: TaskWarrior, sample_task: Task) -> None:
-    """Test getting a recurring task."""
-    sample_task.until = 'P3W'
-    sample_task.recur = RecurrencePeriod.WEEKLY
-    recurring_task = tw.add_task(sample_task)
-    
-    # Get the recurring task using new method
-    retrieved_recurring = tw.get_recurring_task(recurring_task.uuid)
-    assert retrieved_recurring.recur == "weekly"
-    assert retrieved_recurring.status == TaskStatus.RECURRING
-
-
-def test_get_recurring_instances(tw: TaskWarrior, sample_task: Task) -> None:
-    """Test getting recurring task instances."""
-    sample_task.until = 'P3W'
-    sample_task.recur = RecurrencePeriod.WEEKLY
-    recurring_task = tw.add_task(sample_task)
-    
-    # Get the recurring instances using new method
+    # Check that the child task have status 'pending'
     instances = tw.get_recurring_instances(recurring_task.uuid)
-    # Initially there should be no instances created
-    assert len(instances) == 1  # The parent task itself is returned as an instance
     assert instances[0].parent == recurring_task.uuid
-
-
-def test_recurring_task_with_instances(tw: TaskWarrior, sample_task: Task) -> None:
-    """Test recurring task with actual instances."""
-    sample_task.until = 'P3W'
-    sample_task.recur = RecurrencePeriod.WEEKLY
-    recurring_task = tw.add_task(sample_task)
-    
-    # Get the parent task and its instances
-    parent_task = tw.get_recurring_task(recurring_task.uuid)
-    assert parent_task.recur == "weekly"
-    
-    instances = tw.get_recurring_instances(recurring_task.uuid)
-    assert len(instances) >= 1
-    
-    # Verify that instances have the correct parent
-    for instance in instances:
-        if instance.uuid != recurring_task.uuid:  # Skip the parent itself
-            assert instance.parent == recurring_task.uuid
+    assert instances[0].status == TaskStatus.PENDING
+    assert len(instances) == 1
 
 
 #def test_context_management(tw: TaskWarrior, sample_task: Task) -> None:
