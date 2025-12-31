@@ -3,7 +3,7 @@ from uuid import UUID
 
 from ..task import Task, TaskStatus
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
-from ..exceptions import TaskNotFound, TaskValidationError
+from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 
 class TaskService:
     """Handles task-related business logic."""
