@@ -4,7 +4,7 @@ import subprocess
 from typing import List, Optional, Union
 from uuid import UUID
 
-from .exceptions import TaskNotFound
+from .exceptions import TaskNotFound, TaskValidationError
 from .task import Task
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ class TaskWarrior:
         logger.info(f"Adding task with description: {task.description}")
         
         if not task.description.strip():
-            raise ValueError("Task description cannot be empty")
+            raise TaskValidationError("Task description cannot be empty")
             
         args = self._build_args(task)
         result = self._run_task_command(["add"] + args)
@@ -140,7 +140,7 @@ class TaskWarrior:
         logger.info(f"Modifying task with UUID: {task.uuid}")
         
         if not task.uuid:
-            raise ValueError("Task must have a UUID to modify")
+            raise TaskValidationError("Task must have a UUID to modify")
         
         args = self._build_args(task)
         result = self._run_task_command([str(task.uuid), "modify"] + args)
