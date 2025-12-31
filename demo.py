@@ -117,7 +117,7 @@ def main():
                     f"   - {task.description} (ID: {task.uuid}, Status: {task.status})"
                 )
         taskr = Task(
-            description="Demo task 2",
+            description="Demo task 2 +custotag",
             priority=Priority.MEDIUM,
             project="demo",
             due=datetime.now() + timedelta(days=1),
