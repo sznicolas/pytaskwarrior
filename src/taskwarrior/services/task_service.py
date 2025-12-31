@@ -35,11 +35,11 @@ class TaskService:
     
     def get_task(self, task_id_or_uuid: Union[str, int]) -> Task:
         """Retrieve a task by ID or UUID."""
-        return self.adapter.get_task(task_id_or_uuid)
+        return self._execute_task_operation(self.adapter.get_task, task_id_or_uuid)
     
     def get_tasks(self, filter_args: List[str]) -> List[Task]:
         """Get multiple tasks based on filters."""
-        return self.adapter.get_tasks(filter_args)
+        return self._execute_task_operation(self.adapter.get_tasks, filter_args)
     
     def get_recurring_task(self, uuid: UUID) -> Task:
         """Get a recurring task by UUID."""
@@ -51,24 +51,24 @@ class TaskService:
     
     def delete_task(self, uuid: UUID) -> None:
         """Delete a task."""
-        self.adapter.delete_task(uuid)
+        self._execute_task_operation(self.adapter.delete_task, uuid)
     
     def purge_task(self, uuid: UUID) -> None:
         """Purge a task permanently."""
-        self.adapter.purge_task(uuid)
+        self._execute_task_operation(self.adapter.purge_task, uuid)
     
     def done_task(self, uuid: UUID) -> None:
         """Mark a task as done."""
-        self.adapter.done_task(uuid)
+        self._execute_task_operation(self.adapter.done_task, uuid)
     
     def start_task(self, uuid: UUID) -> None:
         """Start a task."""
-        self.adapter.start_task(uuid)
+        self._execute_task_operation(self.adapter.start_task, uuid)
     
     def stop_task(self, uuid: UUID) -> None:
         """Stop a task."""
-        self.adapter.stop_task(uuid)
+        self._execute_task_operation(self.adapter.stop_task, uuid)
     
     def annotate_task(self, uuid: UUID, annotation: str) -> None:
         """Add an annotation to a task."""
-        self.adapter.annotate_task(uuid, annotation)
+        self._execute_task_operation(self.adapter.annotate_task, uuid, annotation)
