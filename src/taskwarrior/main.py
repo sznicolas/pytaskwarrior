@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 
@@ -30,19 +30,19 @@ class TaskWarrior:
         """Modify an existing task."""
         return self.task_service.modify_task(task)
 
-    def get_task(self, task_id_or_uuid: Union[str, int]) -> "Task":
+    def get_task(self, task_id_or_uuid) -> Task:
         """Get a specific task by ID or UUID."""
         return self.task_service.get_task(task_id_or_uuid)
 
-    def get_tasks(self, filter_args: List[str]) -> List["Task"]:
+    def get_tasks(self, filter_args: List[str]) -> List[Task]:
         """Get tasks matching the given filters."""
         return self.task_service.get_tasks(filter_args)
 
-    def get_recurring_task(self, uuid) -> "Task":
+    def get_recurring_task(self, uuid) -> Task:
         """Get a recurring task by UUID."""
         return self.task_service.get_recurring_task(uuid)
 
-    def get_recurring_instances(self, uuid) -> List["Task"]:
+    def get_recurring_instances(self, uuid) -> List[Task]:
         """Get instances of a recurring task."""
         return self.task_service.get_recurring_instances(uuid)
 
