@@ -78,6 +78,7 @@ class TaskWarrior:
                     total_days = value.total_seconds() / (24 * 3600)
                     args.append(f"{field_name}={int(total_days)}d")
                 else:
+                    # Convert to string for other types
                     args.append(f"{field_name}={value}")
         
         return args
