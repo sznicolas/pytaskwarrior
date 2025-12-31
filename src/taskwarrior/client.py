@@ -107,8 +107,12 @@ class TaskWarrior:
         if result.returncode != 0:
             raise RuntimeError(f"Failed to add task: {result.stderr}")
         
-        task = self.get_tasks(filter_args=["+LATEST"])[0]
-        return task
+        # Get the latest added task
+        tasks = self.get_tasks(filter_args=["+LATEST"])
+        if not tasks:
+            raise RuntimeError("Failed to retrieve added task")
+        
+        return tasks[0]
     
     def modify_task(self, task: Task) -> Task:
         """Modify an existing task."""
