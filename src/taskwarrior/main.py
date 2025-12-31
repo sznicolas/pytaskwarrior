@@ -2,7 +2,6 @@ from typing import List, Optional
 
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .services.date_calculation_service import DateCalculationService
-from .services.task_service import TaskService
 from .task import Task
 from .exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 
@@ -21,7 +20,6 @@ class TaskWarrior:
         self.taskrc_path = taskrc_path
         self.date_service = DateCalculationService()
         self.adapter = TaskWarriorAdapter(task_cmd=task_cmd, taskrc_path=self.taskrc_path)
-        self.task_service = TaskService(self.adapter)
 
     def add_task(self, task: Task) -> Task:
         """
@@ -37,7 +35,7 @@ class TaskWarrior:
             >>> task = Task(description="Buy groceries")
             >>> added_task = client.add_task(task)
         """
-        return self.task_service.add_task(task)
+        return self.adapter.add_task(task)
 
     def modify_task(self, task: Task) -> Task:
         """
@@ -54,7 +52,7 @@ class TaskWarrior:
             >>> task.description = "Buy groceries and milk"
             >>> modified_task = client.modify_task(task)
         """
-        return self.task_service.modify_task(task)
+        return self.adapter.modify_task(task)
 
     def get_task(self, task_id_or_uuid: str) -> Task:
         """
@@ -69,7 +67,7 @@ class TaskWarrior:
         Example:
             >>> task = client.get_task("123e4567-e89b-12d3-a456-426614174000")
         """
-        return self.task_service.get_task(task_id_or_uuid)
+        return self.adapter.get_task(task_id_or_uuid)
 
     def get_tasks(self, filter_args: List[str]) -> List[Task]:
         """
@@ -126,7 +124,7 @@ class TaskWarrior:
         Example:
             >>> client.delete_task("123e4567-e89b-12d3-a456-426614174000")
         """
-        self.task_service.delete_task(uuid)
+        self.adapter.delete_task(uuid)
 
     def purge_task(self, uuid: str) -> None:
         """
@@ -138,7 +136,7 @@ class TaskWarrior:
         Example:
             >>> client.purge_task("123e4567-e89b-12d3-a456-426614174000")
         """
-        self.task_service.purge_task(uuid)
+        self.adapter.purge_task(uuid)
 
     def done_task(self, uuid: str) -> None:
         """
@@ -150,7 +148,7 @@ class TaskWarrior:
         Example:
             >>> client.done_task("123e4567-e89b-12d3-a456-426614174000")
         """
-        self.task_service.done_task(uuid)
+        self.adapter.done_task(uuid)
 
     def start_task(self, uuid: str) -> None:
         """
@@ -162,7 +160,7 @@ class TaskWarrior:
         Example:
             >>> client.start_task("123e4567-e89b-12d3-a456-426614174000")
         """
-        self.task_service.start_task(uuid)
+        self.adapter.start_task(uuid)
 
     def stop_task(self, uuid: str) -> None:
         """
@@ -174,7 +172,7 @@ class TaskWarrior:
         Example:
             >>> client.stop_task("123e4567-e89b-12d3-a456-426614174000")
         """
-        self.task_service.stop_task(uuid)
+        self.adapter.stop_task(uuid)
 
     def annotate_task(self, uuid: str, annotation: str) -> None:
         """
@@ -187,4 +185,38 @@ class TaskWarrior:
         Example:
             >>> client.annotate_task("123e4567-e89b-12d3-a456-426614174000", "Called supplier")
         """
-        self.task_service.annotate_task(uuid, annotation)
+        self.adapter.annotate_task(uuid, annotation)
+
+    def set_context(self, context: str, filter_str: str) -> None:
+        """
+        Set a context.
+
+        Args:
+            context: The name of the context
+            filter_str: The filter string for the context
+
+        Example:
+            >>> client.set_context("work", "project:work")
+        """
+        self.adapter.set_context(context, filter_str)
+
+    def apply_context(self, context: str) -> None:
+        """
+        Apply a context.
+
+        Args:
+            context: The name of the context to apply
+
+        Example:
+            >>> client.apply_context("work")
+        """
+        self.adapter.apply_context(context)
+
+    def remove_context(self) -> None:
+        """
+        Remove the current context.
+
+        Example:
+            >>> client.remove_context()
+        """
+        self.adapter.remove_context()

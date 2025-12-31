@@ -345,3 +345,21 @@ class TaskWarriorAdapter:
             raise TaskNotFound(error_msg)
 
         logger.info(f"Successfully annotated task with UUID: {uuid}")
+
+    def set_context(self, context: str, filter_str: str) -> None:
+        """Set a context."""
+        result = self._run_task_command(["context", "add", context, filter_str])
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to set context: {result.stderr}")
+
+    def apply_context(self, context: str) -> None:
+        """Apply a context."""
+        result = self._run_task_command(["context", "apply", context])
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to apply context: {result.stderr}")
+
+    def remove_context(self) -> None:
+        """Remove the current context."""
+        result = self._run_task_command(["context", "remove"])
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to remove context: {result.stderr}")
