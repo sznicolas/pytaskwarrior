@@ -29,6 +29,10 @@ class TaskWarrior:
         self.context_service = ContextService(self.adapter)
         self.filter_service = FilterService(self.adapter)
     
+    def _run_task_command(self, args: List[str]) -> subprocess.CompletedProcess:
+        """Run a task command and return the result."""
+        return self.adapter._run_task_command(args)
+    
     def add_task(self, task: Task) -> Task:
         """Add a new task."""
         return self.task_service.add_task(task)
