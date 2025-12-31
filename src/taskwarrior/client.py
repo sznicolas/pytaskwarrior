@@ -64,9 +64,10 @@ class TaskWarrior:
             if field_name == "uuid":
                 continue
             elif field_name == "tags" and value:
-                args.extend([f"{field_name}+={tag}" for tag in value])
+                # Handle tags correctly - they should be added as tag values, not "tags+=tag"
+                args.extend([f"+{tag}" for tag in value])
             elif field_name == "depends" and value:
-                args.extend([f"{field_name}+={dep}" for dep in value])
+                args.extend([f"depends+={dep}" for dep in value])
             else:
                 if isinstance(value, (list, tuple)):
                     args.append(f"{field_name}={','.join(str(v) for v in value)}")
