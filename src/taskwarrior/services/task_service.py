@@ -11,112 +11,64 @@ class TaskService:
     def __init__(self, adapter: TaskWarriorAdapter):
         self.adapter = adapter
     
-    def add_task(self, task: Task) -> Task:
-        """Add a new task."""
+    def _execute_task_operation(self, operation_func, *args, **kwargs):
+        """Execute a task operation with consistent error handling."""
         try:
-            return self.adapter.add_task(task)
-        except TaskNotFound as e:
+            return operation_func(*args, **kwargs)
+        except TaskNotFound:
             # Re-raise TaskNotFound as-is
             raise
-        except TaskValidationError as e:
+        except TaskValidationError:
             # Re-raise TaskValidationError as-is  
             raise
         except Exception as e:
             # Convert other exceptions to TaskWarriorError for consistency
-            raise TaskWarriorError(f"Failed to add task: {str(e)}") from e
+            raise TaskWarriorError(f"Failed to {operation_func.__name__}: {str(e)}") from e
+    
+    def add_task(self, task: Task) -> Task:
+        """Add a new task."""
+        return self._execute_task_operation(self.adapter.add_task, task)
     
     def modify_task(self, task: Task) -> Task:
         """Modify an existing task."""
-        try:
-            return self.adapter.modify_task(task)
-        except TaskNotFound as e:
-            # Re-raise TaskNotFound as-is
-            raise
-        except TaskValidationError as e:
-            # Re-raise TaskValidationError as-is  
-            raise
-        except Exception as e:
-            # Convert other exceptions to TaskWarriorError for consistency
-            raise TaskWarriorError(f"Failed to modify task: {str(e)}") from e
+        return self._execute_task_operation(self.adapter.modify_task, task)
     
     def get_task(self, task_id_or_uuid: Union[str, int]) -> Task:
         """Retrieve a task by ID or UUID."""
-        return self.adapter.get_task(task_id_or_uuid)
+        return self._execute_task_operation(self.adapter.get_task, task_id_or_uuid)
     
     def get_tasks(self, filter_args: List[str]) -> List[Task]:
         """Get multiple tasks based on filters."""
-        return self.adapter.get_tasks(filter_args)
+        return self._execute_task_operation(self.adapter.get_tasks, filter_args)
     
     def get_recurring_task(self, uuid: UUID) -> Task:
         """Get a recurring task by UUID."""
-        return self.adapter.get_recurring_task(uuid)
+        return self._execute_task_operation(self.adapter.get_recurring_task, uuid)
     
     def get_recurring_instances(self, uuid: UUID) -> List[Task]:
         """Get instances of a recurring task."""
-        return self.adapter.get_recurring_instances(uuid)
+        return self._execute_task_operation(self.adapter.get_recurring_instances, uuid)
     
     def delete_task(self, uuid: UUID) -> None:
         """Delete a task."""
-        try:
-            self.adapter.delete_task(uuid)
-        except TaskNotFound as e:
-            # Re-raise TaskNotFound as-is
-            raise
-        except Exception as e:
-            # Convert other exceptions to TaskWarriorError for consistency
-            raise TaskWarriorError(f"Failed to delete task: {str(e)}") from e
+        self._execute_task_operation(self.adapter.delete_task, uuid)
     
     def purge_task(self, uuid: UUID) -> None:
         """Purge a task permanently."""
-        try:
-            self.adapter.purge_task(uuid)
-        except TaskNotFound as e:
-            # Re-raise TaskNotFound as-is
-            raise
-        except Exception as e:
-            # Convert other exceptions to TaskWarriorError for consistency
-            raise TaskWarriorError(f"Failed to purge task: {str(e)}") from e
+        self._execute_task_operation(self.adapter.purge_task, uuid)
     
     def done_task(self, uuid: UUID) -> None:
         """Mark a task as done."""
-        try:
-            self.adapter.done_task(uuid)
-        except TaskNotFound as e:
-            # Re-raise TaskNotFound as-is
-            raise
-        except Exception as e:
-            # Convert other exceptions to TaskWarriorError for consistency
-            raise TaskWarriorError(f"Failed to mark task as done: {str(e)}") from e
+        self._execute_task_operation(self.adapter.done_task, uuid)
     
     def start_task(self, uuid: UUID) -> None:
         """Start a task."""
-        try:
-            self.adapter.start_task(uuid)
-        except TaskNotFound as e:
-            # Re-raise TaskNotFound as-is
-            raise
-        except Exception as e:
-            # Convert other exceptions to TaskWarriorError for consistency
-            raise TaskWarriorError(f"Failed to start task: {str(e)}") from e
+        self._execute_task_operation(self.adapter.start_task, uuid)
     
     def stop_task(self, uuid: UUID) -> None:
         """Stop a task."""
-        try:
-            self.adapter.stop_task(uuid)
-        except TaskNotFound as e:
-            # Re-raise TaskNotFound as-is
-            raise
-        except Exception as e:
-            # Convert other exceptions to TaskWarriorError for consistency
-            raise TaskWarriorError(f"Failed to stop task: {str(e)}") from e
+        self._execute_task_operation(self.adapter.stop_task, uuid)
     
     def annotate_task(self, uuid: UUID, annotation: str) -> None:
         """Add an annotation to a task."""
-        try:
-            self.adapter.annotate_task(uuid, annotation)
-        except TaskNotFound as e:
-            # Re-raise TaskNotFound as-is
-            raise
-        except Exception as e:
-            # Convert other exceptions to TaskWarriorError for consistency
-            raise TaskWarriorError(f"Failed to annotate task: {str(e)}") from e
+        self._execute_task_operation(self.adapter.annotate_task, uuid, annotation)
