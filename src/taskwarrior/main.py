@@ -87,11 +87,13 @@ class TaskWarrior:
     
     def get_recurring_task(self, uuid) -> "Task":
         """Get a recurring task by UUID."""
-        return self.adapter.get_recurring_task(uuid)
+        # This should go through the service, not directly to adapter
+        return self.task_service.get_recurring_task(uuid)
     
     def get_recurring_instances(self, uuid) -> List["Task"]:
         """Get instances of a recurring task."""
-        return self.adapter.get_recurring_instances(uuid)
+        # This should go through the service, not directly to adapter
+        return self.task_service.get_recurring_instances(uuid)
     
     def delete_task(self, uuid) -> None:
         """Delete a task."""

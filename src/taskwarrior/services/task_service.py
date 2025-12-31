@@ -26,6 +26,14 @@ class TaskService:
         """Get multiple tasks based on filters."""
         return self.adapter.get_tasks(filter_args)
     
+    def get_recurring_task(self, uuid: UUID) -> Task:
+        """Get a recurring task by UUID."""
+        return self.adapter.get_recurring_task(uuid)
+    
+    def get_recurring_instances(self, uuid: UUID) -> List[Task]:
+        """Get instances of a recurring task."""
+        return self.adapter.get_recurring_instances(uuid)
+    
     def delete_task(self, uuid: UUID) -> None:
         """Delete a task."""
         self.adapter.delete_task(uuid)
