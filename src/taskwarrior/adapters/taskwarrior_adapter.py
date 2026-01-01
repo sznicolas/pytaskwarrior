@@ -57,6 +57,19 @@ class TaskWarriorAdapter:
             logger.error(f"Exception while running task command: {e}")
             raise
 
+    def _validate_date_string(self, date_str: str) -> bool:
+        """Validate a date string using TaskWarrior's calc command."""
+        try:
+            result = subprocess.run(
+                [self.task_cmd, "calc", date_str],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
     def _build_args(self, task: TaskInternal) -> List[str]:
         """Build command arguments for a task."""
         args = []
@@ -90,10 +103,6 @@ class TaskWarriorAdapter:
                         )
                 elif isinstance(value, UUID):
                     args.append(f"{field_name}={shlex.quote(str(value))}")
-                elif hasattr(value, "total_seconds"):
-                    # Handle timedelta objects by converting to days
-                    total_days = value.total_seconds() / (24 * 3600)
-                    args.append(f"{field_name}={int(total_days)}d")
                 else:
                     # Convert to string for other types and quote
                     str_value = str(value)
@@ -108,6 +117,13 @@ class TaskWarriorAdapter:
 
         if not task.description.strip():
             raise TaskValidationError("Task description cannot be empty")
+
+        # Validate date fields if provided
+        date_fields = ['due', 'scheduled', 'wait', 'until']
+        for field in date_fields:
+            value = getattr(task, field)
+            if value and not self._validate_date_string(value):
+                raise TaskValidationError(f"Invalid date format for {field}: {value}")
 
         args = self._build_args(task)
         result = self._run_task_command(["add"] + args)
@@ -133,6 +149,13 @@ class TaskWarriorAdapter:
 
         if not task.uuid:
             raise TaskValidationError("Task must have a UUID to modify")
+
+        # Validate date fields if provided
+        date_fields = ['due', 'scheduled', 'wait', 'until']
+        for field in date_fields:
+            value = getattr(task, field)
+            if value and not self._validate_date_string(value):
+                raise TaskValidationError(f"Invalid date format for {field}: {value}")
 
         args = self._build_args(task)
         result = self._run_task_command([str(task.uuid), "modify"] + args)
