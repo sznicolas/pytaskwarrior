@@ -1,12 +1,9 @@
 from __future__ import annotations
-import json
-import logging
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional
 from uuid import UUID
 
-import isodate
 from pydantic import BaseModel, ConfigDict, Field
 
 # Enums for TaskWarrior-specific fields
@@ -36,7 +33,6 @@ class RecurrencePeriod(str, Enum):
 
 class TaskInputDTO(BaseModel):
     """Data Transfer Object for task input (creation/update)."""
-    
     description: str = Field(..., description="Task description (required).")
     priority: Optional[Priority] = Field(default=None, description="Priority of the task (H, M, L, or empty)")
     due: Optional[str] = Field(default=None, description="Due date and time for the task (ISO format)")

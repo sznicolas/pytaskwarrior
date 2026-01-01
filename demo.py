@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from src.taskwarrior import Priority, RecurrencePeriod, TaskDTO, TaskWarrior
-import json
+from src.taskwarrior import Priority, RecurrencePeriod, TaskWarrior
+from src.taskwarrior.dto.task_dto import Priority, RecurrencePeriod, TaskInputDTO, TaskOutputDTO, TaskWarrior
 
 # Create a new task warrior instance
 tw = TaskWarrior()
 
 # Create tasks with different date formats to test TaskWarrior's date handling
-task_dto = TaskDTO(
+task_dto = TaskInputDTO(
     description="Buy groceries",
     priority=Priority.HIGH,
     tags=["shopping", "personal"]
@@ -18,7 +18,7 @@ task = tw.add_task(task_dto)
 print(f"Created task: {task}")
 
 # Create a task with a due date
-task_with_due = TaskDTO(
+task_with_due = TaskInputDTO(
     description="Submit report",
     priority=Priority.MEDIUM,
     tags=["work", "urgent"],
@@ -29,7 +29,7 @@ task2 = tw.add_task(task_with_due)
 print(f"Created task with due date: {task2}")
 
 # Create a task with scheduled date
-task_with_scheduled = TaskDTO(
+task_with_scheduled = TaskInputDTO(
     description="Team meeting",
     priority=Priority.LOW,
     tags=["work", "meeting"],
@@ -56,7 +56,7 @@ for t in tasks:
     print(f"  {t}")
 
 # Test date parsing by creating a task with specific dates
-task_with_dates = TaskDTO(
+task_with_dates = TaskInputDTO(
     description="Project deadline",
     priority=Priority.HIGH,
     tags=["work", "deadline"],
