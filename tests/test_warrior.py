@@ -45,9 +45,10 @@ def tw(taskwarrior_config: str) -> TaskWarrior:
 @pytest.fixture
 def sample_task() -> Task:
     """Create a sample Task object."""
+    now = datetime.now()
     return Task(
         description="Test Task",
-        due=datetime.now() + timedelta(days=1),
+        due=(now + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ'),
         priority=Priority.HIGH,
         project="Test",
         tags=["test", "urgent"]
@@ -137,7 +138,8 @@ def test_filter_tasks(tw: TaskWarrior, sample_task: Task) -> None:
 
 def test_recurring_task(tw: TaskWarrior, sample_task: Task) -> None:
     """Test adding a recurring task."""
-    sample_task.until = 'P3W'
+    now = datetime.now()
+    sample_task.until = (now + timedelta(weeks=3)).strftime('%Y-%m-%dT%H:%M:%SZ')
     sample_task.recur = RecurrencePeriod.WEEKLY
     task = tw.add_task(sample_task)
     recurring_task = tw.get_recurring_task(task.parent)
@@ -219,8 +221,10 @@ def test_task_with_datetime_fields() -> None:
     now = datetime.now()
     task = Task(
         description="Task with datetime",
-        entry=now,
-        start=now
+        entry=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        start=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        end=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        modified=now.strftime('%Y-%m-%dT%H:%M:%SZ')
     )
     
     # Test serialization
@@ -279,9 +283,10 @@ def test_task_with_context() -> None:
 
 def test_task_with_due_field() -> None:
     """Test that tasks with due field serialize correctly."""
+    now = datetime.now()
     task = Task(
         description="Task with due",
-        due=datetime.now()
+        due=now.strftime('%Y-%m-%dT%H:%M:%SZ')
     )
     
     # Test serialization
@@ -291,9 +296,10 @@ def test_task_with_due_field() -> None:
 
 def test_task_with_scheduled_field() -> None:
     """Test that tasks with scheduled field serialize correctly."""
+    now = datetime.now()
     task = Task(
         description="Task with scheduled",
-        scheduled=datetime.now()
+        scheduled=now.strftime('%Y-%m-%dT%H:%M:%SZ')
     )
     
     # Test serialization
@@ -303,9 +309,10 @@ def test_task_with_scheduled_field() -> None:
 
 def test_task_with_wait_field() -> None:
     """Test that tasks with wait field serialize correctly."""
+    now = datetime.now()
     task = Task(
         description="Task with wait",
-        wait=datetime.now()
+        wait=now.strftime('%Y-%m-%dT%H:%M:%SZ')
     )
     
     # Test serialization
@@ -315,9 +322,10 @@ def test_task_with_wait_field() -> None:
 
 def test_task_with_until_field() -> None:
     """Test that tasks with until field serialize correctly."""
+    now = datetime.now()
     task = Task(
         description="Task with until",
-        until=datetime.now()
+        until=now.strftime('%Y-%m-%dT%H:%M:%SZ')
     )
     
     # Test serialization
@@ -328,25 +336,26 @@ def test_task_with_until_field() -> None:
 def test_task_with_all_fields() -> None:
     """Test that tasks with all fields serialize correctly."""
     test_uuid = UUID('12345678-1234-5678-1234-567812345678')
+    now = datetime.now()
     task = Task(
         description="Complete task",
         index=1,
         uuid=test_uuid,
         status=TaskStatus.PENDING,
         priority=Priority.HIGH,
-        due=datetime.now(),
-        entry=datetime.now(),
-        start=datetime.now(),
-        end=datetime.now(),
-        modified=datetime.now(),
+        due=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        entry=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        start=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        end=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        modified=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
         tags=["tag1", "tag2"],
         project="TestProject",
         depends=[test_uuid],
         parent=test_uuid,
         recur=RecurrencePeriod.WEEKLY,
-        scheduled=datetime.now(),
-        wait=datetime.now(),
-        until=datetime.now(),
+        scheduled=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        wait=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        until=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
         context="test-context"
     )
     
