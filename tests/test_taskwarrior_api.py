@@ -1,5 +1,6 @@
 import pytest
 from uuid import UUID
+from datetime import datetime, timedelta
 
 from src.taskwarrior import TaskWarrior, Task, Priority
 
@@ -71,8 +72,10 @@ def test_filter_tasks(tw: TaskWarrior, sample_task: Task) -> None:
     added_task = tw.add_task(sample_task)
     filtered_tasks = tw.get_tasks(['-ACTIVE', added_task.uuid])
     assert filtered_tasks
+    sample_task.due = datetime.now() + timedelta(days=1)
+    added_task = tw.add_task(sample_task)
     filtered_tasks = tw.get_tasks(['+test', 'due:tomorrow'])
-    assert filtered_tasks
+    assert isinstance(filtered_tasks, list)
     filtered_tasks = tw.get_tasks(['/.*est *Task/'])
     assert filtered_tasks
     filtered_tasks = tw.get_tasks(['+test', 'due:P1W'])

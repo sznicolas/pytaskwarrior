@@ -10,7 +10,7 @@ import os
 import tempfile
 from datetime import datetime, timedelta
 
-from src.taskwarrior import Priority, RecurrencePeriod, Task, TaskWarrior
+from src.taskwarrior import Priority, RecurrencePeriod, TaskDTO, TaskWarrior
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -36,14 +36,14 @@ def main():
         # Create some sample tasks
         print("1. Creating sample tasks...")
 
-        task1 = Task(
+        task1 = TaskDTO(
             description="Demo task 1",
             priority=Priority.HIGH,
             project="demo",
             tags=["work", "important"],
         )
 
-        task2 = Task(
+        task2 = TaskDTO(
             description="Demo task 2",
             priority=Priority.MEDIUM,
             project="demo",
@@ -116,7 +116,7 @@ def main():
                 print(
                     f"   - {task.description} (ID: {task.uuid}, Status: {task.status})"
                 )
-        task = Task(
+        task = TaskDTO(
             description="Demo task 2",
             priority=Priority.MEDIUM,
             project="demo",

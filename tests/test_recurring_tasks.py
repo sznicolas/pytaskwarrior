@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timedelta
 
 from src.taskwarrior import TaskWarrior, Task, Priority, RecurrencePeriod, TaskStatus
 
@@ -7,6 +8,7 @@ def test_recurring_task(tw: TaskWarrior, sample_task: Task) -> None:
     """Test adding a recurring task."""
     sample_task.until = 'P3W'
     sample_task.recur = RecurrencePeriod.WEEKLY
+    sample_task.due = datetime.now() + timedelta(days=1)
     task = tw.add_task(sample_task)
     recurring_task = tw.get_recurring_task(task.parent)
     assert recurring_task.recur == "weekly"
