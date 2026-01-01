@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import subprocess
 
-from src.taskwarrior import TaskWarrior, Task, Priority
+from src.taskwarrior import TaskWarrior, TaskInternal, Priority
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def tw(taskwarrior_config: str) -> TaskWarrior:
 
 
 @pytest.fixture
-def sample_task() -> Task:
+def sample_task() -> TaskInternal:
     """Create a sample Task object."""
     return Task(
         description="Test Task",
