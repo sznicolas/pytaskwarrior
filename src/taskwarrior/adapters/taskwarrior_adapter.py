@@ -185,7 +185,7 @@ class TaskWarriorAdapter:
         logger.warning(error_msg)
         raise TaskNotFound(error_msg)
 
-    def get_tasks(self, filter_args: List[str]) -> List[TaskOutputDTO]:
+    def get_tasks(self, *filter_args: str) -> List[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         logger.debug(f"Getting tasks with filters: {filter_args}")
 
@@ -193,8 +193,14 @@ class TaskWarriorAdapter:
         str_filter_args = [
             str(arg) if isinstance(arg, UUID) else arg for arg in filter_args
         ]
-        # Ensure we properly handle regex patterns by wrapping them appropriately
-        args = str_filter_args + ["export"]
+        
+        # If no filters provided, get all tasks by using just "export"
+        if not str_filter_args:
+            args = ["export"]
+        else:
+            # Ensure we properly handle regex patterns by wrapping them appropriately
+            args = list(str_filter_args) + ["export"]
+            
         result = self._run_task_command(args)
 
         if result.returncode != 0:
