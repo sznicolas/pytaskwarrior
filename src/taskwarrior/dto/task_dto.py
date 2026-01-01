@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 from uuid import UUID
@@ -39,7 +39,7 @@ class TaskInputDTO(BaseModel):
     project: Optional[str] = Field(default=None, description="Project the task belongs to")
     tags: List[str] = Field(default_factory=list, description="List of tags associated with the task")
     depends: List[str] = Field(default_factory=list, description="List of UUIDs of tasks this task depends on")
-    parent: Optional[str] = Field(default=None, description="UUID of the template task")
+    parent: Optional[UUID] = Field(default=None, description="UUID of the template task")
     recur: Optional[RecurrencePeriod] = Field(default=None, description="Recurrence period for recurring tasks")
     scheduled: Optional[str] = Field(default=None, description="Schedule the earlier time the task can be done (ISO format)")
     wait: Optional[str] = Field(default=None, description="The task is hidden until the date (ISO format)")
@@ -79,7 +79,7 @@ class TaskOutputDTO(BaseModel):
     tags: List[str] = Field(default_factory=list, description="List of tags associated with the task")
     project: Optional[str] = Field(default=None, description="Project the task belongs to")
     depends: List[str] = Field(default_factory=list, description="List of UUIDs of tasks this task depends on")
-    parent: Optional[str] = Field(default=None, description="UUID of the template task")
+    parent: Optional[UUID] = Field(default=None, description="UUID of the template task")
     recur: Optional[RecurrencePeriod] = Field(default=None, description="Recurrence period for recurring tasks")
     scheduled: Optional[datetime] = Field(default=None, description="Schedule the earlier time the task can be done (ISO format)")
     wait: Optional[datetime] = Field(default=None, description="The task is hidden until the date (ISO format)")
