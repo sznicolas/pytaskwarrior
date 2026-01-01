@@ -6,7 +6,7 @@ import json
 # Create a new task warrior instance
 tw = TaskWarrior()
 
-# Create a simple task using the DTO
+# Create tasks with different date formats to test TaskWarrior's date handling
 task_dto = TaskDTO(
     description="Buy groceries",
     priority=Priority.HIGH,
@@ -17,7 +17,29 @@ task_dto = TaskDTO(
 task = tw.add_task(task_dto)
 print(f"Created task: {task}")
 
-# List all tasks
+# Create a task with a due date
+task_with_due = TaskDTO(
+    description="Submit report",
+    priority=Priority.MEDIUM,
+    tags=["work", "urgent"],
+    due="tomorrow"
+)
+
+task2 = tw.add_task(task_with_due)
+print(f"Created task with due date: {task2}")
+
+# Create a task with scheduled date
+task_with_scheduled = TaskDTO(
+    description="Team meeting",
+    priority=Priority.LOW,
+    tags=["work", "meeting"],
+    scheduled="next monday"
+)
+
+task3 = tw.add_task(task_with_scheduled)
+print(f"Created task with scheduled date: {task3}")
+
+# List all tasks to see how dates are handled
 tasks = tw.get_tasks([])
 print("All tasks:")
 for t in tasks:
@@ -30,5 +52,23 @@ print("Task completed")
 # List tasks again to see completion
 tasks = tw.get_tasks([])
 print("All tasks after completion:")
+for t in tasks:
+    print(f"  {t}")
+
+# Test date parsing by creating a task with specific dates
+task_with_dates = TaskDTO(
+    description="Project deadline",
+    priority=Priority.HIGH,
+    tags=["work", "deadline"],
+    due="2026-12-31",
+    scheduled="2026-01-15"
+)
+
+task4 = tw.add_task(task_with_dates)
+print(f"Created task with specific dates: {task4}")
+
+# List all tasks again to see the date handling
+tasks = tw.get_tasks([])
+print("All tasks with dates:")
 for t in tasks:
     print(f"  {t}")
