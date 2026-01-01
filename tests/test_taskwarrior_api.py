@@ -2,7 +2,7 @@ import pytest
 from uuid import UUID
 from datetime import datetime, timedelta
 
-from src.taskwarrior import TaskWarrior, Task, Priority
+from src.taskwarrior import TaskWarrior, TaskInputDTO as Task, Priority
 
 
 def test_taskwarrior_init(taskwarrior_config: str) -> None:

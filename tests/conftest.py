@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import subprocess
 
-from src.taskwarrior import TaskWarrior, TaskInternal, Priority
+from src.taskwarrior import TaskWarrior, TaskInputDTO as TaskInternal, Priority
 
 
 @pytest.fixture
