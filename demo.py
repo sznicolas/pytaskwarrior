@@ -18,17 +18,17 @@ task = tw.add_task(task_dto)
 print(f"Created task: {task}")
 
 # List all tasks
-tasks = tw.list()
+tasks = tw.get_tasks([])
 print("All tasks:")
 for t in tasks:
     print(f"  {t}")
 
 # Complete the task
-tw.done(task.uuid)
+tw.done_task(task.uuid)
 print("Task completed")
 
 # List tasks again to see completion
-tasks = tw.list()
+tasks = tw.get_tasks([])
 print("All tasks after completion:")
 for t in tasks:
     print(f"  {t}")
