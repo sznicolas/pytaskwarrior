@@ -28,7 +28,7 @@ class TaskWarrior:
         """Retrieve a task by ID or UUID."""
         return self.adapter.get_task(task_id_or_uuid)
 
-    def get_tasks(self, filter_args: List[str]) -> List[TaskOutputDTO]:
+    def get_tasks(self, filter_args: List[str] = ['status.not:deleted']) -> List[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         return self.adapter.get_tasks(filter_args)
 

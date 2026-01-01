@@ -1,1 +1,0 @@
-def get_tasks(self, filter_args: List[str]) -> List[TaskOutputDTO]:
