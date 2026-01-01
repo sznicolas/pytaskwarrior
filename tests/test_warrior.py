@@ -6,7 +6,7 @@ import subprocess
 
 import pytest
 from pydantic import ValidationError
-from src.taskwarrior import TaskWarrior, Task, TaskStatus, Priority, RecurrencePeriod
+from src.taskwarrior import TaskWarrior, TaskInputDTO as Task, TaskStatus, Priority, RecurrencePeriod
 
 
 @pytest.fixture
