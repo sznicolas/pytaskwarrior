@@ -16,27 +16,27 @@ class TaskWarrior:
     def __init__(self, task_cmd: str = "task", taskrc_path: Optional[str] = None):
         self.adapter = TaskWarriorAdapter(task_cmd, taskrc_path)
 
-    def add_task(self, task: TaskInternal) -> TaskDTO:
+    def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Add a new task."""
         return self.adapter.add_task(task)
 
-    def modify_task(self, task: TaskInternal) -> TaskDTO:
+    def modify_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Modify an existing task."""
         return self.adapter.modify_task(task)
 
-    def get_task(self, task_id_or_uuid: str) -> TaskDTO:
+    def get_task(self, task_id_or_uuid: str) -> TaskOutputDTO:
         """Retrieve a task by ID or UUID."""
         return self.adapter.get_task(task_id_or_uuid)
 
-    def get_tasks(self, filter_args: List[str]) -> List[TaskDTO]:
+    def get_tasks(self, filter_args: List[str]) -> List[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         return self.adapter.get_tasks(filter_args)
 
-    def get_recurring_task(self, uuid: str) -> TaskDTO:
+    def get_recurring_task(self, uuid: str) -> TaskOutputDTO:
         """Get the recurring task (parent) by its UUID."""
         return self.adapter.get_recurring_task(uuid)
 
-    def get_recurring_instances(self, uuid: str) -> List[TaskDTO]:
+    def get_recurring_instances(self, uuid: str) -> List[TaskOutputDTO]:
         """Get all instances of a recurring task."""
         return self.adapter.get_recurring_instances(uuid)
 
