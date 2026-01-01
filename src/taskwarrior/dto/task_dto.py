@@ -34,8 +34,41 @@ class RecurrencePeriod(str, Enum):
     QUARTERLY = "quarterly"
     SEMIANNUALLY = "semiannually"
 
-class TaskDTO(BaseModel):
-    """Data Transfer Object for task representation with clean JSON schema."""
+class TaskInputDTO(BaseModel):
+    """Data Transfer Object for task input (creation/update)."""
+    
+    description: str = Field(..., description="Task description (required).")
+    priority: Optional[Priority] = Field(default=None, description="Priority of the task (H, M, L, or empty)")
+    due: Optional[str] = Field(default=None, description="Due date and time for the task (ISO format)")
+    project: Optional[str] = Field(default=None, description="Project the task belongs to")
+    tags: List[str] = Field(default_factory=list, description="List of tags associated with the task")
+    depends: List[str] = Field(default_factory=list, description="List of UUIDs of tasks this task depends on")
+    parent: Optional[str] = Field(default=None, description="UUID of the template task")
+    recur: Optional[RecurrencePeriod] = Field(default=None, description="Recurrence period for recurring tasks")
+    scheduled: Optional[str] = Field(default=None, description="Schedule the earlier time the task can be done (ISO format)")
+    wait: Optional[str] = Field(default=None, description="The task is hidden until the date (ISO format)")
+    until: Optional[str] = Field(default=None, description="Expiration date for recurring tasks (ISO format)")
+    context: Optional[str] = Field(default=None, description="Context filter for the task")
+
+    model_config = ConfigDict(
+        use_enum_values=True,
+        validate_assignment=True,
+        json_schema_extra={
+            'examples': [
+                {
+                    'description': 'a task'
+                },
+                {
+                    'description': 'a due task in two weeks for lambda project',
+                    'due': 'P2W',
+                    'project': 'lambda'
+                },
+            ]
+        }
+    )
+
+class TaskOutputDTO(BaseModel):
+    """Data Transfer Object for task output (retrieval)."""
     
     description: str = Field(..., description="Task description (required).")
     index: Optional[int] = Field(default=None, alias='id', description="READONLY Task index of a task in the working set")
