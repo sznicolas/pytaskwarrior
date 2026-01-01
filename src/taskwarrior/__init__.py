@@ -1,4 +1,5 @@
-from .task import Task, TaskStatus, Priority, RecurrencePeriod
+from .task import TaskInternal
+from .dto.task_dto import TaskDTO
 from .main import TaskWarrior
 
-__all__ = ['Task', 'TaskStatus', 'Priority', 'RecurrencePeriod', 'TaskWarrior']
+__all__ = ['TaskInternal', 'TaskDTO', 'TaskWarrior']

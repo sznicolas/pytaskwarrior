@@ -6,7 +6,8 @@ from typing import List, Optional, Union
 from uuid import UUID
 
 from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
-from ..task import Task
+from ..task import TaskInternal
+from ..dto.task_dto import TaskDTO
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class TaskWarriorAdapter:
             logger.error(f"Exception while running task command: {e}")
             raise
 
-    def _build_args(self, task: Task) -> List[str]:
+    def _build_args(self, task: TaskInternal) -> List[str]:
         """Build command arguments for a task."""
         args = []
 
@@ -94,7 +95,7 @@ class TaskWarriorAdapter:
         logger.debug(f"Built arguments: {args}")
         return args
 
-    def add_task(self, task: Task) -> Task:
+    def add_task(self, task: TaskInternal) -> TaskDTO:
         """Add a new task."""
         logger.info(f"Adding task with description: {task.description}")
 
@@ -119,7 +120,7 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully added task with UUID: {tasks[0].uuid}")
         return tasks[0]
 
-    def modify_task(self, task: Task) -> Task:
+    def modify_task(self, task: TaskInternal) -> TaskDTO:
         """Modify an existing task."""
         logger.info(f"Modifying task with UUID: {task.uuid}")
 
@@ -139,7 +140,7 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully modified task with UUID: {task.uuid}")
         return updated_task
 
-    def get_task(self, task_id_or_uuid: Union[str, int]) -> Task:
+    def get_task(self, task_id_or_uuid: Union[str, int]) -> TaskDTO:
         """Retrieve a task by ID or UUID."""
         logger.debug(f"Retrieving task with ID/UUID: {task_id_or_uuid}")
 
@@ -150,7 +151,7 @@ class TaskWarriorAdapter:
             try:
                 tasks_data = json.loads(result.stdout)
                 if tasks_data:
-                    task = Task.model_validate(tasks_data[0])
+                    task = TaskDTO.model_validate(tasks_data[0])
                     logger.debug(f"Successfully retrieved task: {task.uuid}")
                     return task
             except json.JSONDecodeError as e:
@@ -166,7 +167,7 @@ class TaskWarriorAdapter:
             if result.returncode == 0:
                 tasks_data = json.loads(result.stdout)
                 if tasks_data:
-                    task = Task.model_validate(tasks_data[0])
+                    task = TaskDTO.model_validate(tasks_data[0])
                     logger.debug(f"Successfully retrieved deleted task: {task.uuid}")
                     return task
         except Exception as e:
@@ -177,7 +178,7 @@ class TaskWarriorAdapter:
         logger.warning(error_msg)
         raise TaskNotFound(error_msg)
 
-    def get_tasks(self, filter_args: List[str]) -> List[Task]:
+    def get_tasks(self, filter_args: List[str]) -> List[TaskDTO]:
         """Get multiple tasks based on filters."""
         logger.debug(f"Getting tasks with filters: {filter_args}")
 
@@ -207,14 +208,14 @@ class TaskWarriorAdapter:
 
         try:
             tasks_data = json.loads(result.stdout)
-            tasks = [Task.model_validate(task_data) for task_data in tasks_data]
+            tasks = [TaskDTO.model_validate(task_data) for task_data in tasks_data]
             logger.debug(f"Retrieved {len(tasks)} tasks")
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
             raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
 
-    def get_recurring_task(self, uuid: UUID) -> Task:
+    def get_recurring_task(self, uuid: UUID) -> TaskDTO:
         """Get the recurring task (parent) by its UUID."""
         logger.debug(f"Getting recurring task with UUID: {uuid}")
 
@@ -224,7 +225,7 @@ class TaskWarriorAdapter:
         if result.returncode == 0:
             tasks_data = json.loads(result.stdout)
             if tasks_data:
-                task = Task.model_validate(tasks_data[0])
+                task = TaskDTO.model_validate(tasks_data[0])
                 logger.debug(f"Successfully retrieved recurring task: {task.uuid}")
                 return task
 
@@ -234,7 +235,7 @@ class TaskWarriorAdapter:
         )
         return self.get_task(uuid)
 
-    def get_recurring_instances(self, uuid: UUID) -> List[Task]:
+    def get_recurring_instances(self, uuid: UUID) -> List[TaskDTO]:
         """Get all instances of a recurring task."""
         logger.debug(f"Getting recurring instances for parent UUID: {uuid}")
 
@@ -259,7 +260,7 @@ class TaskWarriorAdapter:
 
         try:
             tasks_data = json.loads(result.stdout)
-            tasks = [Task.model_validate(task_data) for task_data in tasks_data]
+            tasks = [TaskDTO.model_validate(task_data) for task_data in tasks_data]
             logger.debug(f"Retrieved {len(tasks)} recurring instances")
             return tasks
         except json.JSONDecodeError as e:

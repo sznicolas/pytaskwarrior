@@ -34,16 +34,9 @@ class RecurrencePeriod(str, Enum):
     QUARTERLY = "quarterly"
     SEMIANNUALLY = "semiannually"
 
-def parse_datetime_or_timedelta(val) -> str:
-    """Convert datetime or timedelta to ISO format string."""
-    if isinstance(val, timedelta):
-        return isodate.duration_isoformat(val)
-    else:
-        return str(val)
-
 # Pydantic Models
-class Task(BaseModel):
-    """Represents a TaskWarrior task."""
+class TaskInternal(BaseModel):
+    """Represents a TaskWarrior task with full internal validation and logic."""
     
     description: str = Field(..., description="Task description (required).")
     index: Optional[int] = Field(default=None, alias='id', description="READONLY Task index of a task in the working set")
@@ -67,19 +60,7 @@ class Task(BaseModel):
 
     model_config = ConfigDict(
         use_enum_values=True,
-        validate_assignment=True,
-        json_schema_extra={
-            'examples': [
-                {
-                    'description': 'a task'
-                },
-                {
-                    'description': 'a due task in two weeks for lambda project',
-                    'due': 'P2W',
-                    'project': 'lambda'
-                },
-            ]
-        }
+        validate_assignment=True
     )
 
     @field_validator("description")
@@ -96,30 +77,6 @@ class Task(BaseModel):
         """Validate and clean tags."""
         return [tag.strip() for tag in v if tag.strip()]
 
-    @field_validator('*', mode='before')
-    @classmethod
-    def modify_date_format(cls, v, info) -> Union[datetime, timedelta, str]:
-        """Convert date strings to datetime objects."""
-        field_type = cls.model_fields[info.field_name].annotation
-
-        def contains_datetime_or_timedelta(t):
-            origin = get_origin(t)
-            if origin in (Union, Optional):
-                return any(contains_datetime_or_timedelta(arg) for arg in get_args(t))
-            return t in (datetime, timedelta)
-
-        if contains_datetime_or_timedelta(field_type) and isinstance(v, str):
-            # Try parsing as datetime
-            try:
-                return datetime.fromisoformat(v)
-            except ValueError:
-                # Try parsing as duration
-                try:
-                    return isodate.parse_duration(v)
-                except isodate.ISO8601Error:
-                    raise ValueError("Could not parse as datetime or timedelta")
-        return v
-    
     @field_serializer('uuid')
     def serialize_uuid(self, uuid: UUID) -> str:
         """Serialize UUID to string."""
