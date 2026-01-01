@@ -14,7 +14,7 @@ task_dto = TaskDTO(
 )
 
 # Add the task
-task = tw.add(task_dto)
+task = tw.add_task(task_dto)
 print(f"Created task: {task}")
 
 # List all tasks
