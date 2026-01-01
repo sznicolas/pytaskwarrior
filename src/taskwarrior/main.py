@@ -4,7 +4,7 @@ import logging
 from typing import List, Optional
 
 from .task import TaskInternal
-from .dto.task_dto import TaskDTO
+from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 
 logger = logging.getLogger(__name__)

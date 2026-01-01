@@ -1,8 +1,5 @@
-from .task import TaskInternal, Priority, RecurrencePeriod, TaskStatus
-from .dto.task_dto import TaskDTO
-from .main import TaskWarrior
+from.task import TaskInternal, Priority, RecurrencePeriod, TaskStatus
+from.dto.task_dto import TaskInputDTO, TaskOutputDTO
+from.main import TaskWarrior
 
-# Expose Task as an alias for TaskInternal to maintain backward compatibility
-Task = TaskInternal
-
-__all__ = ['Task', 'Priority', 'RecurrencePeriod', 'TaskStatus', 'TaskDTO', 'TaskWarrior']
+__all__= ['TaskInternal', 'Priority', 'RecurrencePeriod', 'TaskStatus', 'TaskInputDTO', 'TaskOutputDTO', 'TaskWarrior']

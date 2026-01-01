@@ -1,3 +1,3 @@
-from .task_dto import TaskDTO
+from .task_dto import TaskInputDTO, TaskOutputDTO
 
-__all__ = ['TaskDTO']
+__all__ = ['TaskInputDTO', 'TaskOutputDTO']
