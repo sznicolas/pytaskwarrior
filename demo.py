@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from src.taskwarrior import Priority, RecurrencePeriod, TaskWarrior
-from src.taskwarrior.dto.task_dto import Priority, RecurrencePeriod, TaskInputDTO, TaskOutputDTO, TaskWarrior
+from src.taskwarrior import Priority, RecurrencePeriod, TaskInputDTO, TaskOutputDTO, TaskWarrior
+
+#from src.taskwarrior.dto.task_dto import Priority, RecurrencePeriod, TaskInputDTO, TaskOutputDTO
 
 # Create a new task warrior instance
 tw = TaskWarrior()

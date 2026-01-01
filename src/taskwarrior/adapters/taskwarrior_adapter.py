@@ -11,6 +11,12 @@ from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 
 logger = logging.getLogger(__name__)
 
+# Default options that are always passed to taskwarrior commands
+DEFAULT_OPTIONS = [
+    "rc.confirmation=off",  # Avoid silent user confirmation on stdin
+    "rc.bulk=0"
+]
+
 
 class TaskWarriorAdapter:
     """Adapter for TaskWarrior CLI commands."""
@@ -26,6 +32,7 @@ class TaskWarriorAdapter:
         if self.taskrc_path:
             cmd.extend([f"rc:{self.taskrc_path}"])
         cmd.extend(args)
+        cmd.extend(DEFAULT_OPTIONS)
         logger.debug(f"Running command: {' '.join(cmd)}")
 
         try:
