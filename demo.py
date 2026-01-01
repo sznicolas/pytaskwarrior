@@ -34,7 +34,7 @@ task_with_scheduled = TaskInputDTO(
     description="Team meeting",
     priority=Priority.LOW,
     tags=["work", "meeting"],
-    scheduled="next monday"
+    scheduled="monday"
 )
 
 task3 = tw.add_task(task_with_scheduled)

@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timedelta
 
-from src.taskwarrior import TaskWarrior, TaskInternal, Priority, RecurrencePeriod, TaskStatus
+from src.taskwarrior import TaskWarrior, TaskInternal, RecurrencePeriod, TaskStatus
 
 
 def test_recurring_task(tw: TaskWarrior, sample_task: TaskInternal) -> None:

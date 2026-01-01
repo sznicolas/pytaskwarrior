@@ -103,10 +103,9 @@ class TaskOutputDTO(BaseModel):
         }
     )
 
-    @field_validator('entry', 'start', 'end', 'modified', 'due', 'scheduled', 'wait', 'until')
+    @field_validator('entry', 'start', 'end', 'modified', 'due', 'scheduled', 'wait', 'until', mode='before')
     @classmethod
     def parse_datetime_field(cls, value):
-        return "2001-10-01T10:00:12"
         if not isinstance(value, str) or value is None:
             return value
 

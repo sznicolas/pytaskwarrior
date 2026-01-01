@@ -1,6 +1,6 @@
 import pytest
 
-from src.taskwarrior import TaskWarrior, TaskInternal, Priority
+from src.taskwarrior import TaskWarrior
 
 
 def test_date_calculation_integration(tw: TaskWarrior) -> None:
