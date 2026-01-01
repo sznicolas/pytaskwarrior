@@ -42,7 +42,7 @@ def tw(taskwarrior_config: str) -> TaskWarrior:
 @pytest.fixture
 def sample_task() -> TaskInternal:
     """Create a sample Task object."""
-    return Task(
+    return TaskInternal(
         description="Test Task",
         priority=Priority.HIGH,
         project="Test",
