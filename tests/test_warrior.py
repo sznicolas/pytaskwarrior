@@ -6,6 +6,11 @@ import subprocess
 
 import pytest
 from pydantic import ValidationError
+
+# Import TaskWarrior from the source code
+from src.taskwarrior.warrior import TaskWarrior
+
+# Import DTOs
 from src.taskwarrior.dto.task_dto import TaskInputDTO as Task, TaskStatus, Priority, RecurrencePeriod
 
 
