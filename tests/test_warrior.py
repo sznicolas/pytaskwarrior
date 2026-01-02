@@ -6,7 +6,7 @@ import subprocess
 
 import pytest
 from pydantic import ValidationError
-from src.taskwarrior import TaskWarrior, TaskInputDTO as Task, TaskStatus, Priority, RecurrencePeriod
+from src.taskwarrior.dto.task_dto import TaskInputDTO as Task, TaskStatus, Priority, RecurrencePeriod
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ def test_task_delete_and_purge(tw: TaskWarrior, sample_task: Task) -> None:
     added_task = tw.add_task(sample_task)
     tw.delete_task(added_task.uuid)
     task = tw.get_task(added_task.uuid)
-    assert task.status == 'deleted'
+    assert task.status == TaskStatus.DELETED
     # After purging, the task should not be retrievable
     tw.purge_task(added_task.uuid)
     
@@ -107,7 +107,7 @@ def test_task_done(tw: TaskWarrior, sample_task: Task) -> None:
     added_task = tw.add_task(sample_task)
     tw.done_task(added_task.uuid)
     task = tw.get_task(added_task.uuid)
-    assert task.status == 'completed'
+    assert task.status == TaskStatus.COMPLETED
     assert task.end is not None
 
 
@@ -116,11 +116,11 @@ def test_task_start_stop(tw: TaskWarrior, sample_task: Task) -> None:
     added_task = tw.add_task(sample_task)
     tw.start_task(added_task.uuid)
     started_task = tw.get_tasks(['+ACTIVE', added_task.uuid])[0]
-    assert started_task.status == 'pending'
+    assert started_task.status == TaskStatus.PENDING
     assert started_task.start is not None
     tw.stop_task(added_task.uuid)
     stopped_task = tw.get_tasks(['-ACTIVE', added_task.uuid])[0]
-    assert stopped_task.status == 'pending'
+    assert stopped_task.status == TaskStatus.PENDING
 
 
 def test_filter_tasks(tw: TaskWarrior, sample_task: Task) -> None:
@@ -143,7 +143,7 @@ def test_recurring_task(tw: TaskWarrior, sample_task: Task) -> None:
     sample_task.recur = RecurrencePeriod.WEEKLY
     task = tw.add_task(sample_task)
     recurring_task = tw.get_recurring_task(task.parent)
-    assert recurring_task.recur == "weekly"
+    assert recurring_task.recur == RecurrencePeriod.WEEKLY
     # Recurring tasks should have status 'recurring' when created
     assert recurring_task.status == TaskStatus.RECURRING
     # Check that the child task have status 'pending'
