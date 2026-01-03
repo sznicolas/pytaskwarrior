@@ -143,12 +143,9 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully added task with UUID: {tasks[0].uuid}")
         return tasks[0]
 
-    def modify_task(self, task: TaskInputDTO) -> TaskOutputDTO:
+    def modify_task(self, task: TaskInputDTO, task_id_or_uuid: str | int| UUID) -> TaskOutputDTO:
         """Modify an existing task."""
-        logger.info(f"Modifying task with UUID: {task.uuid}")
-
-        if not task.uuid:
-            raise TaskValidationError("Task must have a UUID to modify")
+        logger.info(f"Modifying task with UUID: {task_id_or_uuid}")
 
         # Validate date fields if provided
         date_fields = ['due', 'scheduled', 'wait', 'until']

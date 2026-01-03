@@ -20,11 +20,10 @@ class TaskWarrior:
         """Add a new task."""
         return self.adapter.add_task(task)
 
-    def modify_task(self, task: TaskInputDTO, uuid: str | int | UUID) -> TaskOutputDTO:
+    def modify_task(self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Modify an existing task."""
         # Set the UUID on the task object
-        task.uuid = str(uuid)
-        return self.adapter.modify_task(task)
+        return self.adapter.modify_task(task, task_id_or_uuid)
 
     def get_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Retrieve a task by ID or UUID."""

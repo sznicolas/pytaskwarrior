@@ -7,8 +7,7 @@ import subprocess
 import pytest
 from pydantic import ValidationError
 
-# Import TaskWarrior from the source code
-from src.taskwarrior.warrior import TaskWarrior
+from src.taskwarrior import TaskWarrior, task_output_to_input
 
 # Import DTOs
 from src.taskwarrior.dto.task_dto import TaskInputDTO as Task, TaskStatus, Priority, RecurrencePeriod
@@ -71,7 +70,7 @@ def test_task_values(sample_task: Task) -> None:
 def test_taskwarrior_init(taskwarrior_config: str) -> None:
     """Test TaskWarrior initialization."""
     tw = TaskWarrior(taskrc_path=taskwarrior_config)
-    assert tw.taskrc_path == taskwarrior_config
+    assert tw.get_info()['taskrc_path'] == taskwarrior_config
 
 
 def test_add_task(tw: TaskWarrior, sample_task: Task) -> None:
@@ -87,8 +86,9 @@ def test_add_task(tw: TaskWarrior, sample_task: Task) -> None:
 def test_modify_task(tw: TaskWarrior, sample_task: Task) -> None:
     """Test updating a task."""
     added_task = tw.add_task(sample_task)
-    added_task.project = "UpdatedProject"
-    updated_task = tw.modify_task(added_task)
+    task_to_update = task_output_to_input(added_task)
+    task_to_update.project = "UpdatedProject"
+    updated_task = tw.modify_task(task_to_update, added_task.uuid)
     assert updated_task.project == "UpdatedProject"
     assert updated_task.modified is not None
 

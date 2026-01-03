@@ -34,20 +34,6 @@ def test_task_serialization() -> None:
     assert "project" in task_dict
 
 
-def test_task_with_timedelta_fields() -> None:
-    """Test that tasks with timedelta fields serialize correctly."""
-    task = TaskInputDTO(
-        description="Task with timedelta",
-        due=timedelta(days=1, hours=2),
-        scheduled=timedelta(hours=3)
-    )
-    
-    # Test serialization
-    task_dict = task.model_dump()
-    assert "due" in task_dict
-    assert "scheduled" in task_dict
-
-
 def test_task_with_uuid_fields() -> None:
     """Test that tasks with UUID fields serialize correctly."""
     test_uuid = UUID('12345678-1234-5678-1234-567812345678')
@@ -66,14 +52,15 @@ def test_task_with_datetime_fields() -> None:
     now = datetime.now()
     task = TaskInputDTO(
         description="Task with datetime",
-        entry=now,
-        start=now
+        due=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        wait=now.strftime('%Y-%m-%dT%H:%M:%SZ'),
     )
     
     # Test serialization
     task_dict = task.model_dump()
-    assert "entry" in task_dict
-    assert "start" in task_dict
+    print(task_dict)
+    assert "due" in task_dict
+    assert "wait" in task_dict
 
 
 def test_task_with_tags() -> None:

@@ -2,7 +2,6 @@ from __future__ import annotations
 import subprocess
 import logging
 from datetime import datetime
-from typing import Optional, Union
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
