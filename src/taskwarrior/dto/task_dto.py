@@ -1,6 +1,5 @@
 from __future__ import annotations
 from datetime import datetime
-from typing import Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -12,13 +11,13 @@ class TaskInputDTO(BaseModel):
     """Data Transfer Object for task input (creation/update)."""
 
     description: str = Field(..., description="Task description (required).")
-    priority: Optional[Priority] = Field(
+    priority: Priority | None = Field(
         default=None, description="Priority of the task (H, M, L, or empty)"
     )
-    due: Optional[str] = Field(
+    due: str | None = Field(
         default=None, description="Due date and time for the task (ISO format)"
     )
-    project: Optional[str] = Field(
+    project: str | None = Field(
         default=None, description="Project the task belongs to"
     )
     tags: list[str] = Field(
@@ -27,23 +26,23 @@ class TaskInputDTO(BaseModel):
     depends: list[UUID] = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
-    parent: Optional[UUID] = Field(
+    parent: UUID | None = Field(
         default=None, description="UUID of the template task"
     )
-    recur: Optional[RecurrencePeriod] = Field(
+    recur: RecurrencePeriod | None = Field(
         default=None, description="Recurrence period for recurring tasks"
     )
-    scheduled: Optional[str] = Field(
+    scheduled: str | None = Field(
         default=None,
         description="Schedule the earlier time the task can be done (ISO format)",
     )
-    wait: Optional[str] = Field(
+    wait: str | None = Field(
         default=None, description="The task is hidden until the date (ISO format)"
     )
-    until: Optional[str] = Field(
+    until: str | None = Field(
         default=None, description="Expiration date for recurring tasks (ISO format)"
     )
-    context: Optional[str] = Field(
+    context: str | None = Field(
         default=None, description="Context filter for the task"
     )
 
@@ -86,51 +85,51 @@ class TaskOutputDTO(BaseModel):
     status: TaskStatus = Field(
         default=None, description="Current status of the task"
     )
-    priority: Optional[Priority] = Field(
+    priority: Priority | None = Field(
         default=None, description="Priority of the task (H, M, L, or empty)"
     )
-    due: Optional[datetime] = Field(
+    due: datetime | None = Field(
         default=None, description="Due date and time for the task (ISO format)"
     )
-    entry: Optional[datetime] = Field(
+    entry: datetime | None = Field(
         default=None, description="READONLY Task creation date and time (ISO format)"
     )
-    start: Optional[datetime] = Field(
+    start: datetime | None = Field(
         default=None, description="READONLY Task started date and time (ISO format)"
     )
-    end: Optional[datetime] = Field(
+    end: datetime | None = Field(
         default=None, description="READONLY Task done date and time (ISO format)"
     )
-    modified: Optional[datetime] = Field(
+    modified: datetime | None = Field(
         default=None,
         description="READONLY Last modification date and time (ISO format)",
     )
     tags: list[str] = Field(
         default_factory=list, description="List of tags associated with the task"
     )
-    project: Optional[str] = Field(
+    project: str | None = Field(
         default=None, description="Project the task belongs to"
     )
     depends: list[UUID] = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
-    parent: Optional[UUID] = Field(
+    parent: UUID | None = Field(
         default=None, description="UUID of the template task"
     )
-    recur: Optional[RecurrencePeriod] = Field(
+    recur: RecurrencePeriod | None = Field(
         default=None, description="Recurrence period for recurring tasks"
     )
-    scheduled: Optional[datetime] = Field(
+    scheduled: datetime | None = Field(
         default=None,
         description="Schedule the earlier time the task can be done (ISO format)",
     )
-    wait: Optional[datetime] = Field(
+    wait: datetime | None = Field(
         default=None, description="The task is hidden until the date (ISO format)"
     )
-    until: Optional[datetime] = Field(
+    until: datetime | None = Field(
         default=None, description="Expiration date for recurring tasks (ISO format)"
     )
-    context: Optional[str] = Field(
+    context: str | None = Field(
         default=None, description="Context filter for the task"
     )
 
