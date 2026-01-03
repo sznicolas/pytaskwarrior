@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -21,10 +21,10 @@ class TaskInputDTO(BaseModel):
     project: Optional[str] = Field(
         default=None, description="Project the task belongs to"
     )
-    tags: List[str] = Field(
+    tags: list[str] = Field(
         default_factory=list, description="List of tags associated with the task"
     )
-    depends: List[UUID] = Field(
+    depends: list[UUID] = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
     parent: Optional[UUID] = Field(
@@ -105,13 +105,13 @@ class TaskOutputDTO(BaseModel):
         default=None,
         description="READONLY Last modification date and time (ISO format)",
     )
-    tags: List[str] = Field(
+    tags: list[str] = Field(
         default_factory=list, description="List of tags associated with the task"
     )
     project: Optional[str] = Field(
         default=None, description="Project the task belongs to"
     )
-    depends: List[UUID] = Field(
+    depends: list[UUID] = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
     parent: Optional[UUID] = Field(
