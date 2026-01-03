@@ -157,6 +157,8 @@ class TaskWarriorAdapter:
             if value and not self._validate_date_string(value):
                 raise TaskValidationError(f"Invalid date format for {field}: {value}")
 
+        # Convert UUID to string
+        task.uuid = str(task.uuid)
         args = self._build_args(task)
         result = self._run_task_command([str(task.uuid), "modify"] + args)
 
@@ -170,8 +172,10 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully modified task with UUID: {task.uuid}")
         return updated_task
 
-    def get_task(self, task_id_or_uuid: Union[str, int, UUID]) -> TaskOutputDTO:
+    def get_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Retrieve a task by ID or UUID."""
+        # Convert to string for CLI command
+        task_id_or_uuid = str(task_id_or_uuid)
         logger.debug(f"Retrieving task with ID/UUID: {task_id_or_uuid}")
 
         # First try to get the task normally
@@ -247,8 +251,10 @@ class TaskWarriorAdapter:
             logger.error(f"Failed to parse JSON response: {e}")
             raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
 
-    def get_recurring_task(self, uuid: UUID) -> TaskOutputDTO:
+    def get_recurring_task(self, uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the recurring task (parent) by its UUID."""
+        # Convert to string for CLI command
+        uuid = str(uuid)
         logger.debug(f"Getting recurring task with UUID: {uuid}")
 
         # Get the parent recurring task
@@ -267,8 +273,10 @@ class TaskWarriorAdapter:
         )
         return self.get_task(uuid)
 
-    def get_recurring_instances(self, uuid: UUID) -> List[TaskOutputDTO]:
+    def get_recurring_instances(self, uuid: str | int | UUID) -> List[TaskOutputDTO]:
         """Get all instances of a recurring task."""
+        # Convert to string for CLI command
+        uuid = str(uuid)
         logger.debug(f"Getting recurring instances for parent UUID: {uuid}")
 
         # Get child tasks that are instances of the recurring parent
@@ -299,8 +307,10 @@ class TaskWarriorAdapter:
             logger.error(f"Failed to parse JSON response: {e}")
             raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
 
-    def delete_task(self, uuid: UUID) -> None:
+    def delete_task(self, uuid: str | int | UUID) -> None:
         """Delete a task."""
+        # Convert to string for CLI command
+        uuid = str(uuid)
         logger.info(f"Deleting task with UUID: {uuid}")
 
         result = self._run_task_command([str(uuid), "delete"])
@@ -312,8 +322,10 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully deleted task with UUID: {uuid}")
 
-    def purge_task(self, uuid: UUID) -> None:
+    def purge_task(self, uuid: str | int | UUID) -> None:
         """Purge a task permanently."""
+        # Convert to string for CLI command
+        uuid = str(uuid)
         logger.info(f"Purging task with UUID: {uuid}")
 
         result = self._run_task_command([str(uuid), "purge"])
@@ -325,8 +337,10 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully purged task with UUID: {uuid}")
 
-    def done_task(self, uuid: UUID) -> None:
+    def done_task(self, uuid: str | int | UUID) -> None:
         """Mark a task as done."""
+        # Convert to string for CLI command
+        uuid = str(uuid)
         logger.info(f"Completing task with UUID: {uuid}")
 
         result = self._run_task_command([str(uuid), "done"])
@@ -338,8 +352,10 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully completed task with UUID: {uuid}")
 
-    def start_task(self, uuid: UUID) -> None:
+    def start_task(self, uuid: str | int | UUID) -> None:
         """Start a task."""
+        # Convert to string for CLI command
+        uuid = str(uuid)
         logger.info(f"Starting task with UUID: {uuid}")
 
         result = self._run_task_command([str(uuid), "start"])
@@ -351,8 +367,10 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully started task with UUID: {uuid}")
 
-    def stop_task(self, uuid: UUID) -> None:
+    def stop_task(self, uuid: str | int | UUID) -> None:
         """Stop a task."""
+        # Convert to string for CLI command
+        uuid = str(uuid)
         logger.info(f"Stopping task with UUID: {uuid}")
 
         result = self._run_task_command([str(uuid), "stop"])
@@ -364,8 +382,10 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully stopped task with UUID: {uuid}")
 
-    def annotate_task(self, uuid: UUID, annotation: str) -> None:
+    def annotate_task(self, uuid: str | int | UUID, annotation: str) -> None:
         """Add an annotation to a task."""
+        # Convert to string for CLI command
+        uuid = str(uuid)
         logger.info(f"Annotating task {uuid} with: {annotation}")
 
         # Sanitize the annotation to prevent command injection

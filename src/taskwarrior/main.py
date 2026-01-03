@@ -24,7 +24,7 @@ class TaskWarrior:
         """Modify an existing task."""
         return self.adapter.modify_task(task)
 
-    def get_task(self, task_id_or_uuid: str | UUID) -> TaskOutputDTO:
+    def get_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Retrieve a task by ID or UUID."""
         return self.adapter.get_task(task_id_or_uuid)
 
@@ -32,35 +32,35 @@ class TaskWarrior:
         """Get multiple tasks based on filters."""
         return self.adapter.get_tasks(filter_args)
 
-    def get_recurring_task(self, uuid: str) -> TaskOutputDTO:
+    def get_recurring_task(self, uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the recurring task (parent) by its UUID."""
         return self.adapter.get_recurring_task(uuid)
 
-    def get_recurring_instances(self, uuid: str) -> List[TaskOutputDTO]:
+    def get_recurring_instances(self, uuid: str | int | UUID) -> List[TaskOutputDTO]:
         """Get all instances of a recurring task."""
         return self.adapter.get_recurring_instances(uuid)
 
-    def delete_task(self, uuid: str) -> None:
+    def delete_task(self, uuid: str | int | UUID) -> None:
         """Delete a task."""
         return self.adapter.delete_task(uuid)
 
-    def purge_task(self, uuid: str) -> None:
+    def purge_task(self, uuid: str | int | UUID) -> None:
         """Purge a task permanently."""
         return self.adapter.purge_task(uuid)
 
-    def done_task(self, uuid: str) -> None:
+    def done_task(self, uuid: str | int | UUID) -> None:
         """Mark a task as done."""
         return self.adapter.done_task(uuid)
 
-    def start_task(self, uuid: str) -> None:
+    def start_task(self, uuid: str | int | UUID) -> None:
         """Start a task."""
         return self.adapter.start_task(uuid)
 
-    def stop_task(self, uuid: str) -> None:
+    def stop_task(self, uuid: str | int | UUID) -> None:
         """Stop a task."""
         return self.adapter.stop_task(uuid)
 
-    def annotate_task(self, uuid: str, annotation: str) -> None:
+    def annotate_task(self, uuid: str | int | UUID, annotation: str) -> None:
         """Add an annotation to a task."""
         return self.adapter.annotate_task(uuid, annotation)
 
