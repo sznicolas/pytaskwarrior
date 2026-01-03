@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import List, Optional
-
+from uuid import UUID
 from .task import TaskInternal
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
@@ -24,7 +24,7 @@ class TaskWarrior:
         """Modify an existing task."""
         return self.adapter.modify_task(task)
 
-    def get_task(self, task_id_or_uuid: str) -> TaskOutputDTO:
+    def get_task(self, task_id_or_uuid: str | UUID) -> TaskOutputDTO:
         """Retrieve a task by ID or UUID."""
         return self.adapter.get_task(task_id_or_uuid)
 

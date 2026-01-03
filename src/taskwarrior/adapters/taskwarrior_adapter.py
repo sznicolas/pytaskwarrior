@@ -170,7 +170,7 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully modified task with UUID: {task.uuid}")
         return updated_task
 
-    def get_task(self, task_id_or_uuid: Union[str, int]) -> TaskOutputDTO:
+    def get_task(self, task_id_or_uuid: Union[str, int, UUID]) -> TaskOutputDTO:
         """Retrieve a task by ID or UUID."""
         logger.debug(f"Retrieving task with ID/UUID: {task_id_or_uuid}")
 
