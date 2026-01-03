@@ -6,7 +6,7 @@ from uuid import UUID
 from .task import TaskInternal
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
-
+from .enums import TaskStatus
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +28,7 @@ class TaskWarrior:
         """Retrieve a task by ID or UUID."""
         return self.adapter.get_task(task_id_or_uuid)
 
-    def get_tasks(self, filter_args: List[str] = ['status.not:deleted']) -> List[TaskOutputDTO]:
+    def get_tasks(self, filter_args: list[str] = ['status.not:' + TaskStatus.DELETED, 'status.not:' + TaskStatus.COMPLETED]) -> list[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         return self.adapter.get_tasks(filter_args)
 
