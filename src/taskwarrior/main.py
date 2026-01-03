@@ -75,3 +75,7 @@ class TaskWarrior:
     def remove_context(self) -> None:
         """Remove the current context."""
         return self.adapter.remove_context()
+
+    def get_info(self) -> dict:
+        """Get comprehensive TaskWarrior information."""
+        return self.adapter.get_info()

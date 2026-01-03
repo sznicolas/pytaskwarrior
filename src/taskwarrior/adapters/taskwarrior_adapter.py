@@ -396,3 +396,24 @@ class TaskWarriorAdapter:
         result = self._run_task_command(["context", "remove"])
         if result.returncode != 0:
             raise TaskWarriorError(f"Failed to remove context: {result.stderr}")
+
+    def get_info(self) -> dict:
+        """Get comprehensive TaskWarrior information."""
+        info = {
+            "task_cmd": self.task_cmd,
+            "taskrc_path": self.taskrc_path,
+            "default_options": DEFAULT_OPTIONS
+        }
+        
+        # Get version
+        try:
+            version_result = self._run_task_command(["--version"])
+            if version_result.returncode == 0 and version_result.stdout:
+                version_line = version_result.stdout.strip().split('\n')[0]
+                parts = version_line.split()
+                if len(parts) >= 2:
+                    info["version"] = parts[1]
+        except Exception:
+            info["version"] = "unknown"
+        
+        return info
