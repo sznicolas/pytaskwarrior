@@ -251,14 +251,14 @@ class TaskWarriorAdapter:
             logger.error(f"Failed to parse JSON response: {e}")
             raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
 
-    def get_recurring_task(self, uuid: str | int | UUID) -> TaskOutputDTO:
+    def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the recurring task (parent) by its UUID."""
         # Convert to string for CLI command
-        uuid = str(uuid)
-        logger.debug(f"Getting recurring task with UUID: {uuid}")
+        task_id_or_uuid = str(task_id_or_uuid)
+        logger.debug(f"Getting recurring task with UUID: {task_id_or_uuid}")
 
         # Get the parent recurring task
-        result = self._run_task_command([str(uuid), "status:recurring", "export"])
+        result = self._run_task_command([str(task_id_or_uuid), "status:recurring", "export"])
 
         if result.returncode == 0:
             tasks_data = json.loads(result.stdout)
@@ -269,18 +269,18 @@ class TaskWarriorAdapter:
 
         # If not found as recurring, try to get it normally
         logger.debug(
-            f"Recurring task {uuid} not found as recurring, trying normal retrieval"
+            f"Recurring task {task_id_or_uuid} not found as recurring, trying normal retrieval"
         )
-        return self.get_task(uuid)
+        return self.get_task(task_id_or_uuid)
 
-    def get_recurring_instances(self, uuid: str | int | UUID) -> List[TaskOutputDTO]:
+    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> List[TaskOutputDTO]:
         """Get all instances of a recurring task."""
         # Convert to string for CLI command
-        uuid = str(uuid)
-        logger.debug(f"Getting recurring instances for parent UUID: {uuid}")
+        task_id_or_uuid = str(task_id_or_uuid)
+        logger.debug(f"Getting recurring instances for parent UUID: {task_id_or_uuid}")
 
         # Get child tasks that are instances of the recurring parent
-        result = self._run_task_command([f"parent:{str(uuid)}", "export"])
+        result = self._run_task_command([f"parent:{str(task_id_or_uuid)}", "export"])
 
         if result.returncode != 0:
             # Check if it's a "no matches" error that we should handle gracefully

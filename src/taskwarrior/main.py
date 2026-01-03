@@ -32,13 +32,13 @@ class TaskWarrior:
         """Get multiple tasks based on filters."""
         return self.adapter.get_tasks(filter_args)
 
-    def get_recurring_task(self, uuid: str | int | UUID) -> TaskOutputDTO:
+    def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the recurring task (parent) by its UUID."""
-        return self.adapter.get_recurring_task(uuid)
+        return self.adapter.get_recurring_task(task_id_or_uuid)
 
-    def get_recurring_instances(self, uuid: str | int | UUID) -> List[TaskOutputDTO]:
+    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> List[TaskOutputDTO]:
         """Get all instances of a recurring task."""
-        return self.adapter.get_recurring_instances(uuid)
+        return self.adapter.get_recurring_instances(task_id_or_uuid)
 
     def delete_task(self, uuid: str | int | UUID) -> None:
         """Delete a task."""
