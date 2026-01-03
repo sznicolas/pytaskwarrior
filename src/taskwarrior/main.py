@@ -20,8 +20,10 @@ class TaskWarrior:
         """Add a new task."""
         return self.adapter.add_task(task)
 
-    def modify_task(self, task: TaskInputDTO) -> TaskOutputDTO:
+    def modify_task(self, task: TaskInputDTO, uuid: str | int | UUID) -> TaskOutputDTO:
         """Modify an existing task."""
+        # Set the UUID on the task object
+        task.uuid = str(uuid)
         return self.adapter.modify_task(task)
 
     def get_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
@@ -79,3 +81,9 @@ class TaskWarrior:
     def get_info(self) -> dict:
         """Get comprehensive TaskWarrior information."""
         return self.adapter.get_info()
+
+
+def task_output_to_input(task_output: TaskOutputDTO) -> TaskInputDTO:
+    """Convert TaskOutputDTO to TaskInputDTO for modification."""
+    data = task_output.model_dump(exclude={'uuid'})
+    return TaskInputDTO(**data)
