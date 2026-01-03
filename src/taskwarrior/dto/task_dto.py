@@ -1,35 +1,12 @@
 from __future__ import annotations
 from datetime import datetime
-from enum import Enum
 from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-# Enums for TaskWarrior-specific fields
-class TaskStatus(str, Enum):
-    """Task status as defined by TaskWarrior."""
-    PENDING = "pending"
-    COMPLETED = "completed"
-    DELETED = "deleted"
-    WAITING = "waiting"
-    RECURRING = "recurring"
+from ..enums import TaskStatus, Priority, RecurrencePeriod
 
-class Priority(str, Enum):
-    """Task priority levels in TaskWarrior."""
-    HIGH = "H"
-    MEDIUM = "M"
-    LOW = "L"
-    NONE = ""
-
-class RecurrencePeriod(str, Enum):
-    """Supported recurrence periods for tasks."""
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
-    YEARLY = "yearly"
-    QUARTERLY = "quarterly"
-    SEMIANNUALLY = "semiannually"
 
 class TaskInputDTO(BaseModel):
     """Data Transfer Object for task input (creation/update)."""
@@ -62,6 +39,7 @@ class TaskInputDTO(BaseModel):
             ]
         }
     )
+
 
 class TaskOutputDTO(BaseModel):
     """Data Transfer Object for task output (retrieval)."""
