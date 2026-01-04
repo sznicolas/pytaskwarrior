@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..enums import TaskStatus, Priority, RecurrencePeriod
+from ..exceptions import TaskValidationError
 
 
 class TaskInputDTO(BaseModel):
@@ -66,7 +67,7 @@ class TaskInputDTO(BaseModel):
     def description_must_not_be_empty(cls, v: str) -> str:
         """Validate that task description is not empty."""
         if not v.strip():
-            raise ValueError("Description cannot be empty")
+            raise TaskValidationError("Task description cannot be empty")
         return v.strip()
 
 
