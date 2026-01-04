@@ -20,9 +20,9 @@ def test_task_input_dto_creation():
         wait="2023-12-29T00:00:00Z",
         until="2024-12-31T23:59:59Z",
         recur=RecurrencePeriod.WEEKLY,
-        context="test_context"
+        context="test_context",
     )
-    
+
     assert task.description == "Test task"
     assert task.priority == Priority.HIGH
     assert task.project == "TestProject"
@@ -67,9 +67,9 @@ def test_task_output_dto_creation():
         wait="2024-01-03T00:00:00Z",
         until="2024-01-04T00:00:00Z",
         recur=RecurrencePeriod.WEEKLY,
-        context="test_context"
+        context="test_context",
     )
-    
+
     assert task.description == "Test task"
     assert task.index == 1
     assert task.uuid == task_uuid
@@ -98,9 +98,9 @@ def test_task_output_dto_datetime_parsing():
         uuid=uuid4(),
         status=TaskStatus.PENDING,
         entry="2023-12-28T00:00:00Z",
-        due="2024-01-01T00:00:00Z"
+        due="2024-01-01T00:00:00Z",
     )
-    
+
     assert task.entry == datetime.fromisoformat("2023-12-28T00:00:00+00:00")
     assert task.due == datetime.fromisoformat("2024-01-01T00:00:00+00:00")
 
@@ -110,16 +110,16 @@ def test_task_output_dto_compact_datetime_parsing():
     # Test compact format (20260101T193139Z)
     task = TaskOutputDTO(
         description="Test",
-        index=1,
+        id=1,
         uuid=uuid4(),
         status=TaskStatus.PENDING,
         entry="20260101T193139Z",
-        due="20260102T102030Z"
+        due="20260102T102030Z",
     )
-    
+
     expected_entry = datetime.fromisoformat("2026-01-01T19:31:39+00:00")
     expected_due = datetime.fromisoformat("2026-01-02T10:20:30+00:00")
-    
+
     assert task.entry == expected_entry
     assert task.due == expected_due
 
@@ -127,11 +127,9 @@ def test_task_output_dto_compact_datetime_parsing():
 def test_task_input_dto_model_dump():
     """Test model_dump functionality."""
     task = TaskInputDTO(
-        description="Test task",
-        priority=Priority.HIGH,
-        project="TestProject"
+        description="Test task", priority=Priority.HIGH, project="TestProject"
     )
-    
+
     dumped = task.model_dump()
     assert dumped["description"] == "Test task"
     assert dumped["priority"] == Priority.HIGH
@@ -146,9 +144,9 @@ def test_task_output_dto_model_dump():
         index=1,
         uuid=task_uuid,
         status=TaskStatus.PENDING,
-        priority=Priority.HIGH
+        priority=Priority.HIGH,
     )
-    
+
     dumped = task.model_dump(by_alias=True)
     assert dumped["description"] == "Test task"
     assert dumped["id"] == 1
@@ -167,17 +165,17 @@ def test_task_output_to_input_conversion():
         status=TaskStatus.PENDING,
         priority=Priority.HIGH,
         project="TestProject",
-        tags=["tag1", "tag2"]
+        tags=["tag1", "tag2"],
     )
-    
+
     # This function is defined in main.py
     from src.taskwarrior.main import task_output_to_input
-    
+
     input_task = task_output_to_input(output_task)
-    
+
     assert input_task.description == "Test task"
     assert input_task.priority == Priority.HIGH
     assert input_task.project == "TestProject"
     assert input_task.tags == ["tag1", "tag2"]
     # UUID should be excluded
-    assert not hasattr(input_task, 'uuid')
+    assert not hasattr(input_task, "uuid")
