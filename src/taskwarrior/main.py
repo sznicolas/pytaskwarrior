@@ -75,16 +75,28 @@ class TaskWarrior:
         return self.adapter.annotate_task(uuid, annotation)
 
     def set_context(self, context: str, filter_str: str) -> None:
-        """Set a context."""
+        """Define a new context with the given filter."""
         return self.adapter.set_context(context, filter_str)
 
     def apply_context(self, context: str) -> None:
-        """Apply a context."""
+        """Apply a context (set it as current)."""
         return self.adapter.apply_context(context)
 
     def remove_context(self) -> None:
-        """Remove the current context."""
+        """Remove the current context (set to none)."""
         return self.adapter.remove_context()
+
+    def list_contexts(self) -> dict[str, str]:
+        """List all defined contexts."""
+        return self.adapter.list_contexts()
+
+    def show_context(self) -> str | None:
+        """Show the current context."""
+        return self.adapter.show_context()
+
+    def delete_context(self, context: str) -> None:
+        """Delete a defined context."""
+        return self.adapter.delete_context(context)
 
     def get_info(self) -> dict:
         """Get comprehensive TaskWarrior information."""

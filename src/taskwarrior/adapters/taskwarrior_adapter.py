@@ -416,22 +416,61 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully annotated task with UUID: {uuid}")
 
     def set_context(self, context: str, filter_str: str) -> None:
-        """Set a context."""
-        result = self._run_task_command(["context", "add", context, filter_str])
+        """Define a new context with the given filter."""
+        # Use context define command to create a new context
+        result = self._run_task_command(["context", "define", context, filter_str])
         if result.returncode != 0:
-            raise TaskWarriorError(f"Failed to set context: {result.stderr}")
+            raise TaskWarriorError(f"Failed to define context '{context}': {result.stderr}")
 
     def apply_context(self, context: str) -> None:
-        """Apply a context."""
-        result = self._run_task_command(["context", "apply", context])
+        """Apply a context (set it as current)."""
+        # Use context command with the context name to apply it
+        result = self._run_task_command(["context", context])
         if result.returncode != 0:
-            raise TaskWarriorError(f"Failed to apply context: {result.stderr}")
+            raise TaskWarriorError(f"Failed to apply context '{context}': {result.stderr}")
 
     def remove_context(self) -> None:
-        """Remove the current context."""
-        result = self._run_task_command(["context", "remove"])
+        """Remove the current context (set to none)."""
+        # Use context none to clear current context
+        result = self._run_task_command(["context", "none"])
         if result.returncode != 0:
             raise TaskWarriorError(f"Failed to remove context: {result.stderr}")
+
+    def list_contexts(self) -> dict[str, str]:
+        """List all defined contexts."""
+        result = self._run_task_command(["context", "list"])
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to list contexts: {result.stderr}")
+        
+        # Parse the output to extract context names and filters
+        contexts = {}
+        lines = result.stdout.strip().split('\n')
+        if len(lines) > 2:  # Skip header lines
+            for line in lines[2:]:  # Skip "Context Filter" and empty line
+                if line.strip():
+                    parts = line.split(None, 1)  # Split on first whitespace
+                    if len(parts) == 2:
+                        context_name, filter_str = parts
+                        contexts[context_name] = filter_str
+        return contexts
+
+    def show_context(self) -> str | None:
+        """Show the current context."""
+        result = self._run_task_command(["context", "show"])
+        if result.returncode != 0:
+            # If no context is set, stderr might contain an error
+            if "No current context" in result.stderr or "context not set" in result.stderr.lower():
+                return None
+            raise TaskWarriorError(f"Failed to show context: {result.stderr}")
+        
+        context_name = result.stdout.strip()
+        return context_name if context_name else None
+
+    def delete_context(self, context: str) -> None:
+        """Delete a defined context."""
+        result = self._run_task_command(["context", "delete", context])
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to delete context '{context}': {result.stderr}")
 
     def get_info(self) -> dict:
         """Get comprehensive TaskWarrior information."""
