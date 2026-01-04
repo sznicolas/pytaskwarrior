@@ -52,7 +52,7 @@ def test_task_output_dto_creation():
     task_uuid = uuid4()
     task = TaskOutputDTO(
         description="Test task",
-        index=1,
+        id=1,
         uuid=task_uuid,
         status=TaskStatus.PENDING,
         priority=Priority.HIGH,

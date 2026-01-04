@@ -3,7 +3,8 @@ from pathlib import Path
 import os
 import subprocess
 
-from src.taskwarrior import TaskWarrior, TaskInputDTO as TaskInternal, Priority
+from src.taskwarrior import TaskWarrior, TaskInputDTO 
+from src.taskwarrior.enums import Priority
 
 
 @pytest.fixture
@@ -40,9 +41,9 @@ def tw(taskwarrior_config: str) -> TaskWarrior:
 
 
 @pytest.fixture
-def sample_task() -> TaskInternal:
+def sample_task() -> TaskInputDTO:
     """Create a sample Task object."""
-    return TaskInternal(
+    return TaskInputDTO(
         description="Test Task",
         priority=Priority.HIGH,
         project="Test",

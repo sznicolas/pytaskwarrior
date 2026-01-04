@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 from uuid import UUID
-from .task import TaskInternal
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .enums import TaskStatus
