@@ -75,15 +75,14 @@ class TaskOutputDTO(BaseModel):
 
     description: str = Field(..., description="Task description (required).")
     index: int = Field(
-        default=None,
         alias="id",
         description="READONLY Task index of a task in the working set",
     )
     uuid: UUID = Field(
-        default=None, description="READONLY Unique identifier for the task"
+        description="READONLY Unique identifier for the task"
     )
     status: TaskStatus = Field(
-        default=None, description="Current status of the task"
+        description="Current status of the task"
     )
     priority: Priority | None = Field(
         default=None, description="Priority of the task (H, M, L, or empty)"
