@@ -110,7 +110,7 @@ def test_task_output_dto_compact_datetime_parsing():
     # Test compact format (20260101T193139Z)
     task = TaskOutputDTO(
         description="Test",
-        id=1,
+        index=1,
         uuid=uuid4(),
         status=TaskStatus.PENDING,
         entry="20260101T193139Z",
@@ -122,6 +122,40 @@ def test_task_output_dto_compact_datetime_parsing():
 
     assert task.entry == expected_entry
     assert task.due == expected_due
+
+
+def test_task_output_dto_datetime_parsing_comprehensive():
+    """Test comprehensive datetime parsing from various TaskWarrior formats."""
+    task_uuid = uuid4()
+    
+    # Test with standard ISO format
+    task1 = TaskOutputDTO(
+        description="Test task 1",
+        index=1,
+        uuid=task_uuid,
+        status=TaskStatus.PENDING,
+        entry="2023-12-28T00:00:00Z",
+        due="2024-01-01T00:00:00Z",
+    )
+    
+    assert task1.entry == datetime.fromisoformat("2023-12-28T00:00:00+00:00")
+    assert task1.due == datetime.fromisoformat("2024-01-01T00:00:00+00:00")
+    
+    # Test with compact format
+    task2 = TaskOutputDTO(
+        description="Test task 2",
+        index=2,
+        uuid=task_uuid,
+        status=TaskStatus.PENDING,
+        entry="20260101T193139Z",
+        due="20260102T102030Z",
+    )
+    
+    expected_entry = datetime.fromisoformat("2026-01-01T19:31:39+00:00")
+    expected_due = datetime.fromisoformat("2026-01-02T10:20:30+00:00")
+    
+    assert task2.entry == expected_entry
+    assert task2.due == expected_due
 
 
 def test_task_input_dto_model_dump():
@@ -177,6 +211,39 @@ def test_task_output_to_input_conversion():
     assert input_task.priority == Priority.HIGH
     assert input_task.project == "TestProject"
     assert input_task.tags == ["tag1", "tag2"]
+    # UUID should be excluded
+    assert not hasattr(input_task, "uuid")
+
+
+def test_task_output_to_input_conversion_comprehensive():
+    """Test comprehensive conversion from TaskOutputDTO to TaskInputDTO."""
+    task_uuid = uuid4()
+    output_task = TaskOutputDTO(
+        description="Test task",
+        index=1,
+        uuid=task_uuid,
+        status=TaskStatus.PENDING,
+        priority=Priority.HIGH,
+        project="TestProject",
+        tags=["tag1", "tag2"],
+        due="2024-01-01T00:00:00Z",
+        scheduled="2023-12-31T00:00:00Z",
+        wait="2023-12-30T00:00:00Z",
+        recur=RecurrencePeriod.WEEKLY,
+    )
+
+    from src.taskwarrior.main import task_output_to_input
+    
+    input_task = task_output_to_input(output_task)
+
+    assert input_task.description == "Test task"
+    assert input_task.priority == Priority.HIGH
+    assert input_task.project == "TestProject"
+    assert input_task.tags == ["tag1", "tag2"]
+    assert input_task.due == "2024-01-01T00:00:00Z"
+    assert input_task.scheduled == "2023-12-31T00:00:00Z"
+    assert input_task.wait == "2023-12-30T00:00:00Z"
+    assert input_task.recur == RecurrencePeriod.WEEKLY
     # UUID should be excluded
     assert not hasattr(input_task, "uuid")
 
