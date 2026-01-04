@@ -165,7 +165,7 @@ class TaskOutputDTO(BaseModel):
 
         # Handle TaskWarrior's date format (20260101T193139Z)
         try:
-            # Try to parse the compact format directly
+            # Check if it's the compact format used by TaskWarrior
             if len(value) == 16 and "T" in value and value.endswith("Z"):
                 # Convert compact format to standard: 20260101T193139Z -> 2026-01-01T19:31:39Z
                 date_part = value[:8]
