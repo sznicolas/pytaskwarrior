@@ -277,3 +277,144 @@ def test_task_output_dto_from_taskwarrior_json_export():
     assert dumped["description"] == "toto"
     assert dumped["uuid"] == task.uuid
     assert dumped["status"] == TaskStatus.PENDING
+
+    # New tests added below:
+
+def test_task_input_dto_all_fields():
+    """Test TaskInputDTO with all fields."""
+    task = TaskInputDTO(
+        description="Test task",
+        priority=Priority.HIGH,
+        project="TestProject",
+        tags=["tag1", "tag2"],
+        due="2026-12-31T23:59:59Z",
+        scheduled="2026-01-15T00:00:00Z",
+        wait="2026-01-10T12:30:45Z",
+        until="2027-01-01T00:00:00Z",
+        recur=RecurrencePeriod.WEEKLY,
+        context="test_context",
+        depends=[uuid4(), uuid4()]
+    )
+    
+    assert task.description == "Test task"
+    assert task.priority == Priority.HIGH
+    assert task.project == "TestProject"
+    assert task.tags == ["tag1", "tag2"]
+    assert task.due == "2026-12-31T23:59:59Z"
+    assert task.scheduled == "2026-01-15T00:00:00Z"
+    assert task.wait == "2026-01-10T12:30:45Z"
+    assert task.until == "2027-01-01T00:00:00Z"
+    assert task.recur == RecurrencePeriod.WEEKLY
+    assert task.context == "test_context"
+    assert isinstance(task.depends, list)
+
+def test_task_output_dto_all_fields():
+    """Test TaskOutputDTO with all fields."""
+    task_uuid = uuid4()
+    task = TaskOutputDTO(
+        description="Test task",
+        index=1,
+        uuid=task_uuid,
+        status=TaskStatus.PENDING,
+        priority=Priority.HIGH,
+        project="TestProject",
+        tags=["tag1", "tag2"],
+        entry="20260101T193139Z",
+        start="20260102T102030Z",
+        end="20260103T154522Z",
+        modified="20260104T083015Z",
+        due="20260105T221045Z",
+        scheduled="20260106T112030Z",
+        wait="20260107T091545Z",
+        until="20260108T143020Z",
+        recur=RecurrencePeriod.WEEKLY,
+        context="test_context"
+    )
+    
+    assert task.description == "Test task"
+    assert task.index == 1
+    assert task.uuid == task_uuid
+    assert task.status == TaskStatus.PENDING
+    assert task.priority == Priority.HIGH
+    assert task.project == "TestProject"
+    assert task.tags == ["tag1", "tag2"]
+    assert task.entry.isoformat() == "2026-01-01T19:31:39+00:00"
+    assert task.start.isoformat() == "2026-01-02T10:20:30+00:00"
+    assert task.end.isoformat() == "2026-01-03T15:45:22+00:00"
+    assert task.modified.isoformat() == "2026-01-04T08:30:15+00:00"
+    assert task.due.isoformat() == "2026-01-05T22:10:45+00:00"
+    assert task.scheduled.isoformat() == "2026-01-06T11:20:30+00:00"
+    assert task.wait.isoformat() == "2026-01-07T09:15:45+00:00"
+    assert task.until.isoformat() == "2026-01-08T14:30:20+00:00"
+    assert task.recur == RecurrencePeriod.WEEKLY
+    assert task.context == "test_context"
+
+def test_task_input_dto_validation_edge_cases():
+    """Test TaskInputDTO validation edge cases."""
+    # Test with empty string in various fields
+    with pytest.raises(ValueError):
+        TaskInputDTO(description="")
+
+def test_task_output_dto_validation_edge_cases():
+    """Test TaskOutputDTO validation edge cases."""
+    # Test with minimal required fields
+    task_uuid = uuid4()
+    task = TaskOutputDTO(
+        description="Test",
+        index=1,
+        uuid=task_uuid,
+        status=TaskStatus.PENDING
+    )
+    
+    assert task.description == "Test"
+    assert task.index == 1
+    assert task.uuid == task_uuid
+    assert task.status == TaskStatus.PENDING
+
+def test_task_status_enum_values():
+    """Test TaskStatus enum values."""
+    assert TaskStatus.PENDING.value == "pending"
+    assert TaskStatus.COMPLETED.value == "completed"
+    assert TaskStatus.DELETED.value == "deleted"
+    assert TaskStatus.WAITING.value == "waiting"
+    assert TaskStatus.RECURRING.value == "recurring"
+    assert TaskStatus.STARTED.value == "started"
+
+def test_priority_enum_values():
+    """Test Priority enum values."""
+    assert Priority.LOW.value == "L"
+    assert Priority.MEDIUM.value == "M"
+    assert Priority.HIGH.value == "H"
+    assert Priority.NONE.value == "N"
+
+def test_recurrence_period_enum_values():
+    """Test RecurrencePeriod enum values."""
+    assert RecurrencePeriod.HOURLY.value == "hourly"
+    assert RecurrencePeriod.DAILY.value == "daily"
+    assert RecurrencePeriod.WEEKLY.value == "weekly"
+    assert RecurrencePeriod.MONTHLY.value == "monthly"
+    assert RecurrencePeriod.YEARLY.value == "yearly"
+
+def test_task_warrior_error_inheritance():
+    """Test TaskWarriorError inheritance."""
+    from src.taskwarrior.exceptions import TaskWarriorError, TaskNotFound, TaskValidationError
+    
+    # Test that all exceptions inherit from TaskWarriorError
+    assert issubclass(TaskNotFound, TaskWarriorError)
+    assert issubclass(TaskValidationError, TaskWarriorError)
+
+def test_exception_messages(self):
+    """Test exception messages."""
+    from src.taskwarrior.exceptions import TaskValidationError, TaskNotFound
+    
+    # Test validation error
+    try:
+        raise TaskValidationError("Test validation error")
+    except TaskValidationError as e:
+        assert str(e) == "Test validation error"
+    
+    # Test not found error
+    try:
+        raise TaskNotFound("Test not found error")
+    except TaskNotFound as e:
+        assert str(e) == "Test not found error"

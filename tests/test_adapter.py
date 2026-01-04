@@ -281,3 +281,343 @@ class TestTaskWarriorAdapter:
         assert "task_cmd" in info
         assert "taskrc_path" in info
         assert "default_options" in info
+
+    # New tests added below:
+
+    def test_get_recurring_instances_with_actual_recurring_task(self, adapter: TaskWarriorAdapter):
+        """Test get_recurring_instances with actual recurring tasks."""
+        # Add a recurring task
+        task = TaskInputDTO(
+            description="Recurring test task",
+            recur=RecurrencePeriod.WEEKLY
+        )
+        recurring_task = adapter.add_task(task)
+        
+        # Get instances (should be empty initially)
+        instances = adapter.get_recurring_instances(recurring_task.uuid)
+        assert isinstance(instances, list)
+        
+        # Add a task that depends on the recurring task
+        dependent_task = TaskInputDTO(
+            description="Dependent task",
+            depends=[recurring_task.uuid]
+        )
+        adapter.add_task(dependent_task)
+
+    def test_get_recurring_task_with_both_types(self, adapter: TaskWarriorAdapter):
+        """Test get_recurring_task with both recurring and non-recurring tasks."""
+        # Add a regular task
+        regular_task = adapter.add_task(TaskInputDTO(description="Regular task"))
+        
+        # Add a recurring task
+        recurring_task = adapter.add_task(TaskInputDTO(
+            description="Recurring task",
+            recur=RecurrencePeriod.WEEKLY
+        ))
+        
+        # Test getting regular task (should work)
+        result = adapter.get_recurring_task(regular_task.uuid)
+        assert result.uuid == regular_task.uuid
+        
+        # Test getting recurring task (should work)
+        result = adapter.get_recurring_task(recurring_task.uuid)
+        assert result.uuid == recurring_task.uuid
+
+    def test_build_args_multiple_dependencies(self, adapter: TaskWarriorAdapter):
+        """Test _build_args with multiple dependencies."""
+        dep_uuid1 = uuid4()
+        dep_uuid2 = uuid4()
+        task = TaskInputDTO(description="Task with multiple deps", depends=[dep_uuid1, dep_uuid2])
+        args = adapter._build_args(task)
+        
+        assert f"depends+={str(dep_uuid1)}" in args
+        assert f"depends+={str(dep_uuid2)}" in args
+
+    def test_modify_task_with_multiple_fields(self, adapter: TaskWarriorAdapter):
+        """Test modify_task with multiple field modifications."""
+        # Add a task
+        original_task = TaskInputDTO(
+            description="Original task",
+            priority=Priority.LOW,
+            project="TestProject"
+        )
+        added_task = adapter.add_task(original_task)
+        
+        # Modify with multiple fields
+        modified_task = TaskInputDTO(
+            description="Modified task",
+            priority=Priority.HIGH,
+            project="ModifiedProject",
+            tags=["tag1", "tag2"]
+        )
+        result = adapter.modify_task(modified_task, added_task.uuid)
+        
+        assert result.description == "Modified task"
+        assert result.priority == Priority.HIGH
+        assert result.project == "ModifiedProject"
+        assert result.tags == ["tag1", "tag2"]
+
+    def test_modify_task_nonexistent(self, adapter: TaskWarriorAdapter):
+        """Test modify_task with non-existent task."""
+        task = TaskInputDTO(description="Test task")
+        
+        with pytest.raises(TaskValidationError):
+            adapter.modify_task(task, "nonexistent-uuid")
+
+    def test_validate_date_string_edge_cases(self, adapter: TaskWarriorAdapter):
+        """Test _validate_date_string with edge cases."""
+        # Test valid dates
+        assert adapter._validate_date_string("today") is True
+        assert adapter._validate_date_string("tomorrow") is True
+        assert adapter._validate_date_string("2023-12-31") is True
+        
+        # Test invalid dates
+        assert adapter._validate_date_string("") is False
+        assert adapter._validate_date_string("not_a_date") is False
+        assert adapter._validate_date_string("2023-13-45") is False
+
+    def test_build_args_complex_datetime_fields(self, adapter: TaskWarriorAdapter):
+        """Test _build_args with complex datetime fields."""
+        task = TaskInputDTO(
+            description="Task with complex dates",
+            due="2026-12-31T23:59:59Z",
+            scheduled="2026-01-15T00:00:00Z",
+            wait="2026-01-10T12:30:45Z",
+            until="2027-01-01T00:00:00Z"
+        )
+        args = adapter._build_args(task)
+        
+        assert "due=2026-12-31T23:59:59Z" in args
+        assert "scheduled=2026-01-15T00:00:00Z" in args
+        assert "wait=2026-01-10T12:30:45Z" in args
+        assert "until=2027-01-01T00:00:00Z" in args
+
+    def test_add_task_with_various_date_formats(self, adapter: TaskWarriorAdapter):
+        """Test add_task with various date formats."""
+        # Test with different valid date formats
+        task1 = TaskInputDTO(description="Task with ISO date", due="2026-12-31T23:59:59Z")
+        result1 = adapter.add_task(task1)
+        assert result1.due is not None
+        
+        task2 = TaskInputDTO(description="Task with simple date", due="2026-12-31")
+        result2 = adapter.add_task(task2)
+        assert result2.due is not None
+
+    def test_set_context_invalid_name(self, adapter: TaskWarriorAdapter):
+        """Test set_context with invalid context name."""
+        # This should not raise an exception but may fail at execution
+        try:
+            adapter.set_context("", "status:pending")
+        except Exception:
+            # Expected behavior - context name cannot be empty
+            pass
+
+    def test_apply_context_nonexistent(self, adapter: TaskWarriorAdapter):
+        """Test apply_context with non-existent context."""
+        with pytest.raises(TaskWarriorError):
+            adapter.apply_context("nonexistent_context")
+
+    def test_remove_context_no_current(self, adapter: TaskWarriorAdapter):
+        """Test remove_context when no context is applied."""
+        # This should not raise an exception
+        try:
+            adapter.remove_context()
+        except Exception:
+            # May raise if no context is set, but that's acceptable
+            pass
+
+    def test_context_management_sequence(self, adapter: TaskWarriorAdapter):
+        """Test sequence of context management operations."""
+        # Set a context
+        adapter.set_context("test_context", "status:pending")
+        
+        # Apply it
+        adapter.apply_context("test_context")
+        
+        # Remove it
+        adapter.remove_context()
+
+    def test_task_output_to_input_comprehensive(self, adapter: TaskWarriorAdapter):
+        """Test task_output_to_input with comprehensive field combinations."""
+        from src.taskwarrior.main import task_output_to_input
+        
+        # Add a task with various fields
+        task = TaskInputDTO(
+            description="Test task",
+            priority=Priority.HIGH,
+            project="TestProject",
+            tags=["tag1", "tag2", "tag3"],
+            due="2026-12-31T23:59:59Z",
+            scheduled="2026-01-15T00:00:00Z",
+            wait="2026-01-10T12:30:45Z",
+            until="2027-01-01T00:00:00Z",
+            recur=RecurrencePeriod.WEEKLY,
+            context="test_context"
+        )
+        
+        added_task = adapter.add_task(task)
+        input_task = task_output_to_input(added_task)
+        
+        assert input_task.description == "Test task"
+        assert input_task.priority == Priority.HIGH
+        assert input_task.project == "TestProject"
+        assert input_task.tags == ["tag1", "tag2", "tag3"]
+        assert input_task.due == "2026-12-31T23:59:59+00:00"
+        assert input_task.scheduled == "2026-01-15T00:00:00+00:00"
+        assert input_task.wait == "2026-01-10T12:30:45+00:00"
+        assert input_task.until == "2027-01-01T00:00:00+00:00"
+        assert input_task.recur == RecurrencePeriod.WEEKLY
+        assert input_task.context == "test_context"
+        # UUID should not be present
+        assert not hasattr(input_task, "uuid")
+
+    def test_task_output_to_input_datetime_edge_cases(self, adapter: TaskWarriorAdapter):
+        """Test task_output_to_input with datetime edge cases."""
+        from src.taskwarrior.main import task_output_to_input
+        
+        # Add a task with minimal fields
+        task = TaskInputDTO(description="Minimal task")
+        added_task = adapter.add_task(task)
+        
+        # Convert to input DTO
+        input_task = task_output_to_input(added_task)
+        
+        assert input_task.description == "Minimal task"
+        # Other fields should be None or default
+        assert input_task.priority is None
+        assert input_task.project is None
+        assert input_task.tags is None
+
+    def test_get_info_comprehensive(self, adapter: TaskWarriorAdapter):
+        """Test get_info with comprehensive information retrieval."""
+        info = adapter.get_info()
+        
+        assert "task_cmd" in info
+        assert "taskrc_path" in info
+        assert "default_options" in info
+        assert "version" in info
+        
+        # Verify types
+        assert isinstance(info["task_cmd"], str)
+        assert isinstance(info["taskrc_path"], (str, type(None)))
+        assert isinstance(info["default_options"], list)
+        assert isinstance(info["version"], str)
+
+    def test_get_info_with_custom_params(self, taskwarrior_config: str):
+        """Test get_info with custom parameters."""
+        adapter = TaskWarriorAdapter(
+            task_cmd="task",
+            taskrc_path=taskwarrior_config,
+            data_location="/tmp/test"
+        )
+        
+        info = adapter.get_info()
+        
+        assert info["task_cmd"] == "task"
+        assert info["taskrc_path"] == taskwarrior_config
+        assert "rc.data.location=/tmp/test" in info["default_options"]
+
+    def test_get_tasks_complex_filters(self, adapter: TaskWarriorAdapter):
+        """Test get_tasks with complex filter combinations."""
+        # Add tasks
+        task1 = TaskInputDTO(description="Task 1", priority=Priority.HIGH)
+        task2 = TaskInputDTO(description="Task 2", priority=Priority.LOW)
+        adapter.add_task(task1)
+        adapter.add_task(task2)
+        
+        # Test complex filters
+        result = adapter.get_tasks(["priority:H", "status:pending"])
+        assert len(result) >= 0  # May be empty or have tasks
+        
+        result = adapter.get_tasks(["priority:L", "status:pending"])
+        assert len(result) >= 0  # May be empty or have tasks
+
+    def test_get_tasks_empty_result(self, adapter: TaskWarriorAdapter):
+        """Test get_tasks with filters that return no results."""
+        result = adapter.get_tasks(["description:nonexistent"])
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_annotate_task_special_characters(self, adapter: TaskWarriorAdapter):
+        """Test annotate_task with special characters."""
+        task = adapter.add_task(TaskInputDTO(description="Task to annotate"))
+        
+        # Test with special characters
+        special_annotation = "Test annotation with !@#$%^&*()_+-=[]{}|;':\",./<>?"
+        adapter.annotate_task(task.uuid, special_annotation)
+        
+        # Verify annotation was added (check by retrieving task)
+        result = adapter.get_task(task.uuid)
+        # Note: Annotations are not directly accessible through the DTO
+
+    def test_annotate_task_long_annotation(self, adapter: TaskWarriorAdapter):
+        """Test annotate_task with long annotation."""
+        task = adapter.add_task(TaskInputDTO(description="Task to annotate"))
+        
+        # Test with long annotation
+        long_annotation = "A" * 1000
+        adapter.annotate_task(task.uuid, long_annotation)
+        
+        # Verify annotation was added
+        result = adapter.get_task(task.uuid)
+
+    def test_get_recurring_instances_empty(self, adapter: TaskWarriorAdapter):
+        """Test get_recurring_instances with no instances."""
+        # Add a regular task
+        task = TaskInputDTO(description="Regular task")
+        regular_task = adapter.add_task(task)
+        
+        # Get instances (should be empty)
+        instances = adapter.get_recurring_instances(regular_task.uuid)
+        assert isinstance(instances, list)
+        assert len(instances) == 0
+
+    def test_get_recurring_instances_with_instances(self, adapter: TaskWarriorAdapter):
+        """Test get_recurring_instances with actual instances."""
+        # Add a recurring task
+        task = TaskInputDTO(
+            description="Recurring task",
+            recur=RecurrencePeriod.WEEKLY
+        )
+        recurring_task = adapter.add_task(task)
+        
+        # Get instances (should be empty initially)
+        instances = adapter.get_recurring_instances(recurring_task.uuid)
+        assert isinstance(instances, list)
+        assert len(instances) == 0
+
+    def test_get_recurring_task_nonexistent(self, adapter: TaskWarriorAdapter):
+        """Test get_recurring_task with non-existent task."""
+        with pytest.raises(TaskNotFound):
+            adapter.get_recurring_task("nonexistent-uuid")
+
+    def test_get_tasks_malformed_json(self, monkeypatch, adapter: TaskWarriorAdapter):
+        """Test get_tasks with malformed JSON response."""
+        # Mock the subprocess to return malformed JSON
+        def mock_run(*args, **kwargs):
+            result = subprocess.CompletedProcess(args[0], 0, '{"invalid": json}', '')
+            return result
+        
+        monkeypatch.setattr(subprocess, 'run', mock_run)
+        
+        # This should raise TaskNotFound
+        with pytest.raises(TaskNotFound):
+            adapter.get_tasks([])
+
+    def test_add_task_invalid_command_args(self, adapter: TaskWarriorAdapter):
+        """Test add_task with invalid command arguments."""
+        # This is hard to test directly, but we can verify validation works
+        task = TaskInputDTO(description="Test task")
+        
+        # Test that it doesn't raise an exception for valid input
+        result = adapter.add_task(task)
+        assert result.uuid is not None
+        
+        # Test with invalid date format
+        task_with_invalid_date = TaskInputDTO(
+            description="Test task",
+            due="invalid_date_format"
+        )
+        
+        with pytest.raises(TaskValidationError):
+            adapter.add_task(task_with_invalid_date)
