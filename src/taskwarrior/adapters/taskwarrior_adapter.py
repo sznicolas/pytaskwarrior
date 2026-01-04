@@ -20,16 +20,27 @@ DEFAULT_OPTIONS = [
 class TaskWarriorAdapter:
     """Adapter for TaskWarrior CLI commands."""
 
-    def __init__(self, task_cmd: str = "task", taskrc_path: str | None = None):
-        self.task_cmd = task_cmd
+    def __init__(
+        self,
+        task_cmd: str = "task",
+        taskrc_path: str | None = None,
+        data_location: str | None = None,
+    ):
+        self.task_cmd: str = task_cmd
         self.taskrc_path = taskrc_path
+        self.data_location = data_location
+        self._options: list[str] = []
+        if self.taskrc_path:
+            self._options.extend([f"rc:{self.taskrc_path}"])
+        if self.data_location:
+            self._options.extend([f"rc.data.location={self.data_location}"])
+
+        self._options.extend(DEFAULT_OPTIONS)
 
     def _run_task_command(self, args: list[str]) -> subprocess.CompletedProcess:
         """Run a taskwarrior command."""
         # Prepend the taskrc path to all commands
         cmd = [self.task_cmd]
-        if self.taskrc_path:
-            cmd.extend([f"rc:{self.taskrc_path}"])
         cmd.extend(args)
         cmd.extend(DEFAULT_OPTIONS)
         logger.debug(f"Running command: {' '.join(cmd)}")
@@ -163,9 +174,8 @@ class TaskWarriorAdapter:
             logger.error(error_msg)
             raise TaskValidationError(error_msg)
 
-        # Get the updated task details
-        updated_task = self.get_task(task.uuid)
-        logger.info(f"Successfully modified task with UUID: {task.uuid}")
+        updated_task = self.get_task(task_id_or_uuid)
+        logger.info(f"Successfully modified task with UUID: {task_id_or_uuid}")
         return updated_task
 
     def get_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:

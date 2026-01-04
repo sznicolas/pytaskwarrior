@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class TaskWarrior:
     """A Python API wrapper for TaskWarrior, interacting via CLI commands."""
 
-    def __init__(self, task_cmd: str = "task", taskrc_path: str | None = None):
+    def __init__(self, task_cmd: str = "task", taskrc_path: str | None = None, data_location: str | None = None):
         self.adapter = TaskWarriorAdapter(task_cmd, taskrc_path)
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
