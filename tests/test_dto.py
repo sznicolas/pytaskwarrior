@@ -179,3 +179,34 @@ def test_task_output_to_input_conversion():
     assert input_task.tags == ["tag1", "tag2"]
     # UUID should be excluded
     assert not hasattr(input_task, "uuid")
+
+
+def test_task_output_dto_from_taskwarrior_json_export():
+    """Test creating TaskOutputDTO from TaskWarrior JSON export string."""
+    import json
+    
+    # This is the exact JSON string as exported by TaskWarrior
+    taskwarrior_json = '''[
+        {"id":1,"description":"toto","entry":"20260103T211028Z","modified":"20260103T211028Z","status":"pending","uuid":"a17d5011-0720-4311-83f1-c4eee7915415","urgency":0}
+    ]'''
+    
+    # Parse the JSON string
+    data = json.loads(taskwarrior_json)
+    
+    # Create TaskOutputDTO from the parsed data
+    task = TaskOutputDTO(**data[0])
+    
+    # Verify all fields are correctly parsed
+    assert task.index == 1  # The 'id' field maps to the 'index' field
+    assert task.description == "toto"
+    assert task.entry.isoformat() == "2026-01-03T21:10:28+00:00"
+    assert task.modified.isoformat() == "2026-01-03T21:10:28+00:00"
+    assert task.status == TaskStatus.PENDING
+    assert str(task.uuid) == "a17d5011-0720-4311-83f1-c4eee7915415"
+    
+    # Verify serialization back to JSON uses 'id' key
+    dumped = task.model_dump(by_alias=True)
+    assert dumped["id"] == 1
+    assert dumped["description"] == "toto"
+    assert dumped["uuid"] == task.uuid
+    assert dumped["status"] == TaskStatus.PENDING
