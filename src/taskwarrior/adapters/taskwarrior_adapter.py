@@ -2,11 +2,9 @@ import json
 import logging
 import subprocess
 import shlex
-from typing import List, Optional, Union
 from uuid import UUID
 
 from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
-from ..task import TaskInternal
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 
 logger = logging.getLogger(__name__)
@@ -21,11 +19,11 @@ DEFAULT_OPTIONS = [
 class TaskWarriorAdapter:
     """Adapter for TaskWarrior CLI commands."""
 
-    def __init__(self, task_cmd: str = "task", taskrc_path: Optional[str] = None):
+    def __init__(self, task_cmd: str = "task", taskrc_path: str | None = None):
         self.task_cmd = task_cmd
         self.taskrc_path = taskrc_path
 
-    def _run_task_command(self, args: List[str]) -> subprocess.CompletedProcess:
+    def _run_task_command(self, args: list[str]) -> subprocess.CompletedProcess:
         """Run a taskwarrior command."""
         # Prepend the taskrc path to all commands
         cmd = [self.task_cmd]
@@ -70,7 +68,7 @@ class TaskWarriorAdapter:
         except subprocess.CalledProcessError:
             return False
 
-    def _build_args(self, task: TaskInternal) -> List[str]:
+    def _build_args(self, task: TaskInputDTO) -> list[str]:
         """Build command arguments for a task."""
         args = []
 
@@ -154,10 +152,8 @@ class TaskWarriorAdapter:
             if value and not self._validate_date_string(value):
                 raise TaskValidationError(f"Invalid date format for {field}: {value}")
 
-        # Convert UUID to string
-        task.uuid = str(task.uuid)
         args = self._build_args(task)
-        result = self._run_task_command([str(task.uuid), "modify"] + args)
+        result = self._run_task_command([str(task_id_or_uuid), "modify"] + args)
 
         if result.returncode != 0:
             error_msg = f"Failed to modify task: {result.stderr}"
@@ -209,7 +205,7 @@ class TaskWarriorAdapter:
         logger.warning(error_msg)
         raise TaskNotFound(error_msg)
 
-    def get_tasks(self, filter_args: List[str] = None) -> List[TaskOutputDTO]:
+    def get_tasks(self, filter_args: list[str] = None) -> list[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         logger.debug(f"Getting tasks with filters: {filter_args}")
 
@@ -270,7 +266,7 @@ class TaskWarriorAdapter:
         )
         return self.get_task(task_id_or_uuid)
 
-    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> List[TaskOutputDTO]:
+    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task."""
         # Convert to string for CLI command
         task_id_or_uuid = str(task_id_or_uuid)
