@@ -240,9 +240,9 @@ def test_task_output_to_input_conversion_comprehensive():
     assert input_task.priority == Priority.HIGH
     assert input_task.project == "TestProject"
     assert input_task.tags == ["tag1", "tag2"]
-    assert input_task.due == "2024-01-01T00:00:00Z"
-    assert input_task.scheduled == "2023-12-31T00:00:00Z"
-    assert input_task.wait == "2023-12-30T00:00:00Z"
+    assert input_task.due == "2024-01-01T00:00:00+00:00"
+    assert input_task.scheduled == "2023-12-31T00:00:00+00:00"
+    assert input_task.wait == "2023-12-30T00:00:00+00:00"
     assert input_task.recur == RecurrencePeriod.WEEKLY
     # UUID should be excluded
     assert not hasattr(input_task, "uuid")

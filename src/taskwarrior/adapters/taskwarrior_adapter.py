@@ -6,13 +6,14 @@ from uuid import UUID
 
 from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
+from ..enums import TaskStatus
 
 logger = logging.getLogger(__name__)
 
 # Default options that are always passed to taskwarrior commands
 DEFAULT_OPTIONS = [
     "rc.confirmation=off",  # Avoid silent user confirmation on stdin
-    "rc.bulk=0"
+    "rc.bulk=0",
 ]
 
 
@@ -62,7 +63,7 @@ class TaskWarriorAdapter:
                 [self.task_cmd, "calc", date_str],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             return True
         except subprocess.CalledProcessError:
@@ -117,7 +118,7 @@ class TaskWarriorAdapter:
             raise TaskValidationError("Task description cannot be empty")
 
         # Validate date fields if provided
-        date_fields = ['due', 'scheduled', 'wait', 'until']
+        date_fields = ["due", "scheduled", "wait", "until"]
         for field in date_fields:
             value = getattr(task, field)
             if value and not self._validate_date_string(value):
@@ -141,12 +142,14 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully added task with UUID: {tasks[0].uuid}")
         return tasks[0]
 
-    def modify_task(self, task: TaskInputDTO, task_id_or_uuid: str | int| UUID) -> TaskOutputDTO:
+    def modify_task(
+        self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID
+    ) -> TaskOutputDTO:
         """Modify an existing task."""
         logger.info(f"Modifying task with UUID: {task_id_or_uuid}")
 
         # Validate date fields if provided
-        date_fields = ['due', 'scheduled', 'wait', 'until']
+        date_fields = ["due", "scheduled", "wait", "until"]
         for field in date_fields:
             value = getattr(task, field)
             if value and not self._validate_date_string(value):
@@ -183,7 +186,9 @@ class TaskWarriorAdapter:
                     return task
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
-                raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
+                raise TaskNotFound(
+                    f"Invalid response from TaskWarrior: {result.stdout}"
+                )
 
         # If that fails, check if it's a deleted task
         try:
@@ -237,7 +242,9 @@ class TaskWarriorAdapter:
 
         try:
             tasks_data = json.loads(result.stdout)
-            tasks = [TaskOutputDTO.model_validate(task_data) for task_data in tasks_data]
+            tasks = [
+                TaskOutputDTO.model_validate(task_data) for task_data in tasks_data
+            ]
             logger.debug(f"Retrieved {len(tasks)} tasks")
             return tasks
         except json.JSONDecodeError as e:
@@ -251,7 +258,9 @@ class TaskWarriorAdapter:
         logger.debug(f"Getting recurring task with UUID: {task_id_or_uuid}")
 
         # Get the parent recurring task
-        result = self._run_task_command([str(task_id_or_uuid), "status:recurring", "export"])
+        result = self._run_task_command(
+            [str(task_id_or_uuid), "status:" + TaskStatus.RECURRING, "export"]
+        )
 
         if result.returncode == 0:
             tasks_data = json.loads(result.stdout)
@@ -266,7 +275,9 @@ class TaskWarriorAdapter:
         )
         return self.get_task(task_id_or_uuid)
 
-    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> list[TaskOutputDTO]:
+    def get_recurring_instances(
+        self, task_id_or_uuid: str | int | UUID
+    ) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task."""
         # Convert to string for CLI command
         task_id_or_uuid = str(task_id_or_uuid)
@@ -293,7 +304,9 @@ class TaskWarriorAdapter:
 
         try:
             tasks_data = json.loads(result.stdout)
-            tasks = [TaskOutputDTO.model_validate(task_data) for task_data in tasks_data]
+            tasks = [
+                TaskOutputDTO.model_validate(task_data) for task_data in tasks_data
+            ]
             logger.debug(f"Retrieved {len(tasks)} recurring instances")
             return tasks
         except json.JSONDecodeError as e:
@@ -415,18 +428,18 @@ class TaskWarriorAdapter:
         info = {
             "task_cmd": self.task_cmd,
             "taskrc_path": self.taskrc_path,
-            "default_options": DEFAULT_OPTIONS
+            "default_options": DEFAULT_OPTIONS,
         }
-        
+
         # Get version
         try:
             version_result = self._run_task_command(["--version"])
             if version_result.returncode == 0 and version_result.stdout:
-                version_line = version_result.stdout.strip().split('\n')[0]
+                version_line = version_result.stdout.strip().split("\n")[0]
                 parts = version_line.split()
                 if len(parts) >= 2:
                     info["version"] = parts[1]
         except Exception:
             info["version"] = "unknown"
-        
+
         return info

@@ -1,25 +1,27 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 from uuid import UUID
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .enums import TaskStatus
+
 logger = logging.getLogger(__name__)
 
 
 class TaskWarrior:
     """A Python API wrapper for TaskWarrior, interacting via CLI commands."""
 
-    def __init__(self, task_cmd: str = "task", taskrc_path: Optional[str] = None):
+    def __init__(self, task_cmd: str = "task", taskrc_path: str | None = None):
         self.adapter = TaskWarriorAdapter(task_cmd, taskrc_path)
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Add a new task."""
         return self.adapter.add_task(task)
 
-    def modify_task(self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
+    def modify_task(
+        self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID
+    ) -> TaskOutputDTO:
         """Modify an existing task."""
         # Set the UUID on the task object
         return self.adapter.modify_task(task, task_id_or_uuid)
@@ -28,7 +30,13 @@ class TaskWarrior:
         """Retrieve a task by ID or UUID."""
         return self.adapter.get_task(task_id_or_uuid)
 
-    def get_tasks(self, filter_args: list[str] = ['status.not:' + TaskStatus.DELETED, 'status.not:' + TaskStatus.COMPLETED]) -> list[TaskOutputDTO]:
+    def get_tasks(
+        self,
+        filter_args: list[str] = [
+            "status.not:" + TaskStatus.DELETED,
+            "status.not:" + TaskStatus.COMPLETED,
+        ],
+    ) -> list[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         return self.adapter.get_tasks(filter_args)
 
@@ -36,7 +44,9 @@ class TaskWarrior:
         """Get the recurring task (parent) by its UUID."""
         return self.adapter.get_recurring_task(task_id_or_uuid)
 
-    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> List[TaskOutputDTO]:
+    def get_recurring_instances(
+        self, task_id_or_uuid: str | int | UUID
+    ) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task."""
         return self.adapter.get_recurring_instances(task_id_or_uuid)
 
@@ -83,5 +93,10 @@ class TaskWarrior:
 
 def task_output_to_input(task_output: TaskOutputDTO) -> TaskInputDTO:
     """Convert TaskOutputDTO to TaskInputDTO for modification."""
-    data = task_output.model_dump(exclude={'uuid'})
+    data = task_output.model_dump(exclude={"uuid"})
+    # Convert datetime fields to strings as required by TaskInputDTO
+    datetime_fields = ["due", "scheduled", "wait", "until"]
+    for field in datetime_fields:
+        if field in data and data[field] is not None:
+            data[field] = data[field].isoformat()
     return TaskInputDTO(**data)
