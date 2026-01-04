@@ -1,4 +1,4 @@
-# tests/test_dto.py
+from __future__ import annotations
 
 import pytest
 from datetime import datetime
@@ -273,7 +273,6 @@ def test_task_output_dto_from_taskwarrior_json_export():
     
     # Verify serialization back to JSON uses 'id' key
     dumped = task.model_dump(by_alias=True)
-    #dumped = task.model_dump()
     assert dumped["id"] == 1
     assert dumped["description"] == "toto"
     assert dumped["uuid"] == task.uuid
