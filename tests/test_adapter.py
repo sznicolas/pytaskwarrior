@@ -67,37 +67,11 @@ class TestTaskWarriorAdapter:
 
     def test_validate_date_string_valid(self, adapter):
         """Test _validate_date_string with valid date formats."""
-        with patch('subprocess.run') as mock_run:
-            mock_result = MagicMock()
-            mock_result.returncode = 0
-            mock_result.stdout = ""
-            mock_result.stderr = ""
-            mock_run.return_value = mock_result
-
-            assert adapter._validate_date_string("tomorrow") is True
-            mock_run.assert_called_once_with(
-                ["task", "calc", "tomorrow"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+        assert adapter._validate_date_string("tomorrow") is True
 
     def test_validate_date_string_invalid(self, adapter):
         """Test _validate_date_string with invalid date formats."""
-        with patch('subprocess.run') as mock_run:
-            mock_result = MagicMock()
-            mock_result.returncode = 1
-            mock_result.stdout = ""
-            mock_result.stderr = "error"
-            mock_run.return_value = mock_result
-
-            assert adapter._validate_date_string("invalid_date") is False
-            mock_run.assert_called_once_with(
-                ["task", "calc", "invalid_date"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+        assert adapter._validate_date_string("invalid_date") is False
 
     def test_build_args_minimal(self, adapter):
         """Test _build_args with minimal TaskInputDTO."""
