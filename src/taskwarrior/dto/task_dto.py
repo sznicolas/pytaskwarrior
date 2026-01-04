@@ -135,6 +135,7 @@ class TaskOutputDTO(BaseModel):
     model_config = ConfigDict(
         use_enum_values=True,
         validate_assignment=True,
+        populate_by_name=True,
         json_schema_extra={
             "examples": [
                 {"description": "a task"},

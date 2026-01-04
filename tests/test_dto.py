@@ -52,7 +52,7 @@ def test_task_output_dto_creation():
     task_uuid = uuid4()
     task = TaskOutputDTO(
         description="Test task",
-        id=1,
+        index=1,
         uuid=task_uuid,
         status=TaskStatus.PENDING,
         priority=Priority.HIGH,
@@ -151,7 +151,7 @@ def test_task_output_dto_model_dump():
     
     dumped = task.model_dump()
     assert dumped["description"] == "Test task"
-    assert dumped["index"] == 1
+    assert dumped["id"] == 1
     assert dumped["uuid"] == task_uuid
     assert dumped["status"] == TaskStatus.PENDING
     assert dumped["priority"] == Priority.HIGH
@@ -162,7 +162,7 @@ def test_task_output_to_input_conversion():
     task_uuid = uuid4()
     output_task = TaskOutputDTO(
         description="Test task",
-        id=1,
+        index=1,
         uuid=task_uuid,
         status=TaskStatus.PENDING,
         priority=Priority.HIGH,
