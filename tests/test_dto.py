@@ -94,7 +94,7 @@ def test_task_output_dto_datetime_parsing():
     # Test standard ISO format
     task = TaskOutputDTO(
         description="Test",
-        id=1,
+        index=1,
         uuid=uuid4(),
         status=TaskStatus.PENDING,
         entry="2023-12-28T00:00:00Z",
@@ -110,7 +110,7 @@ def test_task_output_dto_compact_datetime_parsing():
     # Test compact format (20260101T193139Z)
     task = TaskOutputDTO(
         description="Test",
-        id=1,
+        index=1,
         uuid=uuid4(),
         status=TaskStatus.PENDING,
         entry="20260101T193139Z",
@@ -143,13 +143,13 @@ def test_task_output_dto_model_dump():
     task_uuid = uuid4()
     task = TaskOutputDTO(
         description="Test task",
-        id=1,
+        index=1,
         uuid=task_uuid,
         status=TaskStatus.PENDING,
         priority=Priority.HIGH
     )
     
-    dumped = task.model_dump()
+    dumped = task.model_dump(by_alias=True)
     assert dumped["description"] == "Test task"
     assert dumped["id"] == 1
     assert dumped["uuid"] == task_uuid
