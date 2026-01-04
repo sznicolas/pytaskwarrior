@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from src.taskwarrior.dto.task_dto import TaskInputDTO, TaskOutputDTO
 from src.taskwarrior.enums import Priority, TaskStatus, RecurrencePeriod
