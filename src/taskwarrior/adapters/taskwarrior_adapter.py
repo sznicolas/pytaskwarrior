@@ -60,12 +60,12 @@ class TaskWarriorAdapter:
         """Validate a date string using TaskWarrior's calc command."""
         try:
             result = subprocess.run(
-                [self.task_cmd, "calc", date_str],
+                [self.task_cmd, "calc", date_str, "+ P1D"],
                 capture_output=True,
                 text=True,
                 check=True,
             )
-            return True
+            return result.stdout.strip() != date_str.strip() + "P1D"
         except subprocess.CalledProcessError:
             return False
 
