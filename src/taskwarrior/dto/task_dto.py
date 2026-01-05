@@ -46,6 +46,7 @@ class TaskInputDTO(BaseModel):
 
     model_config = ConfigDict(
         use_enum_values=True,
+        extra='forbid',
         validate_assignment=True,
         json_schema_extra={
             "examples": [
@@ -131,6 +132,7 @@ class TaskOutputDTO(BaseModel):
         use_enum_values=True,
         validate_assignment=True,
         populate_by_name=True,
+        extra='forbid',
         json_schema_extra={
             "examples": [
                 {"description": "a task"},

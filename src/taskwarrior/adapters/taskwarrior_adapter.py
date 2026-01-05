@@ -37,12 +37,13 @@ class TaskWarriorAdapter:
 
         self._options.extend(DEFAULT_OPTIONS)
 
-    def _run_task_command(self, args: list[str]) -> subprocess.CompletedProcess:
+    def _run_task_command(self, args: list[str], no_opt=False) -> subprocess.CompletedProcess:
         """Run a taskwarrior command."""
         # Prepend the taskrc path to all commands
         cmd = [self.task_cmd]
         cmd.extend(args)
-        cmd.extend(DEFAULT_OPTIONS)
+        if not no_opt:
+            cmd.extend(self._options)
         logger.debug(f"Running command: {' '.join(cmd)}")
 
         try:
@@ -477,18 +478,15 @@ class TaskWarriorAdapter:
         info = {
             "task_cmd": self.task_cmd,
             "taskrc_path": self.taskrc_path,
-            "default_options": DEFAULT_OPTIONS,
+            "options": self._options,
         }
 
         # Get version
         try:
-            version_result = self._run_task_command(["--version"])
+            version_result = self._run_task_command(["--version"], no_opt=True)
             if version_result.returncode == 0 and version_result.stdout:
-                version_line = version_result.stdout.strip().split("\n")[0]
-                parts = version_line.split()
-                if len(parts) >= 2:
-                    info["version"] = parts[1]
+                version = version_result.stdout.strip()
+                info["version"] = version
         except Exception:
             info["version"] = "unknown"
-
         return info

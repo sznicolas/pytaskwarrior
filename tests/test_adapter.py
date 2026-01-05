@@ -52,7 +52,6 @@ class TestTaskWarriorAdapter:
         """Test _build_args with minimal TaskInputDTO."""
         task = TaskInputDTO(description="Minimal task")
         args = adapter._build_args(task)
-        print("*** ", args)
 
         assert "description='Minimal task'" in args
         assert len(args) == 1
@@ -289,7 +288,7 @@ class TestTaskWarriorAdapter:
 
         assert "task_cmd" in info
         assert "taskrc_path" in info
-        assert "default_options" in info
+        assert "options" in info
 
     # New tests added below:
 
@@ -467,9 +466,7 @@ class TestTaskWarriorAdapter:
         )
 
         added_task = adapter.add_task(task)
-        print("------ ", added_task)
         input_task = task_output_to_input(added_task)
-        print("****** ", input_task)
 
         assert input_task.description == "Test task"
         assert input_task.priority == Priority.HIGH
@@ -500,7 +497,7 @@ class TestTaskWarriorAdapter:
         # Other fields should be None or default
         assert input_task.priority is None
         assert input_task.project is None
-        assert input_task.tags is None
+        assert input_task.tags == []
 
     def test_get_info_comprehensive(self, adapter: TaskWarriorAdapter):
         """Test get_info with comprehensive information retrieval."""
@@ -508,13 +505,13 @@ class TestTaskWarriorAdapter:
 
         assert "task_cmd" in info
         assert "taskrc_path" in info
-        assert "default_options" in info
+        assert "options" in info
         assert "version" in info
 
         # Verify types
         assert isinstance(info["task_cmd"], str)
         assert isinstance(info["taskrc_path"], (str, type(None)))
-        assert isinstance(info["default_options"], list)
+        assert isinstance(info["options"], list)
         assert isinstance(info["version"], str)
 
     def test_get_info_with_custom_params(self, taskwarrior_config: str):
