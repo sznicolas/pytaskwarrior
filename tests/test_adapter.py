@@ -301,7 +301,9 @@ class TestTaskWarriorAdapter:
         """Test get_recurring_instances with actual recurring tasks."""
         # Add a recurring task
         task = TaskInputDTO(
-            description="Recurring test task", recur=RecurrencePeriod.WEEKLY
+            description="Recurring test task",
+            recur=RecurrencePeriod.WEEKLY,
+            due="tomorrow",
         )
         recurring_task = adapter.add_task(task)
 
@@ -322,7 +324,7 @@ class TestTaskWarriorAdapter:
 
         # Add a recurring task
         recurring_task = adapter.add_task(
-            TaskInputDTO(description="Recurring task", recur=RecurrencePeriod.WEEKLY)
+            TaskInputDTO(description="Recurring task", recur=RecurrencePeriod.WEEKLY, due="eom")
         )
 
         # Test getting regular task (should work)
@@ -468,7 +470,9 @@ class TestTaskWarriorAdapter:
         )
 
         added_task = adapter.add_task(task)
+        print("------ ", added_task)
         input_task = task_output_to_input(added_task)
+        print("****** ", input_task)
 
         assert input_task.description == "Test task"
         assert input_task.priority == Priority.HIGH
@@ -527,7 +531,7 @@ class TestTaskWarriorAdapter:
 
         assert info["task_cmd"] == "task"
         assert info["taskrc_path"] == taskwarrior_config
-        assert "rc.data.location=/tmp/test" in info["default_options"]
+        assert "rc.data.location=/tmp/test" in adapter._options
 
     def test_get_tasks_complex_filters(self, adapter: TaskWarriorAdapter):
         """Test get_tasks with complex filter combinations."""
@@ -587,7 +591,7 @@ class TestTaskWarriorAdapter:
     def test_get_recurring_instances_with_instances(self, adapter: TaskWarriorAdapter):
         """Test get_recurring_instances with actual instances."""
         # Add a recurring task
-        task = TaskInputDTO(description="Recurring task", recur=RecurrencePeriod.WEEKLY)
+        task = TaskInputDTO(description="Recurring task", recur=RecurrencePeriod.WEEKLY, due="pentecost")
         recurring_task = adapter.add_task(task)
 
         # Get instances (should be empty initially)

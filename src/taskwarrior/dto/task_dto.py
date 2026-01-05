@@ -43,9 +43,6 @@ class TaskInputDTO(BaseModel):
     until: str | None = Field(
         default=None, description="Expiration date for recurring tasks (ISO format)"
     )
-    context: str | None = Field(
-        default=None, description="Context filter for the task"
-    )
 
     model_config = ConfigDict(
         use_enum_values=True,
@@ -128,9 +125,6 @@ class TaskOutputDTO(BaseModel):
     )
     until: datetime | None = Field(
         default=None, description="Expiration date for recurring tasks (ISO format)"
-    )
-    context: str | None = Field(
-        default=None, description="Context filter for the task"
     )
 
     model_config = ConfigDict(
