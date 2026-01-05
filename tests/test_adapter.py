@@ -38,7 +38,6 @@ class TestTaskWarriorAdapter:
             wait="2023-12-29T00:00:00Z",
             until="2024-12-31T23:59:59Z",
             recur=RecurrencePeriod.WEEKLY,
-            context="test_context",
         )
 
     def test_validate_date_string_valid(self, adapter: TaskWarriorAdapter):
@@ -73,7 +72,6 @@ class TestTaskWarriorAdapter:
         assert "wait=2023-12-29T00:00:00Z" in args
         assert "until=2024-12-31T23:59:59Z" in args
         assert "recur=weekly" in args
-        assert "context=test_context" in args
 
     def test_build_args_tags_handling(self, adapter: TaskWarriorAdapter):
         """Test _build_args with tags handling."""
@@ -466,7 +464,6 @@ class TestTaskWarriorAdapter:
             wait="2026-01-10T12:30:45Z",
             until="2027-01-01T00:00:00Z",
             recur=RecurrencePeriod.WEEKLY,
-            context="test_context",
         )
 
         added_task = adapter.add_task(task)
@@ -483,7 +480,6 @@ class TestTaskWarriorAdapter:
         assert input_task.wait == "2026-01-10T12:30:45+00:00"
         assert input_task.until == "2027-01-01T00:00:00+00:00"
         assert input_task.recur == RecurrencePeriod.WEEKLY
-        assert input_task.context == "test_context"
         # UUID should not be present
         assert not hasattr(input_task, "uuid")
 
