@@ -105,7 +105,8 @@ class TaskWarrior:
 
 def task_output_to_input(task_output: TaskOutputDTO) -> TaskInputDTO:
     """Convert TaskOutputDTO to TaskInputDTO for modification."""
-    data = task_output.model_dump(exclude={"uuid"})
+    #data = task_output.model_dump(exclude={"uuid"})
+    data = task_output.model_dump(exclude={"uuid", "id", "entry", "start", "end", "modified"})
     # Convert datetime fields to strings as required by TaskInputDTO
     datetime_fields = ["due", "scheduled", "wait", "until"]
     for field in datetime_fields:
