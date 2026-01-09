@@ -43,6 +43,15 @@ class TaskInputDTO(BaseModel):
     until: str | None = Field(
         default=None, description="Expiration date for recurring tasks (ISO format)"
     )
+    annotations: list[str] = Field(
+        default_factory=list, description="List of annotations for the task"
+    )
+    imask: str | None = Field(
+        default=None, description="Mask for recurring tasks"
+    )
+    rtype: str | None = Field(
+        default=None, description="Type of recurring task"
+    )
 
     model_config = ConfigDict(
         use_enum_values=True,
@@ -129,6 +138,15 @@ class TaskOutputDTO(BaseModel):
     )
     urgency: float | None = Field(
         default=None, description="Task urgency score"
+    )
+    annotations: list[str] = Field(
+        default_factory=list, description="List of annotations for the task"
+    )
+    imask: str | None = Field(
+        default=None, description="Mask for recurring tasks"
+    )
+    rtype: str | None = Field(
+        default=None, description="Type of recurring task"
     )
 
     model_config = ConfigDict(
