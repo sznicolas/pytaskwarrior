@@ -87,6 +87,9 @@ class TaskWarriorAdapter:
                     args.append(f"tags={shlex.quote(str(value))}")
             elif field_name == "depends" and value:
                 args.extend([f"depends+={shlex.quote(str(dep))}" for dep in value])
+            elif field_name == "annotations" and value:
+                # Handle annotations - they are added separately via annotate command
+                pass
             else:
                 # Handle all other fields with proper quoting
                 if isinstance(value, (list, tuple)):
@@ -123,6 +126,11 @@ class TaskWarriorAdapter:
             error_msg = "Failed to retrieve added task"
             logger.error(error_msg)
             raise RuntimeError(error_msg)
+
+        # Add annotations if any
+        if task.annotations:
+            for annotation in task.annotations:
+                self.annotate_task(tasks[0].uuid, annotation)
 
         logger.info(f"Successfully added task with UUID: {tasks[0].uuid}")
         return tasks[0]
