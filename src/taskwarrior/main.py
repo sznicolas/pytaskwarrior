@@ -102,6 +102,13 @@ class TaskWarrior:
         """Get comprehensive TaskWarrior information."""
         return self.adapter.get_info()
 
+    def task_calc(self, date_str) -> str:
+        """Calculate a TaskWarrior date string and return the result."""
+        return self.adapter.task_calc(date_str)
+
+    def date_validator(self, date_str) -> str:
+        """Validate TaskWarrior date string format."""
+        return self.adapter.task_date_validator(date_str)
 
 def task_output_to_input(task_output: TaskOutputDTO) -> TaskInputDTO:
     """Convert TaskOutputDTO to TaskInputDTO for modification."""

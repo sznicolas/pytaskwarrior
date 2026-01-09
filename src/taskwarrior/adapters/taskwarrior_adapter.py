@@ -37,7 +37,9 @@ class TaskWarriorAdapter:
 
         self._options.extend(DEFAULT_OPTIONS)
 
-    def _run_task_command(self, args: list[str], no_opt=False) -> subprocess.CompletedProcess:
+    def _run_task_command(
+        self, args: list[str], no_opt=False
+    ) -> subprocess.CompletedProcess:
         """Run a taskwarrior command."""
         # Prepend the taskrc path to all commands
         cmd = [self.task_cmd]
@@ -68,58 +70,36 @@ class TaskWarriorAdapter:
             logger.error(f"Exception while running task command: {e}")
             raise
 
-    def _validate_date_string(self, date_str: str) -> bool:
-        """Validate a date string using TaskWarrior's calc command."""
-        try:
-            result = subprocess.run(
-                [self.task_cmd, "calc", date_str, "+ P1D"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            return result.stdout.strip() != date_str.strip() + "P1D"
-        except subprocess.CalledProcessError:
-            return False
-
     def _build_args(self, task: TaskInputDTO) -> list[str]:
         """Build command arguments for a task."""
         args = []
 
-        # Add all fields that are not None
+        # Process all fields except UUID
         for field_name, value in task.model_dump(exclude_unset=True).items():
             if field_name == "uuid":
                 continue
-            elif field_name == "tags" and value:
-                # Handle tags correctly - use proper TaskWarrior syntax
+
+            # Handle special cases
+            if field_name == "tags" and value:
                 if isinstance(value, list):
                     args.append(f"tags={','.join(shlex.quote(str(v)) for v in value)}")
-                elif isinstance(value, str):
-                    # If it's already a string (comma-separated), use as-is
-                    args.append(f"tags={value}")
                 else:
-                    # For other types, convert to string and quote
                     args.append(f"tags={shlex.quote(str(value))}")
             elif field_name == "depends" and value:
                 args.extend([f"depends+={shlex.quote(str(dep))}" for dep in value])
             else:
+                # Handle all other fields with proper quoting
                 if isinstance(value, (list, tuple)):
-                    # For lists that aren't tags, join them properly and quote each element
-                    if field_name == "tags":
-                        args.append(
-                            f"tags={','.join(shlex.quote(str(v)) for v in value)}"
-                        )
-                    else:
-                        args.append(
-                            f"{field_name}={','.join(shlex.quote(str(v)) for v in value)}"
-                        )
+                    str_value = ",".join(shlex.quote(str(v)) for v in value)
                 elif isinstance(value, UUID):
-                    args.append(f"{field_name}={shlex.quote(str(value))}")
+                    str_value = shlex.quote(str(value))
                 else:
-                    # Convert to string for other types and quote
-                    str_value = str(value)
-                    args.append(f"{field_name}={shlex.quote(str_value)}")
+                    str_value = shlex.quote(str(value))
+
+                args.append(f"{field_name}={str_value}")
 
         logger.debug(f"Built arguments: {args}")
+
         return args
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
@@ -128,13 +108,6 @@ class TaskWarriorAdapter:
 
         if not task.description.strip():
             raise TaskValidationError("Task description cannot be empty")
-
-        # Validate date fields if provided
-        date_fields = ["due", "scheduled", "wait", "until"]
-        for field in date_fields:
-            value = getattr(task, field)
-            if value and not self._validate_date_string(value):
-                raise TaskValidationError(f"Invalid date format for {field}: {value}")
 
         args = self._build_args(task)
         result = self._run_task_command(["add"] + args)
@@ -159,13 +132,6 @@ class TaskWarriorAdapter:
     ) -> TaskOutputDTO:
         """Modify an existing task."""
         logger.info(f"Modifying task with UUID: {task_id_or_uuid}")
-
-        # Validate date fields if provided
-        date_fields = ["due", "scheduled", "wait", "until"]
-        for field in date_fields:
-            value = getattr(task, field)
-            if value and not self._validate_date_string(value):
-                raise TaskValidationError(f"Invalid date format for {field}: {value}")
 
         args = self._build_args(task)
         result = self._run_task_command([str(task_id_or_uuid), "modify"] + args)
@@ -421,14 +387,18 @@ class TaskWarriorAdapter:
         # Use context define command to create a new context
         result = self._run_task_command(["context", "define", context, filter_str])
         if result.returncode != 0:
-            raise TaskWarriorError(f"Failed to define context '{context}': {result.stderr}")
+            raise TaskWarriorError(
+                f"Failed to define context '{context}': {result.stderr}"
+            )
 
     def apply_context(self, context: str) -> None:
         """Apply a context (set it as current)."""
         # Use context command with the context name to apply it
         result = self._run_task_command(["context", context])
         if result.returncode != 0:
-            raise TaskWarriorError(f"Failed to apply context '{context}': {result.stderr}")
+            raise TaskWarriorError(
+                f"Failed to apply context '{context}': {result.stderr}"
+            )
 
     def remove_context(self) -> None:
         """Remove the current context (set to none)."""
@@ -442,10 +412,10 @@ class TaskWarriorAdapter:
         result = self._run_task_command(["context", "list"])
         if result.returncode != 0:
             raise TaskWarriorError(f"Failed to list contexts: {result.stderr}")
-        
+
         # Parse the output to extract context names and filters
         contexts = {}
-        lines = result.stdout.strip().split('\n')
+        lines = result.stdout.strip().split("\n")
         if len(lines) > 2:  # Skip header lines
             for line in lines[2:]:  # Skip "Context Filter" and empty line
                 if line.strip():
@@ -460,10 +430,13 @@ class TaskWarriorAdapter:
         result = self._run_task_command(["context", "show"])
         if result.returncode != 0:
             # If no context is set, stderr might contain an error
-            if "No current context" in result.stderr or "context not set" in result.stderr.lower():
+            if (
+                "No current context" in result.stderr
+                or "context not set" in result.stderr.lower()
+            ):
                 return None
             raise TaskWarriorError(f"Failed to show context: {result.stderr}")
-        
+
         context_name = result.stdout.strip()
         return context_name if context_name else None
 
@@ -471,7 +444,9 @@ class TaskWarriorAdapter:
         """Delete a defined context."""
         result = self._run_task_command(["context", "delete", context])
         if result.returncode != 0:
-            raise TaskWarriorError(f"Failed to delete context '{context}': {result.stderr}")
+            raise TaskWarriorError(
+                f"Failed to delete context '{context}': {result.stderr}"
+            )
 
     def get_info(self) -> dict:
         """Get comprehensive TaskWarrior information."""
@@ -490,3 +465,30 @@ class TaskWarriorAdapter:
         except Exception:
             info["version"] = "unknown"
         return info
+
+    def task_calc(self, date_str: str) -> str:
+        """Calculate a TaskWarrior date string and return the result.
+
+        This method calculates the actual date/time for a TaskWarrior date expression
+        and returns the calculated value."""
+        try:
+            result = self._run_task_command(["calc"] + date_str)
+            return result.stdout.strip()
+        except Exception as e:
+            raise TaskWarriorError(f"Failed to calculate date '{date_str}': {str(e)}")
+
+    def task_date_validator(self, date_str: str) -> bool:
+        """Validate TaskWarrior date string format.
+
+        This utility method is provided for developers who need to validate
+        TaskWarrior date formats before creating tasks. It's not used internally
+        by the adapter.
+
+        Returns:
+            True if valid TaskWarrior date format, False otherwise
+        """
+        try:
+            result = self._run_task_command(["calc"] + date_str + "+ P1D")
+            return result.stdout.strip() != date_str.strip() + "P1D"
+        except subprocess.CalledProcessError:
+            return False
