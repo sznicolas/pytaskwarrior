@@ -133,7 +133,7 @@ class TaskOutputDTO(BaseModel):
     urgency: float | None = Field(
         default=None, description="Task urgency score"
     )
-    annotations: list[str] = Field(
+    annotations: list[AnnotationDTO] = Field(
         default_factory=list, description="List of annotations for the task"
     )
     imask: str | None = Field(
