@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..enums import TaskStatus, Priority, RecurrencePeriod
 from ..exceptions import TaskValidationError
+from .annotation_dto import AnnotationDTO
 
 
 class TaskInputDTO(BaseModel):
