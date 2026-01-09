@@ -127,6 +127,9 @@ class TaskOutputDTO(BaseModel):
     until: datetime | None = Field(
         default=None, description="Expiration date for recurring tasks (ISO format)"
     )
+    urgency: float | None = Field(
+        default=None, description="Task urgency score"
+    )
 
     model_config = ConfigDict(
         use_enum_values=True,
