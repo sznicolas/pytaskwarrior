@@ -421,7 +421,7 @@ class TaskWarriorAdapter:
         result = self._run_task_command(["context", "list"])
         if result.returncode != 0:
             raise TaskWarriorError(f"Failed to list contexts: {result.stderr}")
-
+        context = []
         # Parse the output to extract context names and filters
         lines = result.stdout.strip().split("\n")
         if len(lines) > 2:  # Skip header lines
