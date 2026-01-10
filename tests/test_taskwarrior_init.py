@@ -4,6 +4,7 @@ import pytest
 from uuid import uuid4
 
 from src.taskwarrior import TaskWarrior, TaskInputDTO, TaskOutputDTO
+from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from src.taskwarrior.enums import Priority, TaskStatus, RecurrencePeriod
 from src.taskwarrior.exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 
