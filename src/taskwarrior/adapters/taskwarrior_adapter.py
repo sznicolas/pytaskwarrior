@@ -6,6 +6,7 @@ from uuid import UUID
 
 from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
+from ..dto.context_dto import ContextDTO
 from ..enums import TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -433,11 +434,13 @@ class TaskWarriorAdapter:
                         contexts[context_name] = filter_str
         return contexts
 
-    def current_context(self) -> str | None:
+    def show_context(self) -> str | None:
         """Show the current context."""
         result = self._run_task_command(["_get", "rc.context"])
         if result.returncode != 0:
-            raise TaskWarriorError(f"Failed to show context: {result.stderr}")
+            # Check if it's because no context is set (command returns non-zero but that's expected)
+            # We should return None when no context is set
+            return None
         context_name = result.stdout.strip()
         return context_name if context_name else None
 

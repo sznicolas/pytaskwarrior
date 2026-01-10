@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
+from .dto.context_dto import ContextDTO
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .enums import TaskStatus
 
@@ -91,9 +92,10 @@ class TaskWarrior:
         """Remove the current context (set to none)."""
         return self.adapter.remove_context()
 
-    def list_contexts(self) -> dict[str, str]:
+    def list_contexts(self) -> list[ContextDTO]:
         """List all defined contexts."""
-        return self.adapter.list_contexts()
+        contexts_dict = self.adapter.list_contexts()
+        return [ContextDTO(name=name, filter=filter_str) for name, filter_str in contexts_dict.items()]
 
     def show_context(self) -> str | None:
         """Show the current context."""
