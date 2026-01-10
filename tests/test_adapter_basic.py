@@ -6,7 +6,6 @@ from uuid import uuid4
 
 import pytest
 
-from src import TaskStatus
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from src.taskwarrior.dto.task_dto import TaskInputDTO
 from src.taskwarrior.enums import Priority, RecurrencePeriod
