@@ -37,7 +37,7 @@ class TestTaskWarriorAdapterContext:
     def test_context_management_sequence(self, adapter: TaskWarriorAdapter):
         """Test sequence of context management operations."""
         # Set a context
-        adapter.set_context("test_context", "status:pending")
+        adapter.define_context("test_context", "status:pending")
 
         # Apply it
         adapter.apply_context("test_context")
@@ -46,32 +46,32 @@ class TestTaskWarriorAdapterContext:
         adapter.remove_context()
 
         # Verify no context is set
-        context = adapter.show_context()
+        context = adapter.current_context()
         assert context is None
 
     def test_context_management_comprehensive(self, adapter: TaskWarriorAdapter):
         """Test comprehensive context management."""
         # Test setting multiple contexts
-        adapter.set_context("context1", "status:pending")
-        adapter.set_context("context2", "status:completed")
+        adapter.define_context("context1", "status:pending")
+        adapter.define_context("context2", "status:completed")
 
         # List contexts
-        contexts = adapter.list_contexts()
+        contexts = adapter.get_contexts()
         assert isinstance(contexts, dict)
         assert "context1" in contexts
         assert "context2" in contexts
 
         # Apply one context
         adapter.apply_context("context1")
-        context = adapter.show_context()
+        context = adapter.current_context()
         assert context == "context1"
 
         # Remove context
         adapter.remove_context()
-        context = adapter.show_context()
+        context = adapter.current_context()
         assert context is None
 
         # Delete a context
         adapter.delete_context("context1")
-        contexts = adapter.list_contexts()
+        contexts = adapter.get_contexts()
         assert "context1" not in contexts

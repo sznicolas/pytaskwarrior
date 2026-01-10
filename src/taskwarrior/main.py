@@ -92,14 +92,14 @@ class TaskWarrior:
         """Remove the current context (set to none)."""
         return self.adapter.remove_context()
 
-    def list_contexts(self) -> list[ContextDTO]:
+    def get_contexts(self) -> list[ContextDTO]:
         """List all defined contexts."""
-        contexts_dict = self.adapter.list_contexts()
+        contexts_dict = self.adapter.get_contexts()
         return [ContextDTO(name=name, filter=filter_str) for name, filter_str in contexts_dict.items()]
 
-    def show_context(self) -> str | None:
+    def get_current_context(self) -> str | None:
         """Show the current context."""
-        return self.adapter.show_context()
+        return self.adapter.get_current_context()
 
     def delete_context(self, context: str) -> None:
         """Delete a defined context."""

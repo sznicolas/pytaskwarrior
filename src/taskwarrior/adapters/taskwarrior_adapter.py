@@ -416,14 +416,13 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             raise TaskWarriorError(f"Failed to remove context: {result.stderr}")
 
-    def list_contexts(self) -> dict[str, str]:
+    def get_contexts(self) -> list[ContextDTO]:
         """List all defined contexts."""
         result = self._run_task_command(["context", "list"])
         if result.returncode != 0:
             raise TaskWarriorError(f"Failed to list contexts: {result.stderr}")
 
         # Parse the output to extract context names and filters
-        contexts = {}
         lines = result.stdout.strip().split("\n")
         if len(lines) > 2:  # Skip header lines
             for line in lines[2:]:  # Skip "Context Filter" and empty line
@@ -431,10 +430,10 @@ class TaskWarriorAdapter:
                     parts = line.split(None, 1)  # Split on first whitespace
                     if len(parts) == 2:
                         context_name, filter_str = parts
-                        contexts[context_name] = filter_str
+                        contexts.append(ContextDTO(name=context_name, filter=filter_str))
         return contexts
 
-    def show_context(self) -> str | None:
+    def get_current_context(self) -> str | None:
         """Show the current context."""
         result = self._run_task_command(["_get", "rc.context"])
         if result.returncode != 0:

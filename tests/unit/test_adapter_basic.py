@@ -57,7 +57,7 @@ class TestTaskWarriorAdapterBasic:
         # ISO 8601 calculations
         assert adapter.task_calc("P1Y1M1DT1H1M1S + P2W") == "P410DT1H1M1S"
         assert adapter.task_calc(" P1Y - P52W - PT23H59M30S ") == "PT30S"
-        # Should work according to ISO8601
+        # Should work according to ISO8601 but fails for now
         assert adapter.task_calc(" P1Y - P52W - PT23H59M30.5S ") == "PT30.5S"
         # Bisextil year:
         assert adapter.task_calc("2028-02-27 + P2D") == "2028-02-29T00:00:00"
