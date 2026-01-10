@@ -5,6 +5,7 @@ from uuid import UUID
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.context_dto import ContextDTO
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
+from .services.context_service import ContextService
 from .enums import TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,12 @@ class TaskWarrior:
         taskrc_path: str | None = None,
         data_location: str | None = None,
     ):
-        self.adapter = TaskWarriorAdapter(task_cmd, taskrc_path)
+        self.adapter = TaskWarriorAdapter(
+            task_cmd=task_cmd,
+            taskrc_path=taskrc_path,
+            data_location=data_location
+        )
+        self.context_service = ContextService(self.adapter)
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Add a new task."""
@@ -82,28 +88,27 @@ class TaskWarrior:
 
     def set_context(self, context: str, filter_str: str) -> None:
         """Define a new context with the given filter."""
-        return self.adapter.set_context(context, filter_str)
+        self.context_service.create_context(context, filter_str)
 
     def apply_context(self, context: str) -> None:
         """Apply a context (set it as current)."""
-        return self.adapter.apply_context(context)
+        self.context_service.apply_context(context)
 
     def remove_context(self) -> None:
         """Remove the current context (set to none)."""
-        return self.adapter.remove_context()
+        self.context_service.remove_context()
 
     def get_contexts(self) -> list[ContextDTO]:
         """List all defined contexts."""
-        contexts_dict = self.adapter.get_contexts()
-        return [ContextDTO(name=name, filter=filter_str) for name, filter_str in contexts_dict.items()]
+        return self.context_service.get_contexts()
 
     def get_current_context(self) -> str | None:
         """Show the current context."""
-        return self.adapter.get_current_context()
+        return self.context_service.get_current_context()
 
     def delete_context(self, context: str) -> None:
         """Delete a defined context."""
-        return self.adapter.delete_context(context)
+        self.context_service.delete_context(context)
 
     def get_info(self) -> dict:
         """Get comprehensive TaskWarrior information."""
