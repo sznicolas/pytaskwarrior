@@ -12,7 +12,12 @@ logger = logging.getLogger(__name__)
 class TaskWarrior:
     """A Python API wrapper for TaskWarrior, interacting via CLI commands."""
 
-    def __init__(self, task_cmd: str = "task", taskrc_path: str | None = None, data_location: str | None = None):
+    def __init__(
+        self,
+        task_cmd: str = "task",
+        taskrc_path: str | None = None,
+        data_location: str | None = None,
+    ):
         self.adapter = TaskWarriorAdapter(task_cmd, taskrc_path)
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
@@ -110,10 +115,13 @@ class TaskWarrior:
         """Validate TaskWarrior date string format."""
         return self.adapter.task_date_validator(date_str)
 
+
 def task_output_to_input(task_output: TaskOutputDTO) -> TaskInputDTO:
     """Convert TaskOutputDTO to TaskInputDTO for modification."""
-    #data = task_output.model_dump(exclude={"uuid"})
-    data = task_output.model_dump(exclude={"uuid", "id", "entry", "start", "end", "modified"})
+    # data = task_output.model_dump(exclude={"uuid"})
+    data = task_output.model_dump(
+        exclude={"uuid", "entry", "start", "end", "modified", "index", "status", "urgency", "imask", "rtype"}
+    )
     # Convert datetime fields to strings as required by TaskInputDTO
     datetime_fields = ["due", "scheduled", "wait", "until"]
     for field in datetime_fields:

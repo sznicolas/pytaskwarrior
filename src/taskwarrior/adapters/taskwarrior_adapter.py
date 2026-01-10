@@ -58,16 +58,16 @@ class TaskWarriorAdapter:
 
             if result.returncode != 0:
                 logger.warning(
-                    f"Task command failed with return code {result.returncode}: {result.stderr}"
+                    f"Task '{cmd}' command failed with return code {result.returncode}: {result.stderr}"
                 )
 
             logger.debug(
-                f"Command result - stdout: {result.stdout[:100]}... stderr: {result.stderr[:100]}..."
+                f"Command '{cmd}' result - stdout: {result.stdout[:40]}... stderr: {result.stderr[:40]}..."
             )
             return result
 
         except Exception as e:
-            logger.error(f"Exception while running task command: {e}")
+            logger.error(f"Exception while running '{cmd}': {e}")
             raise
 
     def _build_args(self, task: TaskInputDTO) -> list[str]:
@@ -390,7 +390,7 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully annotated task with UUID: {uuid}")
 
-    def set_context(self, context: str, filter_str: str) -> None:
+    def define_context(self, context: str, filter_str: str) -> None:
         """Define a new context with the given filter."""
         # Use context define command to create a new context
         result = self._run_task_command(["context", "define", context, filter_str])
@@ -433,18 +433,11 @@ class TaskWarriorAdapter:
                         contexts[context_name] = filter_str
         return contexts
 
-    def show_context(self) -> str | None:
+    def current_context(self) -> str | None:
         """Show the current context."""
-        result = self._run_task_command(["context", "show"])
+        result = self._run_task_command(["_get", "rc.context"])
         if result.returncode != 0:
-            # If no context is set, stderr might contain an error
-            if (
-                "No current context" in result.stderr
-                or "context not set" in result.stderr.lower()
-            ):
-                return None
             raise TaskWarriorError(f"Failed to show context: {result.stderr}")
-
         context_name = result.stdout.strip()
         return context_name if context_name else None
 
@@ -480,7 +473,10 @@ class TaskWarriorAdapter:
         This method calculates the actual date/time for a TaskWarrior date expression
         and returns the calculated value."""
         try:
-            result = self._run_task_command(["calc"] + date_str)
+            result = self._run_task_command(["calc", date_str])
+            if result.returncode:
+               raise TaskWarriorError(f"Failed to calculate date '{date_str}'")
+                
             return result.stdout.strip()
         except Exception as e:
             raise TaskWarriorError(f"Failed to calculate date '{date_str}': {str(e)}")
@@ -496,7 +492,9 @@ class TaskWarriorAdapter:
             True if valid TaskWarrior date format, False otherwise
         """
         try:
-            result = self._run_task_command(["calc"] + date_str + "+ P1D")
+            result = self._run_task_command(["calc", date_str , "+ P1D"])
+            if result.returncode:
+                return False
             return result.stdout.strip() != date_str.strip() + "P1D"
         except subprocess.CalledProcessError:
             return False

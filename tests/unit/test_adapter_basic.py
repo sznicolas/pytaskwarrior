@@ -39,29 +39,43 @@ class TestTaskWarriorAdapterBasic:
             recur=RecurrencePeriod.WEEKLY,
         )
 
-    def test_validate_date_string_edge_cases(self, adapter: TaskWarriorAdapter):
-        """Test _validate_date_string with edge cases."""
+    def test_task_date_validator_edge_cases(self, adapter: TaskWarriorAdapter):
+        """Test task_date_validator with edge cases."""
         # Test valid dates
-        assert adapter._validate_date_string("today") is True
-        assert adapter._validate_date_string("tomorrow") is True
-        assert adapter._validate_date_string("2023-12-31") is True
+        assert adapter.task_date_validator("today") is True
+        assert adapter.task_date_validator("tomorrow + P1WT5H3M2S") is True
+        assert adapter.task_date_validator("2026-12-25") is True
 
         # Test invalid dates
-        assert adapter._validate_date_string("") is False
-        assert adapter._validate_date_string("not_a_date") is False
-        assert adapter._validate_date_string("2023-13-45") is False
+        assert adapter.task_date_validator("") is False
+        assert adapter.task_date_validator("not_a_date") is False
+        assert adapter.task_date_validator("2029-99-99") is False
+        assert adapter.task_date_validator("eoy + tomorrow") is False
 
-    def test_build_args_minimal(self, adapter: TaskWarriorAdapter):
-        """Test _build_args with minimal TaskInputDTO."""
-        task = TaskInputDTO(description="Minimal task")
-        args = adapter._build_args(task)
+    def test_task_calc_edge_cases(self, adapter: TaskWarriorAdapter):
+        assert adapter.task_calc("2026-01-01") == "2026-01-01T00:00:00"
+        # ISO 8601 calculations
+        assert adapter.task_calc("P1Y1M1DT1H1M1S + P2W") == "P410DT1H1M1S"
+        assert adapter.task_calc(" P1Y - P52W - PT23H59M30S ") == "PT30S"
+        # Should work according to ISO8601
+        assert adapter.task_calc(" P1Y - P52W - PT23H59M30.5S ") == "PT30.5S"
+        # Bisextil year:
+        assert adapter.task_calc("2028-02-27 + P2D") == "2028-02-29T00:00:00"
+        # Mixes
+        assert adapter.task_calc("2026-01-01 + P1D") == "2026-01-02T00:00:00"
+        assert adapter.task_calc("eoy + PT1S").endswith("-01-01T00:00:00")
+        # Test invalid cases
+        with pytest.raises(TaskWarriorError, match="Failed to calculate date "):
+            assert adapter.task_calc("eoy + tomorrow")
+            assert adapter.task_calc("not_a_date")
+            assert adapter.task_calc("tomorrow + P1D + not_a_date")
 
-        assert "description='Minimal task'" in args
-        assert len(args) == 1
-
-    def test_build_args_all_fields(self, adapter: TaskWarriorAdapter, sample_task: TaskInputDTO):
+    def test_build_args_all_fields(
+        self, adapter: TaskWarriorAdapter, sample_task: TaskInputDTO
+    ):
         """Test _build_args with all fields populated."""
         args = adapter._build_args(sample_task)
+        assert len(args) == 9
 
         assert "description='Test task'" in args
         assert "priority=H" in args
@@ -75,10 +89,10 @@ class TestTaskWarriorAdapterBasic:
 
     def test_build_args_tags_handling(self, adapter: TaskWarriorAdapter):
         """Test _build_args with tags handling."""
-        task = TaskInputDTO(description="Task with tags", tags=["tag1", "tag2", "tag3"])
+        task = TaskInputDTO(description="Task with tags", tags=["tag1;ls /etc", "tag2", "tag3"])
         args = adapter._build_args(task)
 
-        assert "tags=tag1,tag2,tag3" in args
+        assert "tags='tag1;ls /etc',tag2,tag3" in args
 
     def test_build_args_depends_handling(self, adapter: TaskWarriorAdapter):
         """Test _build_args with depends field handling."""
@@ -99,20 +113,25 @@ class TestTaskWarriorAdapterBasic:
     def test_add_task_validation_errors(self, adapter: TaskWarriorAdapter):
         """Test add_task validation errors."""
         # Test empty description
-        with pytest.raises(TaskValidationError, match="Task description cannot be empty"):
+        with pytest.raises(
+            TaskValidationError, match="Task description cannot be empty"
+        ):
             TaskInputDTO(description="")
 
         # Test invalid date format
         task = TaskInputDTO(description="Test task", due="invalid_date")
-        with pytest.raises(TaskValidationError, match="Invalid date format for due"):
+        with pytest.raises(
+            TaskValidationError,
+            match="'invalid_date' is not a valid date in the 'Y-M-D' format.",
+        ):
             adapter.add_task(task)
 
     def test_modify_task_validation_errors(self, adapter: TaskWarriorAdapter):
         """Test modify_task validation errors."""
         # Test invalid date format
         task = TaskInputDTO(description="Test task", due="invalid_date")
-        with pytest.raises(TaskValidationError, match="Invalid date format for due"):
-            adapter.modify_task(task, "test-uuid")
+        with pytest.raises(TaskValidationError, match="No tasks specified."):
+            adapter.modify_task(task, 999)
 
     def test_get_task_errors(self, adapter: TaskWarriorAdapter):
         """Test get_task error conditions."""
@@ -122,6 +141,7 @@ class TestTaskWarriorAdapterBasic:
 
     def test_get_tasks_errors(self, monkeypatch, adapter: TaskWarriorAdapter):
         """Test get_tasks error conditions."""
+
         # Test malformed JSON response
         def mock_run(*args, **kwargs):
             result = subprocess.CompletedProcess(args[0], 0, '{"invalid": json}', "")

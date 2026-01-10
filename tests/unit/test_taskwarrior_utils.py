@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import pytest
-from uuid import uuid4
 
-from src.taskwarrior import TaskWarrior, TaskInputDTO, TaskOutputDTO
-from src.taskwarrior.enums import Priority, TaskStatus, RecurrencePeriod
-from src.taskwarrior.exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
+from src.taskwarrior import TaskWarrior, TaskInputDTO
 
 
 class TestTaskWarriorUtils:
@@ -16,7 +13,6 @@ class TestTaskWarriorUtils:
         from src.taskwarrior.main import task_output_to_input
         
         # Add a task
-        task_uuid = uuid4()
         task = TaskInputDTO(description="Test task")
         added_task = tw.add_task(task)
         
