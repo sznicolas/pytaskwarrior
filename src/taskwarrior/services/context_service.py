@@ -11,19 +11,19 @@ class ContextService:
 
     def create_context(self, name: str, filter_str: str) -> None:
         """Create a new context with the given name and filter."""
-        self.adapter._run_task_command(["context", "define", name, filter_str])
+        self.adapter.run_task_command(["context", "define", name, filter_str])
 
     def apply_context(self, name: str) -> None:
         """Apply a context (set it as current)."""
-        self.adapter._run_task_command(["context", name])
+        self.adapter.run_task_command(["context", name])
 
     def remove_context(self) -> None:
         """Remove the current context (set to none)."""
-        self.adapter._run_task_command(["context", "none"])
+        self.adapter.run_task_command(["context", "none"])
 
     def get_contexts(self) -> list[ContextDTO]:
         """List all defined contexts."""
-        result = self.adapter._run_task_command(["context", "list"])
+        result = self.adapter.run_task_command(["context", "list"])
         contexts = []
         # Parse the output to extract context names and filters
         lines = result.stdout.strip().split("\n")
@@ -38,7 +38,7 @@ class ContextService:
 
     def get_current_context(self) -> str | None:
         """Get the name of the current context."""
-        result = self.adapter._run_task_command(["_get", "rc.context"])
+        result = self.adapter.run_task_command(["_get", "rc.context"])
         if result.returncode != 0:
             # Check if it's because no context is set (command returns non-zero but that's expected)
             # We should return None when no context is set
@@ -48,7 +48,7 @@ class ContextService:
 
     def delete_context(self, name: str) -> None:
         """Delete a defined context."""
-        self.adapter._run_task_command(["context", "delete", name])
+        self.adapter.run_task_command(["context", "delete", name])
 
     def has_context(self, name: str) -> bool:
         """Check if a context exists."""

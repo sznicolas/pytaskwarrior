@@ -151,23 +151,6 @@ class TestTaskWarriorAdapterTasks:
         assert isinstance(instances, list)
         assert len(instances) == 0
 
-    def test_context_management(self, adapter: TaskWarriorAdapter):
-        """Test context management functionality."""
-        # Test set and apply context
-        adapter.define_context("test_context", "status:pending")
-        adapter.apply_context("test_context")
-
-        # Test remove context
-        adapter.remove_context()
-
-        # Test list contexts
-        contexts = adapter.get_contexts()
-        assert isinstance(contexts, dict)
-
-        # Test show context
-        context = adapter.current_context()
-        assert context is None or isinstance(context, str)
-
     def test_task_output_to_input_edge_cases(self, adapter: TaskWarriorAdapter):
         """Test task_output_to_input with edge cases."""
         from src.taskwarrior.main import task_output_to_input

@@ -6,7 +6,6 @@ from uuid import UUID
 
 from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
-from ..dto.context_dto import ContextDTO
 from ..enums import TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ class TaskWarriorAdapter:
 
         self._options.extend(DEFAULT_OPTIONS)
 
-    def _run_task_command(
+    def run_task_command(
         self, args: list[str], no_opt=False
     ) -> subprocess.CompletedProcess:
         """Run a taskwarrior command."""
@@ -114,7 +113,7 @@ class TaskWarriorAdapter:
             raise TaskValidationError("Task description cannot be empty")
 
         args = self._build_args(task)
-        result = self._run_task_command(["add"] + args)
+        result = self.run_task_command(["add"] + args)
 
         if result.returncode != 0:
             error_msg = f"Failed to add task: {result.stderr}"
@@ -143,7 +142,7 @@ class TaskWarriorAdapter:
         logger.info(f"Modifying task with UUID: {task_id_or_uuid}")
 
         args = self._build_args(task)
-        result = self._run_task_command([str(task_id_or_uuid), "modify"] + args)
+        result = self.run_task_command([str(task_id_or_uuid), "modify"] + args)
 
         if result.returncode != 0:
             error_msg = f"Failed to modify task: {result.stderr}"
@@ -161,7 +160,7 @@ class TaskWarriorAdapter:
         logger.debug(f"Retrieving task with ID/UUID: {task_id_or_uuid}")
 
         # First try to get the task normally
-        result = self._run_task_command([str(task_id_or_uuid), "export"])
+        result = self.run_task_command([str(task_id_or_uuid), "export"])
 
         if result.returncode == 0:
             try:
@@ -179,7 +178,7 @@ class TaskWarriorAdapter:
         # If that fails, check if it's a deleted task
         try:
             # Try to get the task with status:deleted filter
-            result = self._run_task_command(
+            result = self.run_task_command(
                 [str(task_id_or_uuid), "status:deleted", "export"]
             )
             if result.returncode == 0:
@@ -208,7 +207,7 @@ class TaskWarriorAdapter:
             args = filter_args + ["export"]
         else:
             args = ["export"]
-        result = self._run_task_command(args)
+        result = self.run_task_command(args)
 
         if result.returncode != 0:
             # Check if it's a "no matches" error that we should handle gracefully
@@ -244,7 +243,7 @@ class TaskWarriorAdapter:
         logger.debug(f"Getting recurring task with UUID: {task_id_or_uuid}")
 
         # Get the parent recurring task
-        result = self._run_task_command(
+        result = self.run_task_command(
             [str(task_id_or_uuid), "status:" + TaskStatus.RECURRING, "export"]
         )
 
@@ -270,7 +269,7 @@ class TaskWarriorAdapter:
         logger.debug(f"Getting recurring instances for parent UUID: {task_id_or_uuid}")
 
         # Get child tasks that are instances of the recurring parent
-        result = self._run_task_command([f"parent:{str(task_id_or_uuid)}", "export"])
+        result = self.run_task_command([f"parent:{str(task_id_or_uuid)}", "export"])
 
         if result.returncode != 0:
             # Check if it's a "no matches" error that we should handle gracefully
@@ -305,7 +304,7 @@ class TaskWarriorAdapter:
         uuid = str(uuid)
         logger.info(f"Deleting task with UUID: {uuid}")
 
-        result = self._run_task_command([str(uuid), "delete"])
+        result = self.run_task_command([str(uuid), "delete"])
 
         if result.returncode != 0:
             error_msg = f"Failed to delete task: {result.stderr}"
@@ -320,7 +319,7 @@ class TaskWarriorAdapter:
         uuid = str(uuid)
         logger.info(f"Purging task with UUID: {uuid}")
 
-        result = self._run_task_command([str(uuid), "purge"])
+        result = self.run_task_command([str(uuid), "purge"])
 
         if result.returncode != 0:
             error_msg = f"Failed to purge task: {result.stderr}"
@@ -335,7 +334,7 @@ class TaskWarriorAdapter:
         uuid = str(uuid)
         logger.info(f"Completing task with UUID: {uuid}")
 
-        result = self._run_task_command([str(uuid), "done"])
+        result = self.run_task_command([str(uuid), "done"])
 
         if result.returncode != 0:
             error_msg = f"Failed to mark task as done: {result.stderr}"
@@ -350,7 +349,7 @@ class TaskWarriorAdapter:
         uuid = str(uuid)
         logger.info(f"Starting task with UUID: {uuid}")
 
-        result = self._run_task_command([str(uuid), "start"])
+        result = self.run_task_command([str(uuid), "start"])
 
         if result.returncode != 0:
             error_msg = f"Failed to start task: {result.stderr}"
@@ -365,7 +364,7 @@ class TaskWarriorAdapter:
         uuid = str(uuid)
         logger.info(f"Stopping task with UUID: {uuid}")
 
-        result = self._run_task_command([str(uuid), "stop"])
+        result = self.run_task_command([str(uuid), "stop"])
 
         if result.returncode != 0:
             error_msg = f"Failed to stop task: {result.stderr}"
@@ -382,7 +381,7 @@ class TaskWarriorAdapter:
 
         # Sanitize the annotation to prevent command injection
         sanitized_annotation = shlex.quote(annotation)
-        result = self._run_task_command([str(uuid), "annotate", sanitized_annotation])
+        result = self.run_task_command([str(uuid), "annotate", sanitized_annotation])
 
         if result.returncode != 0:
             error_msg = f"Failed to annotate task: {result.stderr}"
@@ -401,7 +400,7 @@ class TaskWarriorAdapter:
 
         # Get version
         try:
-            version_result = self._run_task_command(["--version"], no_opt=True)
+            version_result = self.run_task_command(["--version"], no_opt=True)
             if version_result.returncode == 0 and version_result.stdout:
                 version = version_result.stdout.strip()
                 info["version"] = version
@@ -415,7 +414,7 @@ class TaskWarriorAdapter:
         This method calculates the actual date/time for a TaskWarrior date expression
         and returns the calculated value."""
         try:
-            result = self._run_task_command(["calc", date_str])
+            result = self.run_task_command(["calc", date_str])
             if result.returncode:
                raise TaskWarriorError(f"Failed to calculate date '{date_str}'")
                 
@@ -434,7 +433,7 @@ class TaskWarriorAdapter:
             True if valid TaskWarrior date format, False otherwise
         """
         try:
-            result = self._run_task_command(["calc", date_str , "+ P1D"])
+            result = self.run_task_command(["calc", date_str , "+ P1D"])
             if result.returncode:
                 return False
             return result.stdout.strip() != date_str.strip() + "P1D"
