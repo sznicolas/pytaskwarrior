@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 
-from src.taskwarrior import Priority, RecurrencePeriod, TaskInputDTO, TaskOutputDTO, TaskWarrior
+from src.taskwarrior import (
+    Priority,
+    RecurrencePeriod,
+    TaskInputDTO,
+    TaskOutputDTO,
+    TaskWarrior,
+)
 
 
 # Create a new task warrior instance
-tw = TaskWarrior()
+tw = TaskWarrior(
+    taskrc_path="/Users/nschmeltz/repos/atelier/pytaskwarrior/taskrc_test",
+    data_location="/Users/nschmeltz/repos/atelier/pytaskwarrior/datatest",
+)
 
 # Create tasks with different date formats to test TaskWarrior's date handling
 task_dto = TaskInputDTO(
-    description="Buy groceries",
-    priority=Priority.HIGH,
-    tags=["shopping", "personal"]
+    description="Buy groceries", priority=Priority.HIGH, tags=["shopping", "personal"]
 )
 
 # Add the task
@@ -22,7 +29,7 @@ task_with_due = TaskInputDTO(
     description="Submit report",
     priority=Priority.MEDIUM,
     tags=["work", "urgent"],
-    due="tomorrow"
+    due="tomorrow",
 )
 
 task2 = tw.add_task(task_with_due)
@@ -33,7 +40,7 @@ task_with_scheduled = TaskInputDTO(
     description="Team meeting",
     priority=Priority.LOW,
     tags=["work", "meeting"],
-    scheduled="monday"
+    scheduled="monday",
 )
 
 task3 = tw.add_task(task_with_scheduled)
@@ -61,7 +68,7 @@ task_with_dates = TaskInputDTO(
     priority=Priority.HIGH,
     tags=["work", "deadline"],
     due="2026-12-31",
-    scheduled="2026-01-15"
+    scheduled="2026-01-15",
 )
 
 task4 = tw.add_task(task_with_dates)

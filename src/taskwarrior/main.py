@@ -94,9 +94,9 @@ class TaskWarrior:
         """Apply a context (set it as current)."""
         self.context_service.apply_context(context)
 
-    def remove_context(self) -> None:
+    def unset_context(self) -> None:
         """Remove the current context (set to none)."""
-        self.context_service.remove_context()
+        self.context_service.unset_context()
 
     def get_contexts(self) -> list[ContextDTO]:
         """List all defined contexts."""

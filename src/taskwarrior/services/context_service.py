@@ -9,7 +9,7 @@ class ContextService:
     def __init__(self, adapter: TaskWarriorAdapter):
         self.adapter = adapter
 
-    def create_context(self, name: str, filter_str: str) -> None:
+    def define_context(self, name: str, filter_str: str) -> None:
         """Create a new context with the given name and filter."""
         if not name or not name.strip():
             raise TaskWarriorError("Context name cannot be empty")
@@ -21,11 +21,15 @@ class ContextService:
         if not name or not name.strip():
             raise TaskWarriorError("Context name cannot be empty")
         
-        self.adapter.run_task_command(["context", name])
+        result = self.adapter.run_task_command(["context", name])
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to apply context '{name}': {result.stderr}")
 
-    def remove_context(self) -> None:
+    def unset_context(self) -> None:
         """Remove the current context (set to none)."""
-        self.adapter.run_task_command(["context", "none"])
+        result = self.adapter.run_task_command(["context", "none"])
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to apply context '{name}': {result.stderr}")
 
     def get_contexts(self) -> list[ContextDTO]:
         """List all defined contexts."""
@@ -55,8 +59,6 @@ class ContextService:
             result = self.adapter.run_task_command(["_get", "rc.context"])
             
             if result.returncode != 0:
-                # Check if it's because no context is set (command returns non-zero but that's expected)
-                # We should return None when no context is set
                 return None
             
             context_name = result.stdout.strip()
@@ -69,7 +71,9 @@ class ContextService:
         if not name or not name.strip():
             raise TaskWarriorError("Context name cannot be empty")
         
-        self.adapter.run_task_command(["context", "delete", name])
+        result = self.adapter.run_task_command(["context", "delete", name])
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to delete context '{name}': {result.stderr}")
 
     def has_context(self, name: str) -> bool:
         """Check if a context exists."""
