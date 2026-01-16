@@ -1,44 +1,44 @@
-from ..dto.context_dto import ContextDTO
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
-from ..exceptions import TaskWarriorError, TaskNotFound
+from ..dto.context_dto import ContextDTO
+from ..exceptions import TaskWarriorError
 
 
 class ContextService:
     """Service for managing task contexts."""
 
     def __init__(self, adapter: TaskWarriorAdapter):
-        self.adapter = adapter
+        self.adapter: TaskWarriorAdapter = adapter
 
     def define_context(self, name: str, filter_str: str) -> None:
         """Create a new context with the given name and filter."""
         if not name or not name.strip():
             raise TaskWarriorError("Context name cannot be empty")
-        
+
         self.adapter.run_task_command(["context", "define", name, filter_str])
 
     def apply_context(self, name: str) -> None:
         """Apply a context (set it as current)."""
         if not name or not name.strip():
             raise TaskWarriorError("Context name cannot be empty")
-        
+
         result = self.adapter.run_task_command(["context", name])
         if result.returncode != 0:
             raise TaskWarriorError(f"Failed to apply context '{name}': {result.stderr}")
 
     def unset_context(self) -> None:
-        """Remove the current context (set to none)."""
+        """Deactivate the context (set to none)."""
         result = self.adapter.run_task_command(["context", "none"])
         if result.returncode != 0:
-            raise TaskWarriorError(f"Failed to apply context '{name}': {result.stderr}")
+            raise TaskWarriorError(f"Failed to unset context: {result.stderr}")
 
     def get_contexts(self) -> list[ContextDTO]:
         """List all defined contexts."""
         try:
             result = self.adapter.run_task_command(["context", "list"])
-            
+
             if result.returncode != 0:
                 raise TaskWarriorError(f"Failed to list contexts: {result.stderr}")
-            
+
             contexts = []
             # Parse the output to extract context names and filters
             lines = result.stdout.strip().split("\n")
@@ -48,7 +48,9 @@ class ContextService:
                         parts = line.split(None, 1)  # Split on first whitespace
                         if len(parts) == 2:
                             context_name, filter_str = parts
-                            contexts.append(ContextDTO(name=context_name, filter=filter_str))
+                            contexts.append(
+                                ContextDTO(name=context_name, filter=filter_str)
+                            )
             return contexts
         except Exception as e:
             raise TaskWarriorError(f"Error retrieving contexts: {str(e)}")
@@ -57,10 +59,10 @@ class ContextService:
         """Get the name of the current context."""
         try:
             result = self.adapter.run_task_command(["_get", "rc.context"])
-            
+
             if result.returncode != 0:
                 return None
-            
+
             context_name = result.stdout.strip()
             return context_name if context_name else None
         except Exception as e:
@@ -70,10 +72,12 @@ class ContextService:
         """Delete a defined context."""
         if not name or not name.strip():
             raise TaskWarriorError("Context name cannot be empty")
-        
+
         result = self.adapter.run_task_command(["context", "delete", name])
         if result.returncode != 0:
-            raise TaskWarriorError(f"Failed to delete context '{name}': {result.stderr}")
+            raise TaskWarriorError(
+                f"Failed to delete context '{name}': {result.stderr}"
+            )
 
     def has_context(self, name: str) -> bool:
         """Check if a context exists."""

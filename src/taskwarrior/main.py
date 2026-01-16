@@ -20,12 +20,12 @@ class TaskWarrior:
         taskrc_path: str | None = None,
         data_location: str | None = None,
     ):
-        self.adapter = TaskWarriorAdapter(
+        self.adapter: TaskWarriorAdapter = TaskWarriorAdapter(
             task_cmd=task_cmd,
             taskrc_path=taskrc_path,
             data_location=data_location
         )
-        self.context_service = ContextService(self.adapter)
+        self.context_service: ContextService = ContextService(self.adapter)
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Add a new task."""
@@ -83,9 +83,9 @@ class TaskWarrior:
         """Add an annotation to a task."""
         return self.adapter.annotate_task(uuid, annotation)
 
-    def set_context(self, context: str, filter_str: str) -> None:
+    def define_context(self, context: str, filter_str: str) -> None:
         """Define a new context with the given filter."""
-        self.context_service.create_context(context, filter_str)
+        self.context_service.define_context(context, filter_str)
 
     def apply_context(self, context: str) -> None:
         """Apply a context (set it as current)."""
