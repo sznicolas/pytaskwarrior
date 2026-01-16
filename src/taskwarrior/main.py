@@ -107,6 +107,10 @@ class TaskWarrior:
         """Delete a defined context."""
         self.context_service.delete_context(context)
 
+    def has_context(self, context: str) -> None:
+        """Return True if a context is active."""
+        self.context_service.has_context(context)
+
     def get_info(self) -> dict:
         """Get comprehensive TaskWarrior information."""
         return self.adapter.get_info()
