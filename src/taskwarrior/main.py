@@ -44,10 +44,7 @@ class TaskWarrior:
 
     def get_tasks(
         self,
-        filter_args: list[str] = [
-            "status.not:" + TaskStatus.DELETED,
-            "status.not:" + TaskStatus.COMPLETED,
-        ],
+        filter_args: str = f"(status.not:{TaskStatus.DELETED.value} and status.not:{TaskStatus.COMPLETED.value})"
     ) -> list[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         return self.adapter.get_tasks(filter_args)

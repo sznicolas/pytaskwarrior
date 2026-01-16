@@ -15,6 +15,7 @@ class Priority(str, Enum):
     LOW = "L"
     NONE = ""
 
+
 class RecurrencePeriod(str, Enum):
     """Supported recurrence periods for tasks."""
     DAILY = "daily"
@@ -23,3 +24,6 @@ class RecurrencePeriod(str, Enum):
     YEARLY = "yearly"
     QUARTERLY = "quarterly"
     SEMIANNUALLY = "semiannually"
+    HOURLY = "hourly"
+    MINUTELY = "minutely"
+    SECONDLY = "secondly"

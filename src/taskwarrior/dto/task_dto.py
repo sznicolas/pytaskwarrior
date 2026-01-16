@@ -159,8 +159,8 @@ class TaskOutputDTO(BaseModel):
     annotations: list[AnnotationDTO] = Field(
         default_factory=list, description="List of annotations for the task"
     )
-    imask: str | None = Field(
-        default=None, description="Mask for recurring tasks"
+    imask: str | int | None = Field(
+        default=None, description="Mask for recurring tasks if str, or the instance number if int"
     )
     rtype: str | None = Field(
         default=None, description="Type of recurring task"

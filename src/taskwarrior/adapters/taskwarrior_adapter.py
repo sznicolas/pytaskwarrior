@@ -121,7 +121,7 @@ class TaskWarriorAdapter:
             raise TaskValidationError(error_msg)
 
         # Get the latest added task
-        tasks = self.get_tasks(filter_args=["+LATEST"])
+        tasks = self.get_tasks(filter_args="+LATEST")
         if not tasks:
             error_msg = "Failed to retrieve added task"
             logger.error(error_msg)
@@ -153,77 +153,50 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully modified task with UUID: {task_id_or_uuid}")
         return updated_task
 
-    def get_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
+    def get_task(
+        self,
+        task_id_or_uuid: str | int | UUID,
+        filter_args: str = f"'(status.not:{TaskStatus.DELETED} and status.not:{TaskStatus.COMPLETED})'"
+    ) -> TaskOutputDTO | None:
         """Retrieve a task by ID or UUID."""
         # Convert to string for CLI command
         task_id_or_uuid = str(task_id_or_uuid)
         logger.debug(f"Retrieving task with ID/UUID: {task_id_or_uuid}")
 
-        # First try to get the task normally
-        result = self.run_task_command([str(task_id_or_uuid), "export"])
-
+        args = [filter_args, task_id_or_uuid, "export"]
+        result = self.run_task_command(args)
         if result.returncode == 0:
             try:
                 tasks_data = json.loads(result.stdout)
-                if tasks_data:
+                if len(tasks_data) == 1:
                     task = TaskOutputDTO.model_validate(tasks_data[0])
                     logger.debug(f"Successfully retrieved task: {task.uuid}")
                     return task
+                elif len(tasks_data) == 0:
+                    raise TaskNotFound(f"No task ID/UUID {task_id_or_uuid} with filter {filter_args}")
+                else:
+                    raise TaskWarriorError(f"More than one task returned for ID/UUID {task_id_or_uuid} with filter '{filter_args}'")
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
-                raise TaskNotFound(
+                raise TaskValidationError(
                     f"Invalid response from TaskWarrior: {result.stdout}"
                 )
+        else:
+            raise TaskWarriorError(f"Error while retrieving task ID/UUID {task_id_or_uuid} not found")
 
-        # If that fails, check if it's a deleted task
-        try:
-            # Try to get the task with status:deleted filter
-            result = self.run_task_command(
-                [str(task_id_or_uuid), "status:deleted", "export"]
-            )
-            if result.returncode == 0:
-                tasks_data = json.loads(result.stdout)
-                if tasks_data:
-                    task = TaskOutputDTO.model_validate(tasks_data[0])
-                    logger.debug(f"Successfully retrieved deleted task: {task.uuid}")
-                    return task
-        except Exception as e:
-            logger.warning(f"Error checking deleted tasks: {e}")
-
-        # If we still haven't found it, raise the exception
-        error_msg = f"Task {task_id_or_uuid} not found."
-        logger.warning(error_msg)
-        raise TaskNotFound(error_msg)
-
-    def get_tasks(self, filter_args: list[str] = None) -> list[TaskOutputDTO]:
+    def get_tasks(
+        self,
+        filter_args: str = f"(status.not:{TaskStatus.DELETED} and status.not:{TaskStatus.COMPLETED})"
+    ) -> list[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         logger.debug(f"Getting tasks with filters: {filter_args}")
-
-        # Convert any UUID objects to strings in filter_args then prepend to args
-        if filter_args:
-            filter_args = [
-                str(arg) if isinstance(arg, UUID) else arg for arg in filter_args
-            ]
-            args = filter_args + ["export"]
-        else:
-            args = ["export"]
+        args = [filter_args, "export"]
         result = self.run_task_command(args)
 
         if result.returncode != 0:
-            # Check if it's a "no matches" error that we should handle gracefully
-            if (
-                "No matches" in result.stderr
-                or "Unable to find report that matches" in result.stderr
-            ):
-                logger.debug("No tasks found matching filters")
-                return []
             error_msg = f"Failed to get tasks: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
-
-        if not result.stdout.strip():
-            logger.debug("No tasks returned (empty response)")
-            return []
+            raise TaskWarriorError(error_msg)
 
         try:
             tasks_data = json.loads(result.stdout)
@@ -234,7 +207,7 @@ class TaskWarriorAdapter:
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
+            raise TaskValidationError(f"Invalid response from TaskWarrior: {result.stdout}")
 
     def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the recurring task (parent) by its UUID."""
@@ -416,8 +389,8 @@ class TaskWarriorAdapter:
         try:
             result = self.run_task_command(["calc", date_str])
             if result.returncode:
-               raise TaskWarriorError(f"Failed to calculate date '{date_str}'")
-                
+                raise TaskWarriorError(f"Failed to calculate date '{date_str}'")
+
             return result.stdout.strip()
         except Exception as e:
             raise TaskWarriorError(f"Failed to calculate date '{date_str}': {str(e)}")
@@ -433,7 +406,7 @@ class TaskWarriorAdapter:
             True if valid TaskWarrior date format, False otherwise
         """
         try:
-            result = self.run_task_command(["calc", date_str , "+ P1D"])
+            result = self.run_task_command(["calc", date_str, "+ P1D"])
             if result.returncode:
                 return False
             return result.stdout.strip() != date_str.strip() + "P1D"

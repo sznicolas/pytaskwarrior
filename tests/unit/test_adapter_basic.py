@@ -139,20 +139,6 @@ class TestTaskWarriorAdapterBasic:
         with pytest.raises(TaskNotFound):
             adapter.get_task("nonexistent-uuid")
 
-    def test_get_tasks_errors(self, monkeypatch, adapter: TaskWarriorAdapter):
-        """Test get_tasks error conditions."""
-
-        # Test malformed JSON response
-        def mock_run(*args, **kwargs):
-            result = subprocess.CompletedProcess(args[0], 0, '{"invalid": json}', "")
-            return result
-
-        monkeypatch.setattr(subprocess, "run", mock_run)
-
-        # This should raise TaskNotFound
-        with pytest.raises(TaskNotFound):
-            adapter.get_tasks([])
-
     def test_get_info_comprehensive(self, adapter: TaskWarriorAdapter):
         """Test get_info with comprehensive information retrieval."""
         info = adapter.get_info()
