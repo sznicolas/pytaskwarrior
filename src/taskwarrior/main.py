@@ -122,7 +122,6 @@ class TaskWarrior:
 
 def task_output_to_input(task_output: TaskOutputDTO) -> TaskInputDTO:
     """Convert TaskOutputDTO to TaskInputDTO for modification."""
-    # data = task_output.model_dump(exclude={"uuid"})
     data = task_output.model_dump(
         exclude={"uuid", "entry", "start", "end", "modified", "index", "status", "urgency", "imask", "rtype"}
     )

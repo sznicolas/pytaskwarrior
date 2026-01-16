@@ -1,21 +1,13 @@
 from __future__ import annotations
 
-import json
-import subprocess
-from uuid import uuid4
-
 import pytest
 
-from src.taskwarrior.dto.context_dto import ContextDTO
-from src.taskwarrior.services.context_service import ContextService
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
-from src.taskwarrior.dto.task_dto import TaskInputDTO
-from src.taskwarrior.enums import Priority, RecurrencePeriod
+from src.taskwarrior.dto.context_dto import ContextDTO
 from src.taskwarrior.exceptions import (
-    TaskNotFound,
-    TaskValidationError,
     TaskWarriorError,
 )
+from src.taskwarrior.services.context_service import ContextService
 
 
 class TestTaskWarriorAdapterContext:
@@ -63,8 +55,8 @@ class TestTaskWarriorAdapterContext:
         # List contexts
         contexts = context_service.get_contexts()
         assert isinstance(contexts[0], ContextDTO)
-        assert "context1" in [ c.name for c in contexts]
-        assert "context2" in [ c.name for c in contexts]
+        assert "context1" in [c.name for c in contexts]
+        assert "context2" in [c.name for c in contexts]
 
         # Apply one context
         context_service.apply_context("context1")
@@ -98,3 +90,13 @@ class TestTaskWarriorAdapterContext:
         # Test show context
         context = context_service.get_current_context()
         assert context is None or isinstance(context, str)
+
+    def test_context_service_error_conditions(self, context_service):
+        """Test context service with various error conditions."""
+        # Test with empty context names
+        with pytest.raises(TaskWarriorError):
+            context_service.define_context("", "status:pending")
+
+        # Test with whitespace-only names
+        with pytest.raises(TaskWarriorError):
+            context_service.define_context("   ", "status:pending")

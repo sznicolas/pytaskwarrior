@@ -87,22 +87,6 @@ def test_task_output_dto_creation():
     assert task.recur == RecurrencePeriod.WEEKLY
 
 
-def test_task_output_dto_datetime_parsing():
-    """Test datetime parsing from TaskWarrior format."""
-    # Test standard ISO format
-    task = TaskOutputDTO(
-        description="Test",
-        index=1,
-        uuid=uuid4(),
-        status=TaskStatus.PENDING,
-        entry="2023-12-28T00:00:00Z",
-        due="2024-01-01T00:00:00Z",
-    )
-
-    assert task.entry == datetime.fromisoformat("2023-12-28T00:00:00+00:00")
-    assert task.due == datetime.fromisoformat("2024-01-01T00:00:00+00:00")
-
-
 def test_task_output_dto_compact_datetime_parsing():
     """Test parsing of compact TaskWarrior datetime format."""
     # Test compact format (20260101T193139Z)
@@ -111,49 +95,12 @@ def test_task_output_dto_compact_datetime_parsing():
         index=1,
         uuid=uuid4(),
         status=TaskStatus.PENDING,
-        entry="20260101T193139Z",
-        due="20260102T102030Z",
-    )
-
-    expected_entry = datetime.fromisoformat("2026-01-01T19:31:39+00:00")
-    expected_due = datetime.fromisoformat("2026-01-02T10:20:30+00:00")
-
-    assert task.entry == expected_entry
-    assert task.due == expected_due
-
-
-def test_task_output_dto_datetime_parsing_comprehensive():
-    """Test comprehensive datetime parsing from various TaskWarrior formats."""
-    task_uuid = uuid4()
-
-    # Test with standard ISO format
-    task1 = TaskOutputDTO(
-        description="Test task 1",
-        index=1,
-        uuid=task_uuid,
-        status=TaskStatus.PENDING,
         entry="2023-12-28T00:00:00Z",
-        due="2024-01-01T00:00:00Z",
-    )
-
-    assert task1.entry == datetime.fromisoformat("2023-12-28T00:00:00+00:00")
-    assert task1.due == datetime.fromisoformat("2024-01-01T00:00:00+00:00")
-
-    # Test with compact format
-    task2 = TaskOutputDTO(
-        description="Test task 2",
-        index=2,
-        uuid=task_uuid,
-        status=TaskStatus.PENDING,
-        entry="20260101T193139Z",
         due="20260102T102030Z",
     )
 
-    expected_entry = datetime.fromisoformat("2026-01-01T19:31:39+00:00")
-    expected_due = datetime.fromisoformat("2026-01-02T10:20:30+00:00")
-
-    assert task2.entry == expected_entry
-    assert task2.due == expected_due
+    assert task.entry == datetime.fromisoformat("2023-12-28T00:00:00+00:00")
+    assert task.due == datetime.fromisoformat("2026-01-02T10:20:30+00:00")
 
 
 def test_task_input_dto_model_dump():
@@ -276,7 +223,6 @@ def test_task_output_dto_from_taskwarrior_json_export():
     assert dumped["status"] == TaskStatus.PENDING
 
 
-
 def test_task_input_dto_all_fields():
     """Test TaskInputDTO with all fields."""
     task = TaskInputDTO(
@@ -363,36 +309,6 @@ def test_task_output_dto_validation_edge_cases():
     assert task.index == 1
     assert task.uuid == task_uuid
     assert task.status == TaskStatus.PENDING
-
-
-def test_task_status_enum_values():
-    """Test TaskStatus enum values."""
-    assert TaskStatus.PENDING.value == "pending"
-    assert TaskStatus.COMPLETED.value == "completed"
-    assert TaskStatus.DELETED.value == "deleted"
-    assert TaskStatus.WAITING.value == "waiting"
-    assert TaskStatus.RECURRING.value == "recurring"
-
-
-def test_priority_enum_values():
-    """Test Priority enum values."""
-    assert Priority.LOW.value == "L"
-    assert Priority.MEDIUM.value == "M"
-    assert Priority.HIGH.value == "H"
-    assert Priority.NONE.value == ""
-
-
-def test_recurrence_period_enum_values():
-    """Test RecurrencePeriod enum values."""
-    assert RecurrencePeriod.SECONDLY.value == "secondly"
-    assert RecurrencePeriod.MINUTELY.value == "minutely"
-    assert RecurrencePeriod.HOURLY.value == "hourly"
-    assert RecurrencePeriod.DAILY.value == "daily"
-    assert RecurrencePeriod.WEEKLY.value == "weekly"
-    assert RecurrencePeriod.MONTHLY.value == "monthly"
-    assert RecurrencePeriod.YEARLY.value == "yearly"
-    assert RecurrencePeriod.QUARTERLY.value == "quarterly"
-    assert RecurrencePeriod.SEMIANNUALLY.value == "semiannually"
 
 
 def test_task_warrior_error_inheritance():

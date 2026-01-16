@@ -53,7 +53,7 @@ class TaskWarriorAdapter:
                 cmd,
                 capture_output=True,
                 text=True,
-                check=False,  # We'll handle the error checking ourselves
+                check=False,
             )
 
             if result.returncode != 0:
@@ -156,7 +156,7 @@ class TaskWarriorAdapter:
     def get_task(
         self,
         task_id_or_uuid: str | int | UUID,
-        filter_args: str = f"'(status.not:{TaskStatus.DELETED} and status.not:{TaskStatus.COMPLETED})'"
+        filter_args: str = ""
     ) -> TaskOutputDTO | None:
         """Retrieve a task by ID or UUID."""
         # Convert to string for CLI command
