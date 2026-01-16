@@ -1,6 +1,3 @@
-
-examples/example2_contexts.py
-```python
 #!/usr/bin/env python3
 """Context management example."""
 
