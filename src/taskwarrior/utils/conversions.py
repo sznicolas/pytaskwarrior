@@ -18,3 +18,4 @@ def parse_taskwarrior_date(value: str) -> str:
     except Exception:
         # If parsing fails, return the original value
         return value
+

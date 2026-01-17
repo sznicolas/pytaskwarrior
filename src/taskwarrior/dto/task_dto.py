@@ -9,6 +9,7 @@ from ..enums import Priority, RecurrencePeriod, TaskStatus
 from ..exceptions import TaskValidationError
 from ..utils.conversions import parse_taskwarrior_date
 from .annotation_dto import AnnotationDTO
+from .uda_dto import UdaDTO
 
 
 class TaskInputDTO(BaseModel):
@@ -44,6 +45,9 @@ class TaskInputDTO(BaseModel):
     )
     annotations: list[str] = Field(
         default_factory=list, description="List of annotations for the task"
+    )
+    udas: list[UdaDTO] = Field(
+        default_factory=list, description="User Defined Attributes"
     )
 
     model_config = ConfigDict(
@@ -124,6 +128,9 @@ class TaskOutputDTO(BaseModel):
     urgency: float | None = Field(default=None, description="Task urgency score")
     annotations: list[AnnotationDTO] = Field(
         default_factory=list, description="List of annotations for the task"
+    )
+    udas: list[UdaDTO] = Field(
+        default_factory=list, description="User Defined Attributes"
     )
     imask: str | int | None = Field(
         default=None,
