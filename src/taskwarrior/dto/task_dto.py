@@ -1,34 +1,14 @@
 from __future__ import annotations
+
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ..enums import TaskStatus, Priority, RecurrencePeriod
+from ..enums import Priority, RecurrencePeriod, TaskStatus
 from ..exceptions import TaskValidationError
+from ..utils.conversions import parse_taskwarrior_date
 from .annotation_dto import AnnotationDTO
-
-
-def parse_taskwarrior_date(value):
-    """Parse TaskWarrior date format (20260101T193139Z) to datetime."""
-    if not isinstance(value, str) or value is None:
-        return value
-
-    # Handle TaskWarrior's date format (20260101T193139Z)
-    try:
-        # Check if it's the compact format used by TaskWarrior
-        if len(value) == 16 and "T" in value and value.endswith("Z"):
-            # Convert compact format to standard: 20260101T193139Z -> 2026-01-01T19:31:39Z
-            date_part = value[:8]
-            time_part = value[9:-1]  # Remove 'T' and 'Z'
-            formatted = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]}T{time_part[:2]}:{time_part[2:4]}:{time_part[4:6]}Z"
-            return datetime.fromisoformat(formatted.replace("Z", "+00:00"))
-        else:
-            # Try standard parsing
-            return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except Exception:
-        # If parsing fails, return the original value
-        return value
 
 
 class TaskInputDTO(BaseModel):
@@ -41,18 +21,14 @@ class TaskInputDTO(BaseModel):
     due: str | None = Field(
         default=None, description="Due date and time for the task (ISO format)"
     )
-    project: str | None = Field(
-        default=None, description="Project the task belongs to"
-    )
+    project: str | None = Field(default=None, description="Project the task belongs to")
     tags: list[str] = Field(
         default_factory=list, description="List of tags associated with the task"
     )
     depends: list[UUID] = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
-    parent: UUID | None = Field(
-        default=None, description="UUID of the template task"
-    )
+    parent: UUID | None = Field(default=None, description="UUID of the template task")
     recur: RecurrencePeriod | None = Field(
         default=None, description="Recurrence period for recurring tasks"
     )
@@ -72,7 +48,7 @@ class TaskInputDTO(BaseModel):
 
     model_config = ConfigDict(
         use_enum_values=True,
-        extra='forbid',
+        extra="forbid",
         validate_assignment=True,
         json_schema_extra={
             "examples": [
@@ -103,12 +79,8 @@ class TaskOutputDTO(BaseModel):
         alias="id",
         description="READONLY Task index of a task in the working set",
     )
-    uuid: UUID = Field(
-        description="READONLY Unique identifier for the task"
-    )
-    status: TaskStatus = Field(
-        description="Current status of the task"
-    )
+    uuid: UUID = Field(description="READONLY Unique identifier for the task")
+    status: TaskStatus = Field(description="Current status of the task")
     priority: Priority | None = Field(
         default=None, description="Priority of the task (H, M, L, or empty)"
     )
@@ -131,15 +103,11 @@ class TaskOutputDTO(BaseModel):
     tags: list[str] = Field(
         default_factory=list, description="List of tags associated with the task"
     )
-    project: str | None = Field(
-        default=None, description="Project the task belongs to"
-    )
+    project: str | None = Field(default=None, description="Project the task belongs to")
     depends: list[UUID] = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
-    parent: UUID | None = Field(
-        default=None, description="UUID of the template task"
-    )
+    parent: UUID | None = Field(default=None, description="UUID of the template task")
     recur: RecurrencePeriod | None = Field(
         default=None, description="Recurrence period for recurring tasks"
     )
@@ -153,24 +121,21 @@ class TaskOutputDTO(BaseModel):
     until: datetime | None = Field(
         default=None, description="Expiration date for recurring tasks (ISO format)"
     )
-    urgency: float | None = Field(
-        default=None, description="Task urgency score"
-    )
+    urgency: float | None = Field(default=None, description="Task urgency score")
     annotations: list[AnnotationDTO] = Field(
         default_factory=list, description="List of annotations for the task"
     )
     imask: str | int | None = Field(
-        default=None, description="Mask for recurring tasks if str, or the instance number if int"
+        default=None,
+        description="Mask for recurring tasks if str, or the instance number if int",
     )
-    rtype: str | None = Field(
-        default=None, description="Type of recurring task"
-    )
+    rtype: str | None = Field(default=None, description="Type of recurring task")
 
     model_config = ConfigDict(
         use_enum_values=True,
         validate_assignment=True,
         populate_by_name=True,
-        extra='forbid',
+        extra="forbid",
         json_schema_extra={
             "examples": [
                 {"description": "a task"},
