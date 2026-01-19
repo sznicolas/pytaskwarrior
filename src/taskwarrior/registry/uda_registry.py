@@ -67,3 +67,13 @@ class UdaRegistry:
     def is_uda_field(self, field_name: str) -> bool:
         """Check if a field name corresponds to a defined UDA."""
         return field_name in self._udas
+
+    def define_uda(self, uda: UdaDTO) -> None:
+        # task config uda.toto.type xxx
+        # task config uda.toto.label Xxx ...
+        ...
+
+    def delete_uda(self, uda: UdaDTO) -> None:
+        # task config uda.toto.type
+        # task config uda.toto.default, ....
+        ...
