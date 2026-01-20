@@ -56,6 +56,33 @@ class UdaRegistry:
         except Exception as e:
             raise TaskWarriorError(f"Error reading taskrc: {str(e)}")
 
+    def define_uda(self, uda: UdaDTO) -> None:
+        """Define or modify a User Defined Attribute (UDA) using task config commands."""
+        # Set the UDA type
+        self.adapter.run_task_command(["config", f"uda.{name}.type", type_])
+    
+        # Set other attributes if provided
+        if label:
+            self.adapter.run_task_command(["config", f"uda.{name}.label", label])
+        if default:
+            self.adapter.run_task_command(["config", f"uda.{name}.default", default])
+        if values:
+            self.adapter.run_task_command(["config", f"uda.{name}.values", values])
+    
+    def delete_uda(self, name: str) -> None:
+        """Delete a User Defined Attribute (UDA) by clearing its configuration."""
+        # Clear all UDA configuration entries by setting them to empty strings
+        config_keys = [
+            f"uda.{name}.type",
+            f"uda.{name}.label",
+            f"uda.{name}.default",
+            f"uda.{name}.values",
+            f"uda.{name}.readonly"
+        ]
+
+    for key in config_keys:
+        self.adapter.run_task_command(["config", key, ""])
+
     def get_uda(self, name: str) -> UdaDTO | None:
         """Get UDA definition by name."""
         return self._udas.get(name)
@@ -67,13 +94,3 @@ class UdaRegistry:
     def is_uda_field(self, field_name: str) -> bool:
         """Check if a field name corresponds to a defined UDA."""
         return field_name in self._udas
-
-    def define_uda(self, uda: UdaDTO) -> None:
-        # task config uda.toto.type xxx
-        # task config uda.toto.label Xxx ...
-        ...
-
-    def delete_uda(self, uda: UdaDTO) -> None:
-        # task config uda.toto.type
-        # task config uda.toto.default, ....
-        ...
