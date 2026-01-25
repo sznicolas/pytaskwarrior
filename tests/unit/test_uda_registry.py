@@ -55,15 +55,16 @@ def test_load_from_taskrc_file_not_found():
 
 def test_is_uda_field():
     """Test checking if a field name is a defined UDA."""
+    UdaRegistry._instance = None
     registry = UdaRegistry()
 
     # Initially empty
     assert not registry.is_uda_field("test")
 
-    # After loading, check valid and invalid fields
+    # After loading valid UDA definitions, check valid and invalid fields
     taskrc_content = "uda.test.type=string\n"
     with patch("builtins.open", mock_open(read_data=taskrc_content)):
-        registry.load_from_taskrc()
+        registry.load_from_taskrc("/fake/path")  # Use a fake path since we're mocking
 
     assert registry.is_uda_field("test")
     assert not registry.is_uda_field("nonexistent")
@@ -75,7 +76,7 @@ def test_get_uda_type():
 
     taskrc_content = "uda.test.type=string\n"
     with patch("builtins.open", mock_open(read_data=taskrc_content)):
-        registry.load_from_taskrc()
+        registry.load_from_taskrc("/fake/path")
 
     assert registry.get_uda("test").type == UdaType.STRING
     assert registry.get_uda("nonexistent") is None
@@ -91,7 +92,7 @@ uda.first_str.type=string
 uda.second_date.type=date
 """
     with patch("builtins.open", mock_open(read_data=taskrc_content)):
-        registry.load_from_taskrc()
+        registry.load_from_taskrc("/fake/path")
 
     expected_names = {"first_str", "second_date"}
     assert registry.get_uda_names() == expected_names
@@ -107,7 +108,7 @@ uda.valid.type=string
     with patch("builtins.open", mock_open(read_data=taskrc_content)):
         UdaRegistry._instance = None
         registry = UdaRegistry()
-        registry.load_from_taskrc()
+        registry.load_from_taskrc("/fake/path")
 
     # Should load valid UDA but skip invalid one
     assert "valid" in registry.get_uda_names()
@@ -123,13 +124,13 @@ def test_define_update_uda_with_empty_fields(tmp_path):
 
     # Create registry with real adapter
     registry = UdaRegistry()
-    registry.adapter = TaskWarriorAdapter(taskrc_file=str(taskrc_file))
+    adapter = TaskWarriorAdapter(taskrc_file=str(taskrc_file))
 
     # Create a test UDA with some empty fields
     uda = UdaDTO(
         name="test_uda", type=UdaType.STRING, label="", default="default_value"
     )
-    registry.define_update_uda(uda)
+    registry.define_update_uda(uda, adapter)
 
     # Verify the UDA was defined by reloading the registry
     registry2 = UdaRegistry()
@@ -143,7 +144,6 @@ def test_define_update_uda_with_empty_fields(tmp_path):
     assert loaded_uda.type == UdaType.STRING
     # Note: Empty label should not be set, but default should be
 
-
 def test_delete_uda(tmp_path):
     """Test deleting a UDA through the registry with real adapter."""
     # Create a temporary taskrc file
@@ -153,20 +153,18 @@ def test_delete_uda(tmp_path):
 
     # Create registry with real adapter
     adapter = TaskWarriorAdapter(taskrc_file=str(taskrc_file))
-    registry = UdaRegistry(adapter)
+    registry = UdaRegistry()
+    # Load the UDA definitions
+    registry.load_from_taskrc(str(taskrc_file))
 
     # Verify UDA exists before deletion
-    print(" **** ", registry.get_uda_names())
     assert "test_uda" in registry.get_uda_names()
 
     # Call delete_uda
-    print("*** 1: ", registry.get_uda_names())
-    registry.delete_uda(registry.get_uda("test_uda"))
-    print("*** 2: ", registry.get_uda_names())
+    registry.delete_uda(registry.get_uda("test_uda"), adapter)
 
     # Verify the UDA was deleted by reloading the registry
-    registry3 = UdaRegistry()
-    registry3.load_from_taskrc(str(taskrc_file))
-    print("*** 3: ", registry3.get_uda_names())
+    registry2 = UdaRegistry()
+    registry2.load_from_taskrc(str(taskrc_file))
     # Check that the UDA was removed
-    assert "test_uda" not in registry3.get_uda_names()
+    assert "test_uda" not in registry2.get_uda_names()

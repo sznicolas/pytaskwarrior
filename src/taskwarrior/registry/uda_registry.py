@@ -79,7 +79,7 @@ class UdaRegistry:
         # Clear all UDA configuration entries by setting them to empty strings
         field_names = uda.__class__.model_fields.keys()
         for key in field_names:
-            adapter.run_task_command(["config", key, ""])
+            adapter.run_task_command(["config", f"uda.{uda.name}.{key}"])
         self._udas.pop(uda.name)
 
     def get_uda(self, name: str) -> UdaDTO | None:
