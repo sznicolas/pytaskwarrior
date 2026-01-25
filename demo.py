@@ -11,7 +11,7 @@ from src.taskwarrior import (
 
 # Create a new task warrior instance
 tw = TaskWarrior(
-    taskrc_path="/Users/nschmeltz/repos/atelier/pytaskwarrior/taskrc_test",
+    taskrc_file="/Users/nschmeltz/repos/atelier/pytaskwarrior/taskrc_test",
     data_location="/Users/nschmeltz/repos/atelier/pytaskwarrior/datatest",
 )
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import subprocess
 from uuid import uuid4
 
@@ -22,7 +23,7 @@ class TestTaskWarriorAdapterBasic:
     @pytest.fixture
     def adapter(self, taskwarrior_config: str):
         """Create a TaskWarriorAdapter instance for testing."""
-        return TaskWarriorAdapter(task_cmd="task", taskrc_path=taskwarrior_config)
+        return TaskWarriorAdapter(task_cmd="task", taskrc_file=taskwarrior_config)
 
     @pytest.fixture
     def sample_task(self):
@@ -144,26 +145,26 @@ class TestTaskWarriorAdapterBasic:
         info = adapter.get_info()
 
         assert "task_cmd" in info
-        assert "taskrc_path" in info
+        assert "taskrc_file" in info
         assert "options" in info
         assert "version" in info
 
         # Verify types
-        assert isinstance(info["task_cmd"], str)
-        assert isinstance(info["taskrc_path"], (str, type(None)))
+        assert isinstance(info["task_cmd"], Path)
+        assert isinstance(info["taskrc_file"], Path)
         assert isinstance(info["options"], list)
         assert isinstance(info["version"], str)
 
     def test_get_info_with_custom_params(self, taskwarrior_config: str):
         """Test get_info with custom parameters."""
         adapter = TaskWarriorAdapter(
-            task_cmd="task", taskrc_path=taskwarrior_config, data_location="/tmp/test"
+            task_cmd="task", taskrc_file=taskwarrior_config, data_location="/tmp/test"
         )
 
         info = adapter.get_info()
 
-        assert info["task_cmd"] == "task"
-        assert info["taskrc_path"] == taskwarrior_config
+        assert "task" in str(info["task_cmd"])
+        assert info["taskrc_file"] == Path(taskwarrior_config)
         assert "rc.data.location=/tmp/test" in adapter._options
 
     def test_complex_datetime_fields(self, adapter: TaskWarriorAdapter):

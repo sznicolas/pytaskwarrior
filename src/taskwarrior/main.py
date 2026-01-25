@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import logging
+import os
 from uuid import UUID
-from .dto.task_dto import TaskInputDTO, TaskOutputDTO
-from .dto.context_dto import ContextDTO
+
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
-from .services.context_service import ContextService
+from .dto.context_dto import ContextDTO
+from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .enums import TaskStatus
+from .services.context_service import ContextService
 from .utils.dto_converter import task_output_to_input
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,13 +20,16 @@ class TaskWarrior:
     def __init__(
         self,
         task_cmd: str = "task",
-        taskrc_path: str | None = None,
+        taskrc_file: str | None = None,
         data_location: str | None = None,
     ):
+        if taskrc_file is None:
+            taskrc_file = os.environ.get("TASKRC", "$HOME/.taskrc")
+        if data_location is None:
+            data_location = os.environ.get("TASKDATA") #, "$HOME/.task")
+
         self.adapter: TaskWarriorAdapter = TaskWarriorAdapter(
-            task_cmd=task_cmd,
-            taskrc_path=taskrc_path,
-            data_location=data_location
+            task_cmd=task_cmd, taskrc_file=taskrc_file, data_location=data_location
         )
         self.context_service: ContextService = ContextService(self.adapter)
 
@@ -44,7 +50,7 @@ class TaskWarrior:
 
     def get_tasks(
         self,
-        filter_args: str = f"(status.not:{TaskStatus.DELETED.value} and status.not:{TaskStatus.COMPLETED.value})"
+        filter_args: str = f"(status.not:{TaskStatus.DELETED.value} and status.not:{TaskStatus.COMPLETED.value})",
     ) -> list[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         return self.adapter.get_tasks(filter_args)
@@ -122,4 +128,3 @@ class TaskWarrior:
     def date_validator(self, date_str) -> str:
         """Validate TaskWarrior date string format."""
         return self.adapter.task_date_validator(date_str)
-

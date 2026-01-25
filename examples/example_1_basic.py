@@ -5,7 +5,7 @@ from src.taskwarrior import TaskWarrior, TaskInputDTO, Priority
 
 # Initialize TaskWarrior with local config
 tw = TaskWarrior(
-    taskrc_path="./taskrc_example",
+    taskrc_file="./taskrc_example",
     data_location="./task_data"
 )
 

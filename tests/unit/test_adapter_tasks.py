@@ -16,14 +16,13 @@ from src.taskwarrior.exceptions import (
     TaskWarriorError,
 )
 
-
 class TestTaskWarriorAdapterTasks:
     """Test cases for TaskWarriorAdapter task management functionality."""
 
     @pytest.fixture
-    def adapter(self, taskwarrior_config: str):
+    def adapter(self, taskwarrior_config: str, taskwarrior_data: str):
         """Create a TaskWarriorAdapter instance for testing."""
-        return TaskWarriorAdapter(task_cmd="task", taskrc_path=taskwarrior_config)
+        return TaskWarriorAdapter(task_cmd="task", taskrc_file=taskwarrior_config, data_location=taskwarrior_data)
 
     def test_task_management_errors(self, adapter: TaskWarriorAdapter):
         """Test task management error conditions."""

@@ -1,12 +1,14 @@
 import json
 import logging
-import subprocess
 import shlex
+import shutil
+import subprocess
+from pathlib import Path
 from uuid import UUID
 
-from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 from ..enums import TaskStatus
+from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 
 logger = logging.getLogger(__name__)
 
@@ -23,26 +25,54 @@ class TaskWarriorAdapter:
     def __init__(
         self,
         task_cmd: str = "task",
-        taskrc_path: str | None = None,
-        data_location: str | None = None,
+        taskrc_file: str = "$HOME/.taskrc",
+        data_location: str | None = None
     ):
-        self.task_cmd: str = task_cmd
-        self.taskrc_path = taskrc_path
-        self.data_location = data_location
+        self.task_cmd: str = self._check_binary_path(task_cmd)
         self._options: list[str] = []
-        if self.taskrc_path:
-            self._options.extend([f"rc:{self.taskrc_path}"])
-        if self.data_location:
+        self.taskrc_file = Path(taskrc_file).expanduser()
+        self._options.extend([f"rc:{self.taskrc_file}"])
+        if data_location:
+            self.data_location = Path(data_location).expanduser()
             self._options.extend([f"rc.data.location={self.data_location}"])
+        else:
+            self.data_location = None
+        self._check_or_create_taskfiles()
 
         self._options.extend(DEFAULT_OPTIONS)
+
+    def _check_binary_path(self, task_cmd: str):
+        resolved_path = shutil.which(task_cmd)
+        if not resolved_path:
+            raise TaskValidationError(
+                f"TaskWarrior command '{task_cmd}' not found in PATH"
+            )
+        return Path(resolved_path)
+
+    def _check_or_create_taskfiles(self):
+        if not self.taskrc_file.exists():
+            # Create default taskrc content
+            default_content = """# Taskwarrior configuration file
+# This file was automatically created by pytaskwarrior
+# Default data location
+rc.data.location={data_location}
+# Disable confirmation prompts
+rc.confirmation=off
+rc.bulk=0
+""".format(data_location=self.data_location or "~/.task")
+            self.taskrc_file.parent.mkdir(parents=True, exist_ok=True)
+            self.taskrc_file.write_text(default_content)
+            logger.info(f"Created Taskrc file '{self.taskrc_file}'")
+        if self.data_location and not self.data_location.exists():
+            self.data_location.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Created Task data direcory '{self.data_location}'")
 
     def run_task_command(
         self, args: list[str], no_opt=False
     ) -> subprocess.CompletedProcess:
         """Run a taskwarrior command."""
         # Prepend the taskrc path to all commands
-        cmd = [self.task_cmd]
+        cmd = [str(self.task_cmd)]
         cmd.extend(args)
         if not no_opt:
             cmd.extend(self._options)
@@ -154,9 +184,7 @@ class TaskWarriorAdapter:
         return updated_task
 
     def get_task(
-        self,
-        task_id_or_uuid: str | int | UUID,
-        filter_args: str = ""
+        self, task_id_or_uuid: str | int | UUID, filter_args: str = ""
     ) -> TaskOutputDTO | None:
         """Retrieve a task by ID or UUID."""
         # Convert to string for CLI command
@@ -173,20 +201,26 @@ class TaskWarriorAdapter:
                     logger.debug(f"Successfully retrieved task: {task.uuid}")
                     return task
                 elif len(tasks_data) == 0:
-                    raise TaskNotFound(f"No task ID/UUID {task_id_or_uuid} with filter {filter_args}")
+                    raise TaskNotFound(
+                        f"No task ID/UUID {task_id_or_uuid} with filter {filter_args}"
+                    )
                 else:
-                    raise TaskWarriorError(f"More than one task returned for ID/UUID {task_id_or_uuid} with filter '{filter_args}'")
+                    raise TaskWarriorError(
+                        f"More than one task returned for ID/UUID {task_id_or_uuid} with filter '{filter_args}'"
+                    )
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
                 raise TaskValidationError(
                     f"Invalid response from TaskWarrior: {result.stdout}"
                 )
         else:
-            raise TaskWarriorError(f"Error while retrieving task ID/UUID {task_id_or_uuid} not found")
+            raise TaskWarriorError(
+                f"Error while retrieving task ID/UUID {task_id_or_uuid} not found"
+            )
 
     def get_tasks(
         self,
-        filter_args: str = f"(status.not:{TaskStatus.DELETED} and status.not:{TaskStatus.COMPLETED})"
+        filter_args: str = f"(status.not:{TaskStatus.DELETED} and status.not:{TaskStatus.COMPLETED})",
     ) -> list[TaskOutputDTO]:
         """Get multiple tasks based on filters."""
         logger.debug(f"Getting tasks with filters: {filter_args}")
@@ -207,7 +241,9 @@ class TaskWarriorAdapter:
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise TaskValidationError(f"Invalid response from TaskWarrior: {result.stdout}")
+            raise TaskValidationError(
+                f"Invalid response from TaskWarrior: {result.stdout}"
+            )
 
     def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the recurring task (parent) by its UUID."""
@@ -367,7 +403,7 @@ class TaskWarriorAdapter:
         """Get comprehensive TaskWarrior information."""
         info = {
             "task_cmd": self.task_cmd,
-            "taskrc_path": self.taskrc_path,
+            "taskrc_file": self.taskrc_file,
             "options": self._options,
         }
 

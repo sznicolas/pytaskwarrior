@@ -7,8 +7,7 @@ class UdaType(str, Enum):
     STRING = "string"
     NUMERIC = "numeric"
     DATE = "date"
-    BOOLEAN = "boolean"
-    TAG = "tag"
+    DURATION = "duration"
 
 class UdaDTO(BaseModel):
     """Data Transfer Object for User Defined Attributes (UDAs)."""
@@ -17,8 +16,8 @@ class UdaDTO(BaseModel):
     type: UdaType = Field(..., description="Data type of the UDA")
     label: str | None = Field(default=None, description="Display label for the UDA")
     values: list[str] | None = Field(default=None, description="Allowed values for the UDA (for string types)")
-    coefficient: float = Field(default=1.0, description="Urgency coefficient applied, influencing task priority")
-    orphaned: bool = Field(default=False, description="Whether the UDA is orphaned (not used by any task)")
+    default: str | None = Field(default=None, description="Default value")
+    coefficient: float | None = Field(default=None, description="Urgency coefficient applied, influencing task priority")
 
     model_config = {
         "populate_by_name": True,

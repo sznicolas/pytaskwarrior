@@ -17,7 +17,7 @@ class TestTaskWarriorAdapterContext:
     def context_service(self, taskwarrior_config: str):
         """Create a TaskWarriorAdapter instance for testing."""
         task_warrior_adapter = TaskWarriorAdapter(
-            task_cmd="task", taskrc_path=taskwarrior_config
+            task_cmd="task", taskrc_file=taskwarrior_config
         )
         return ContextService(task_warrior_adapter)
 

@@ -1,6 +1,6 @@
-from pathlib import Path
+from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.uda_dto import UdaDTO, UdaType
-from ..exceptions import TaskWarriorError, TaskValidationError
+from ..exceptions import TaskWarriorError
 
 
 class UdaRegistry:
@@ -14,11 +14,11 @@ class UdaRegistry:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def load_from_taskrc(self, taskrc_path: str = "~/.taskrc") -> None:
+    def load_from_taskrc(self, taskrc_file) -> None:
         """Load UDAs from taskrc file."""
         self._udas = {}
         try:
-            with open(Path(taskrc_path).expanduser(), "r") as f:
+            with open(taskrc_file, "r") as f:
                 content = f.read()
             # Find all uda.* lines
             uda_lines = [
@@ -49,39 +49,38 @@ class UdaRegistry:
 
                     self._udas[name] = UdaDTO(name=name, **attrs)
                 except Exception as e:
-                    raise TaskWarriorError(f"Error while parsong {name}: {str(e)}")
+                    raise TaskWarriorError(f"Error while parsing {name}: {str(e)}")
 
         except FileNotFoundError:
-            raise TaskWarriorError(f"Taskrc file not found: {taskrc_path}")
+            raise TaskWarriorError(f"Taskrc file not found: {taskrc_file}")
         except Exception as e:
             raise TaskWarriorError(f"Error reading taskrc: {str(e)}")
 
-    def define_uda(self, uda: UdaDTO) -> None:
+    def define_update_uda(self, uda: UdaDTO, adapter: TaskWarriorAdapter) -> None:
         """Define or modify a User Defined Attribute (UDA) using task config commands."""
-        # Set the UDA type
-        self.adapter.run_task_command(["config", f"uda.{name}.type", type_])
-    
-        # Set other attributes if provided
-        if label:
-            self.adapter.run_task_command(["config", f"uda.{name}.label", label])
-        if default:
-            self.adapter.run_task_command(["config", f"uda.{name}.default", default])
-        if values:
-            self.adapter.run_task_command(["config", f"uda.{name}.values", values])
-    
-    def delete_uda(self, name: str) -> None:
+        # Get all field names from UdaDTO
+        field_names = uda.__class__.model_fields.keys() - {"name"}
+        # Process the type
+        field_names -= {"type"}
+        adapter.run_task_command(
+            ["config", f"uda.{uda.name}.type", uda.type.value]
+        )
+
+        # Process each field that has a value
+        for field_name in field_names:
+            value = getattr(uda, field_name)
+            if value is not None and value != "":
+                config_key = f"uda.{uda.name}.{field_name}"
+                adapter.run_task_command(["config", config_key, str(value)])
+        self._udas.update({uda.name: uda})
+
+    def delete_uda(self, uda: UdaDTO, adapter: TaskWarriorAdapter) -> None:
         """Delete a User Defined Attribute (UDA) by clearing its configuration."""
         # Clear all UDA configuration entries by setting them to empty strings
-        config_keys = [
-            f"uda.{name}.type",
-            f"uda.{name}.label",
-            f"uda.{name}.default",
-            f"uda.{name}.values",
-            f"uda.{name}.readonly"
-        ]
-
-    for key in config_keys:
-        self.adapter.run_task_command(["config", key, ""])
+        field_names = uda.__class__.model_fields.keys()
+        for key in field_names:
+            adapter.run_task_command(["config", key, ""])
+        self._udas.pop(uda.name)
 
     def get_uda(self, name: str) -> UdaDTO | None:
         """Get UDA definition by name."""
