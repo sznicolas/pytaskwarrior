@@ -1,6 +1,8 @@
+from src.taskwarrior import UdaRegistry
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.uda_dto import UdaDTO, UdaType
 
+# TODO: manage orphaned `task udas`
 class UdaService:
     def __init__(self, adapter: TaskWarriorAdapter):
         self.adapter = adapter

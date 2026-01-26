@@ -8,6 +8,7 @@ class UdaType(str, Enum):
     NUMERIC = "numeric"
     DATE = "date"
     DURATION = "duration"
+    UUID = "uuid" # TODO: implement properly uuid
 
 class UdaDTO(BaseModel):
     """Data Transfer Object for User Defined Attributes (UDAs)."""

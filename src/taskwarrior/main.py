@@ -10,6 +10,7 @@ from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .enums import TaskStatus
 from .services.context_service import ContextService
 from .utils.dto_converter import task_output_to_input
+from .services.uda_service import UdaService
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class TaskWarrior:
             task_cmd=task_cmd, taskrc_file=taskrc_file, data_location=data_location
         )
         self.context_service: ContextService = ContextService(self.adapter)
+        self.uda_service: UdaService = UdaService(self.adapter)
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Add a new task."""

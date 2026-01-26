@@ -4,9 +4,7 @@ import pytest
 
 from src.taskwarrior.registry.uda_registry import UdaRegistry
 from src.taskwarrior.services.uda_service import UdaService
-from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from src.taskwarrior.dto.uda_dto import UdaDTO, UdaType
-from src.taskwarrior.exceptions import TaskWarriorError
 
 
 def test_uda_service_singleton():
