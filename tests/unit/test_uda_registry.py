@@ -3,7 +3,7 @@ from unittest.mock import mock_open, patch
 import pytest
 
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
-from src.taskwarrior.dto.uda_dto import UdaDTO, UdaType
+from src.taskwarrior.dto.uda_dto import UdaConfig, UdaType
 from src.taskwarrior.exceptions import TaskWarriorError
 from src.taskwarrior.registry.uda_registry import UdaRegistry
 
@@ -127,7 +127,7 @@ def test_define_update_uda_with_empty_fields(tmp_path):
     adapter = TaskWarriorAdapter(taskrc_file=str(taskrc_file))
 
     # Create a test UDA with some empty fields
-    uda = UdaDTO(
+    uda = UdaConfig(
         name="test_uda", type=UdaType.STRING, label="", default="default_value"
     )
     registry.define_update_uda(uda, adapter)

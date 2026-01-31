@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import pytest
-from uuid import uuid4
 
-from src.taskwarrior import TaskWarrior, TaskInputDTO, TaskOutputDTO
-from src.taskwarrior.enums import Priority, TaskStatus, RecurrencePeriod
+from src.taskwarrior import TaskInputDTO, TaskWarrior
+from src.taskwarrior.enums import RecurrencePeriod, TaskStatus
 from src.taskwarrior.exceptions import (
     TaskNotFound,
-    TaskValidationError,
-    TaskWarriorError,
 )
 
 

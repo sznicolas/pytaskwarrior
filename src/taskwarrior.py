@@ -5,6 +5,6 @@ This module provides a Python interface to interact with TaskWarrior,
 a command-line task management tool.
 """
 
-from .taskwarrior import TaskStatus, Priority, RecurrencePeriod, TaskWarrior
+from .taskwarrior import Priority, RecurrencePeriod, TaskStatus, TaskWarrior
 
 __all__ = ['TaskStatus', 'Priority', 'RecurrencePeriod', 'TaskWarrior']

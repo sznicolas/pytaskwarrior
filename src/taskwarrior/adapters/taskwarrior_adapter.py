@@ -1,5 +1,11 @@
+"""TaskWarrior CLI adapter.
+
+This module provides the low-level interface to TaskWarrior CLI commands.
+"""
+
 import json
 import logging
+import os
 import shlex
 import shutil
 import subprocess
@@ -12,28 +18,47 @@ from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
 
 logger = logging.getLogger(__name__)
 
-# Default options that are always passed to taskwarrior commands
 DEFAULT_OPTIONS = [
-    "rc.confirmation=off",  # Avoid silent user confirmation on stdin
+    "rc.confirmation=off",
     "rc.bulk=0",
 ]
 
 
 class TaskWarriorAdapter:
-    """Adapter for TaskWarrior CLI commands."""
+    """Low-level adapter for TaskWarrior CLI commands.
+
+    This class handles direct communication with the TaskWarrior binary,
+    including command execution, argument building, and response parsing.
+    It is used internally by the TaskWarrior facade class.
+
+    Attributes:
+        task_cmd: Path to the TaskWarrior binary.
+        taskrc_file: Path to the taskrc configuration file.
+        data_location: Path to the task data directory.
+    """
 
     def __init__(
         self,
         task_cmd: str = "task",
-        taskrc_file: str = "$HOME/.taskrc",
+        taskrc_file: str = "~/.taskrc",
         data_location: str | None = None
     ):
-        self.task_cmd: str = self._check_binary_path(task_cmd)
+        """Initialize the adapter.
+
+        Args:
+            task_cmd: TaskWarrior binary name or path.
+            taskrc_file: Path to taskrc file.
+            data_location: Path to data directory (optional).
+
+        Raises:
+            TaskValidationError: If TaskWarrior binary not found.
+        """
+        self.task_cmd: Path = self._check_binary_path(task_cmd)
         self._options: list[str] = []
-        self.taskrc_file = Path(taskrc_file).expanduser()
+        self.taskrc_file = Path(os.path.expandvars(taskrc_file)).expanduser()
         self._options.extend([f"rc:{self.taskrc_file}"])
         if data_location:
-            self.data_location = Path(data_location).expanduser()
+            self.data_location: Path | None = Path(os.path.expandvars(data_location)).expanduser()
             self._options.extend([f"rc.data.location={self.data_location}"])
         else:
             self.data_location = None
@@ -41,7 +66,8 @@ class TaskWarriorAdapter:
 
         self._options.extend(DEFAULT_OPTIONS)
 
-    def _check_binary_path(self, task_cmd: str):
+    def _check_binary_path(self, task_cmd: str) -> Path:
+        """Verify TaskWarrior binary exists in PATH."""
         resolved_path = shutil.which(task_cmd)
         if not resolved_path:
             raise TaskValidationError(
@@ -49,9 +75,9 @@ class TaskWarriorAdapter:
             )
         return Path(resolved_path)
 
-    def _check_or_create_taskfiles(self):
+    def _check_or_create_taskfiles(self) -> None:
+        """Create taskrc and data directory if they don't exist."""
         if not self.taskrc_file.exists():
-            # Create default taskrc content
             default_content = """# Taskwarrior configuration file
 # This file was automatically created by pytaskwarrior
 # Default data location
@@ -68,10 +94,17 @@ rc.bulk=0
             logger.info(f"Created Task data direcory '{self.data_location}'")
 
     def run_task_command(
-        self, args: list[str], no_opt=False
-    ) -> subprocess.CompletedProcess:
-        """Run a taskwarrior command."""
-        # Prepend the taskrc path to all commands
+        self, args: list[str], no_opt: bool = False
+    ) -> subprocess.CompletedProcess[str]:
+        """Execute a TaskWarrior CLI command.
+
+        Args:
+            args: Command arguments to pass to TaskWarrior.
+            no_opt: If True, skip default options.
+
+        Returns:
+            CompletedProcess with stdout, stderr, and returncode.
+        """
         cmd = [str(self.task_cmd)]
         cmd.extend(args)
         if not no_opt:
@@ -101,15 +134,13 @@ rc.bulk=0
             raise
 
     def _build_args(self, task: TaskInputDTO) -> list[str]:
-        """Build command arguments for a task."""
+        """Build CLI arguments from a TaskInputDTO."""
         args = []
 
-        # Process all fields except UUID
         for field_name, value in task.model_dump(exclude_unset=True).items():
             if field_name == "uuid":
                 continue
 
-            # Handle special cases
             if field_name == "tags" and value:
                 if isinstance(value, list):
                     args.append(f"tags={','.join(shlex.quote(str(v)) for v in value)}")
@@ -118,10 +149,8 @@ rc.bulk=0
             elif field_name == "depends" and value:
                 args.extend([f"depends+={shlex.quote(str(dep))}" for dep in value])
             elif field_name == "annotations" and value:
-                # Handle annotations - they are added separately via annotate command
-                pass
+                pass  # Handled separately via annotate command
             else:
-                # Handle all other fields with proper quoting
                 if isinstance(value, (list, tuple)):
                     str_value = ",".join(shlex.quote(str(v)) for v in value)
                 elif isinstance(value, UUID):
@@ -132,11 +161,10 @@ rc.bulk=0
                 args.append(f"{field_name}={str_value}")
 
         logger.debug(f"Built arguments: {args}")
-
         return args
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
-        """Add a new task."""
+        """Add a new task. Returns the created task."""
         logger.info(f"Adding task with description: {task.description}")
 
         if not task.description.strip():
@@ -150,14 +178,12 @@ rc.bulk=0
             logger.error(error_msg)
             raise TaskValidationError(error_msg)
 
-        # Get the latest added task
         tasks = self.get_tasks(filter_args="+LATEST")
         if not tasks:
             error_msg = "Failed to retrieve added task"
             logger.error(error_msg)
             raise RuntimeError(error_msg)
 
-        # Add annotations if any
         if task.annotations:
             for annotation in task.annotations:
                 self.annotate_task(tasks[0].uuid, annotation)
@@ -168,7 +194,7 @@ rc.bulk=0
     def modify_task(
         self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID
     ) -> TaskOutputDTO:
-        """Modify an existing task."""
+        """Modify an existing task. Returns the updated task."""
         logger.info(f"Modifying task with UUID: {task_id_or_uuid}")
 
         args = self._build_args(task)
@@ -185,9 +211,8 @@ rc.bulk=0
 
     def get_task(
         self, task_id_or_uuid: str | int | UUID, filter_args: str = ""
-    ) -> TaskOutputDTO | None:
-        """Retrieve a task by ID or UUID."""
-        # Convert to string for CLI command
+    ) -> TaskOutputDTO:
+        """Retrieve a single task by ID or UUID."""
         task_id_or_uuid = str(task_id_or_uuid)
         logger.debug(f"Retrieving task with ID/UUID: {task_id_or_uuid}")
 
@@ -212,7 +237,7 @@ rc.bulk=0
                 logger.error(f"Failed to parse JSON response: {e}")
                 raise TaskValidationError(
                     f"Invalid response from TaskWarrior: {result.stdout}"
-                )
+                ) from e
         else:
             raise TaskWarriorError(
                 f"Error while retrieving task ID/UUID {task_id_or_uuid} not found"
@@ -222,7 +247,7 @@ rc.bulk=0
         self,
         filter_args: str = f"(status.not:{TaskStatus.DELETED} and status.not:{TaskStatus.COMPLETED})",
     ) -> list[TaskOutputDTO]:
-        """Get multiple tasks based on filters."""
+        """Retrieve multiple tasks matching a filter."""
         logger.debug(f"Getting tasks with filters: {filter_args}")
         args = [filter_args, "export"]
         result = self.run_task_command(args)
@@ -243,15 +268,13 @@ rc.bulk=0
             logger.error(f"Failed to parse JSON response: {e}")
             raise TaskValidationError(
                 f"Invalid response from TaskWarrior: {result.stdout}"
-            )
+            ) from e
 
     def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
-        """Get the recurring task (parent) by its UUID."""
-        # Convert to string for CLI command
+        """Get the parent recurring task template."""
         task_id_or_uuid = str(task_id_or_uuid)
         logger.debug(f"Getting recurring task with UUID: {task_id_or_uuid}")
 
-        # Get the parent recurring task
         result = self.run_task_command(
             [str(task_id_or_uuid), "status:" + TaskStatus.RECURRING, "export"]
         )
@@ -263,7 +286,6 @@ rc.bulk=0
                 logger.debug(f"Successfully retrieved recurring task: {task.uuid}")
                 return task
 
-        # If not found as recurring, try to get it normally
         logger.debug(
             f"Recurring task {task_id_or_uuid} not found as recurring, trying normal retrieval"
         )
@@ -273,15 +295,12 @@ rc.bulk=0
         self, task_id_or_uuid: str | int | UUID
     ) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task."""
-        # Convert to string for CLI command
         task_id_or_uuid = str(task_id_or_uuid)
         logger.debug(f"Getting recurring instances for parent UUID: {task_id_or_uuid}")
 
-        # Get child tasks that are instances of the recurring parent
         result = self.run_task_command([f"parent:{str(task_id_or_uuid)}", "export"])
 
         if result.returncode != 0:
-            # Check if it's a "no matches" error that we should handle gracefully
             if (
                 "No matches" in result.stderr
                 or "Unable to find report that matches" in result.stderr
@@ -305,109 +324,101 @@ rc.bulk=0
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}")
+            raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}") from e
 
-    def delete_task(self, uuid: str | int | UUID) -> None:
-        """Delete a task."""
-        # Convert to string for CLI command
-        uuid = str(uuid)
-        logger.info(f"Deleting task with UUID: {uuid}")
+    def delete_task(self, task_id_or_uuid: str | int | UUID) -> None:
+        """Mark a task as deleted."""
+        task_ref = str(task_id_or_uuid)
+        logger.info(f"Deleting task: {task_ref}")
 
-        result = self.run_task_command([str(uuid), "delete"])
+        result = self.run_task_command([task_ref, "delete"])
 
         if result.returncode != 0:
             error_msg = f"Failed to delete task: {result.stderr}"
             logger.error(error_msg)
             raise TaskNotFound(error_msg)
 
-        logger.info(f"Successfully deleted task with UUID: {uuid}")
+        logger.info(f"Successfully deleted task: {task_ref}")
 
-    def purge_task(self, uuid: str | int | UUID) -> None:
-        """Purge a task permanently."""
-        # Convert to string for CLI command
-        uuid = str(uuid)
-        logger.info(f"Purging task with UUID: {uuid}")
+    def purge_task(self, task_id_or_uuid: str | int | UUID) -> None:
+        """Permanently remove a task."""
+        task_ref = str(task_id_or_uuid)
+        logger.info(f"Purging task: {task_ref}")
 
-        result = self.run_task_command([str(uuid), "purge"])
+        result = self.run_task_command([task_ref, "purge"])
 
         if result.returncode != 0:
             error_msg = f"Failed to purge task: {result.stderr}"
             logger.error(error_msg)
             raise TaskNotFound(error_msg)
 
-        logger.info(f"Successfully purged task with UUID: {uuid}")
+        logger.info(f"Successfully purged task: {task_ref}")
 
-    def done_task(self, uuid: str | int | UUID) -> None:
-        """Mark a task as done."""
-        # Convert to string for CLI command
-        uuid = str(uuid)
-        logger.info(f"Completing task with UUID: {uuid}")
+    def done_task(self, task_id_or_uuid: str | int | UUID) -> None:
+        """Mark a task as completed."""
+        task_ref = str(task_id_or_uuid)
+        logger.info(f"Completing task: {task_ref}")
 
-        result = self.run_task_command([str(uuid), "done"])
+        result = self.run_task_command([task_ref, "done"])
 
         if result.returncode != 0:
             error_msg = f"Failed to mark task as done: {result.stderr}"
             logger.error(error_msg)
             raise TaskNotFound(error_msg)
 
-        logger.info(f"Successfully completed task with UUID: {uuid}")
+        logger.info(f"Successfully completed task: {task_ref}")
 
-    def start_task(self, uuid: str | int | UUID) -> None:
-        """Start a task."""
-        # Convert to string for CLI command
-        uuid = str(uuid)
-        logger.info(f"Starting task with UUID: {uuid}")
+    def start_task(self, task_id_or_uuid: str | int | UUID) -> None:
+        """Start working on a task."""
+        task_ref = str(task_id_or_uuid)
+        logger.info(f"Starting task: {task_ref}")
 
-        result = self.run_task_command([str(uuid), "start"])
+        result = self.run_task_command([task_ref, "start"])
 
         if result.returncode != 0:
             error_msg = f"Failed to start task: {result.stderr}"
             logger.error(error_msg)
             raise TaskNotFound(error_msg)
 
-        logger.info(f"Successfully started task with UUID: {uuid}")
+        logger.info(f"Successfully started task: {task_ref}")
 
-    def stop_task(self, uuid: str | int | UUID) -> None:
-        """Stop a task."""
-        # Convert to string for CLI command
-        uuid = str(uuid)
-        logger.info(f"Stopping task with UUID: {uuid}")
+    def stop_task(self, task_id_or_uuid: str | int | UUID) -> None:
+        """Stop working on a task."""
+        task_ref = str(task_id_or_uuid)
+        logger.info(f"Stopping task: {task_ref}")
 
-        result = self.run_task_command([str(uuid), "stop"])
+        result = self.run_task_command([task_ref, "stop"])
 
         if result.returncode != 0:
             error_msg = f"Failed to stop task: {result.stderr}"
             logger.error(error_msg)
             raise TaskNotFound(error_msg)
 
-        logger.info(f"Successfully stopped task with UUID: {uuid}")
+        logger.info(f"Successfully stopped task: {task_ref}")
 
-    def annotate_task(self, uuid: str | int | UUID, annotation: str) -> None:
+    def annotate_task(self, task_id_or_uuid: str | int | UUID, annotation: str) -> None:
         """Add an annotation to a task."""
-        # Convert to string for CLI command
-        uuid = str(uuid)
-        logger.info(f"Annotating task {uuid} with: {annotation}")
+        task_ref = str(task_id_or_uuid)
+        logger.info(f"Annotating task {task_ref} with: {annotation}")
 
-        # Sanitize the annotation to prevent command injection
         sanitized_annotation = shlex.quote(annotation)
-        result = self.run_task_command([str(uuid), "annotate", sanitized_annotation])
+        result = self.run_task_command([task_ref, "annotate", sanitized_annotation])
 
         if result.returncode != 0:
             error_msg = f"Failed to annotate task: {result.stderr}"
             logger.error(error_msg)
             raise TaskNotFound(error_msg)
 
-        logger.info(f"Successfully annotated task with UUID: {uuid}")
+        logger.info(f"Successfully annotated task: {task_ref}")
 
-    def get_info(self) -> dict:
-        """Get comprehensive TaskWarrior information."""
+    def get_info(self) -> dict[str, object]:
+        """Get TaskWarrior configuration and version info."""
         info = {
             "task_cmd": self.task_cmd,
             "taskrc_file": self.taskrc_file,
             "options": self._options,
         }
 
-        # Get version
         try:
             version_result = self.run_task_command(["--version"], no_opt=True)
             if version_result.returncode == 0 and version_result.stdout:
@@ -418,33 +429,24 @@ rc.bulk=0
         return info
 
     def task_calc(self, date_str: str) -> str:
-        """Calculate a TaskWarrior date string and return the result.
-
-        This method calculates the actual date/time for a TaskWarrior date expression
-        and returns the calculated value."""
+        """Calculate a TaskWarrior date expression."""
         try:
             result = self.run_task_command(["calc", date_str])
             if result.returncode:
                 raise TaskWarriorError(f"Failed to calculate date '{date_str}'")
 
-            return result.stdout.strip()
+            output: str = result.stdout.strip()
+            return output
         except Exception as e:
-            raise TaskWarriorError(f"Failed to calculate date '{date_str}': {str(e)}")
+            raise TaskWarriorError(f"Failed to calculate date '{date_str}': {str(e)}") from e
 
     def task_date_validator(self, date_str: str) -> bool:
-        """Validate TaskWarrior date string format.
-
-        This utility method is provided for developers who need to validate
-        TaskWarrior date formats before creating tasks. It's not used internally
-        by the adapter.
-
-        Returns:
-            True if valid TaskWarrior date format, False otherwise
-        """
+        """Validate a TaskWarrior date expression. Returns True if valid."""
         try:
             result = self.run_task_command(["calc", date_str, "+ P1D"])
             if result.returncode:
                 return False
-            return result.stdout.strip() != date_str.strip() + "P1D"
+            is_valid: bool = result.stdout.strip() != date_str.strip() + "P1D"
+            return is_valid
         except subprocess.CalledProcessError:
             return False

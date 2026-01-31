@@ -36,13 +36,10 @@ def test_task_input_dto_creation():
 
 
 def test_task_input_dto_empty_description_validation():
-    """Test that empty description raises ValueError."""
+    """Test that empty or whitespace description raises ValueError."""
     with pytest.raises(TaskValidationError, match="Task description cannot be empty"):
         TaskInputDTO(description="")
 
-
-def test_task_input_dto_whitespace_description_validation():
-    """Test that whitespace-only description raises ValueError."""
     with pytest.raises(TaskValidationError, match="Task description cannot be empty"):
         TaskInputDTO(description="   ")
 
@@ -148,7 +145,7 @@ def test_task_output_to_input_conversion():
     )
 
     # This function is defined in main.py
-    from src.taskwarrior.main import task_output_to_input
+    from src.taskwarrior.utils.dto_converter import task_output_to_input
 
     input_task = task_output_to_input(output_task)
 
@@ -177,7 +174,7 @@ def test_task_output_to_input_conversion_comprehensive():
         recur=RecurrencePeriod.WEEKLY,
     )
 
-    from src.taskwarrior.main import task_output_to_input
+    from src.taskwarrior.utils.dto_converter import task_output_to_input
 
     input_task = task_output_to_input(output_task)
 
@@ -224,7 +221,7 @@ def test_task_output_dto_from_taskwarrior_json_export():
 
 
 def test_task_input_dto_all_fields():
-    """Test TaskInputDTO with all fields."""
+    """Test TaskInputDTO with all fields including depends."""
     task = TaskInputDTO(
         description="Test task",
         priority=Priority.HIGH,
@@ -288,13 +285,6 @@ def test_task_output_dto_all_fields():
     assert task.wait.isoformat() == "2026-01-07T09:15:45+00:00"
     assert task.until.isoformat() == "2026-01-08T14:30:20+00:00"
     assert task.recur == RecurrencePeriod.WEEKLY
-
-
-def test_task_input_dto_validation_edge_cases():
-    """Test TaskInputDTO validation edge cases."""
-    # Test with empty string in various fields
-    with pytest.raises(TaskValidationError):
-        TaskInputDTO(description="")
 
 
 def test_task_output_dto_validation_edge_cases():

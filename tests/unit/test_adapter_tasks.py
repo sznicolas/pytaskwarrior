@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import subprocess
 from uuid import uuid4
 
 import pytest
@@ -13,8 +11,8 @@ from src.taskwarrior.enums import Priority, RecurrencePeriod
 from src.taskwarrior.exceptions import (
     TaskNotFound,
     TaskValidationError,
-    TaskWarriorError,
 )
+
 
 class TestTaskWarriorAdapterTasks:
     """Test cases for TaskWarriorAdapter task management functionality."""
@@ -47,7 +45,7 @@ class TestTaskWarriorAdapterTasks:
 
         # Purge it
         adapter.purge_task(added_task.uuid)
-        
+
         # Verify it's purged (should raise TaskNotFound)
         with pytest.raises(TaskNotFound):
             adapter.get_task(added_task.uuid)
@@ -152,7 +150,7 @@ class TestTaskWarriorAdapterTasks:
 
     def test_task_output_to_input_edge_cases(self, adapter: TaskWarriorAdapter):
         """Test task_output_to_input with edge cases."""
-        from src.taskwarrior.main import task_output_to_input
+        from src.taskwarrior.utils.dto_converter import task_output_to_input
 
         # Add a task with minimal fields
         task = TaskInputDTO(description="Minimal task")

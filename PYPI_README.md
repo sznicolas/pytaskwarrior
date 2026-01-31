@@ -1,31 +1,50 @@
 # pytaskwarrior
-## Description
-Automate your TaskWarrior interactions with this wrapper.
+
+A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/), the command-line task management tool.
+
+## Features
+
+- ✅ Full CRUD operations for tasks
+- ✅ Type-safe with Pydantic models
+- ✅ Context management
+- ✅ UDA (User Defined Attributes) support
+- ✅ Recurring tasks and annotations
+
+## Requirements
+
+- Python 3.12+
+- TaskWarrior 3.4+ installed
 
 ## Installation
+
 ```bash
 pip install pytaskwarrior
 ```
 
-## Use `taskwarrior` module
-You MUST have a `taskrc` file that is configured to allow `task` command without confirmation. By default `pytaskrc` in the current directory is created and used. You can set TASKRC and TASKDATA in your environment.
-```
-from taskwarrior import TaskWarrior, Task, Priority
+## Quick Start
+
+```python
+from taskwarrior import TaskWarrior, TaskInputDTO, Priority
 
 tw = TaskWarrior()
-task1 = Task(description='First task')
-task1 = tw.add_task(task1) # adds task1 and updates index/uuid fields
-task2 = Task(
-        description="🆘 Write PyTaskwarrior API documentation",
-        due='P1W',
-        priority=Priority.HIGH,
-        project="pytaskwarrior",
-        tags=["docs", "dev"]
+
+# Create a task
+task = TaskInputDTO(
+    description="Important meeting",
+    priority=Priority.HIGH,
+    project="work",
+    due="friday"
 )
-print(tw.get_tasks(['status:pending']))
-tw.add_task(task2)
-tw.done_task(task1.uuid)
-task1 = tw.get_task(task1.uuid)
-print(task1.status)
+added = tw.add_task(task)
+
+# Get all pending tasks
+for t in tw.get_tasks():
+    print(f"[{t.priority or '-'}] {t.description}")
+
+# Complete a task
+tw.done_task(added.uuid)
 ```
 
+## Documentation
+
+Full documentation: [GitHub Repository](https://github.com/sznicolas/pytaskwarrior/)

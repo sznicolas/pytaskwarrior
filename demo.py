@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from src.taskwarrior import (
+from taskwarrior import (
     Priority,
     RecurrencePeriod,
     TaskInputDTO,

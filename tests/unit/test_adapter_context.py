@@ -21,33 +21,8 @@ class TestTaskWarriorAdapterContext:
         )
         return ContextService(task_warrior_adapter)
 
-    def test_context_management_errors(self, context_service: ContextService):
-        """Test context management error conditions."""
-        # Test apply_context with non-existent context
-        with pytest.raises(TaskWarriorError):
-            context_service.apply_context("nonexistent_context")
-
-        # Test delete_context with non-existent context
-        with pytest.raises(TaskWarriorError):
-            context_service.delete_context("nonexistent_context")
-
-    def test_context_management_sequence(self, context_service: ContextService):
-        """Test sequence of context management operations."""
-        # Set a context
-        context_service.define_context("test_context", "status:pending")
-
-        # Apply it
-        context_service.apply_context("test_context")
-
-        # Remove it
-        context_service.unset_context()
-
-        # Verify no context is set
-        context = context_service.get_current_context()
-        assert context is None
-
     def test_context_management_comprehensive(self, context_service: ContextService):
-        """Test comprehensive context management."""
+        """Test comprehensive context management including all operations."""
         # Test setting multiple contexts
         context_service.define_context("context1", "status:pending")
         context_service.define_context("context2", "status:completed")
@@ -73,26 +48,16 @@ class TestTaskWarriorAdapterContext:
         contexts = context_service.get_contexts()
         assert "context1" not in contexts
 
-    def test_context_management(self, context_service: ContextService):
-        """Test context management functionality."""
-        # Test set and apply context
-        context_service.define_context("test_context", "status:pending")
-        context_service.apply_context("test_context")
+    def test_context_management_error_conditions(self, context_service: ContextService):
+        """Test context management error conditions."""
+        # Test apply_context with non-existent context
+        with pytest.raises(TaskWarriorError):
+            context_service.apply_context("nonexistent_context")
 
-        # Test remove context
-        context_service.unset_context()
+        # Test delete_context with non-existent context
+        with pytest.raises(TaskWarriorError):
+            context_service.delete_context("nonexistent_context")
 
-        # Test list contexts
-        contexts = context_service.get_contexts()
-        assert isinstance(contexts, list)
-        assert isinstance(contexts[0], ContextDTO)
-
-        # Test show context
-        context = context_service.get_current_context()
-        assert context is None or isinstance(context, str)
-
-    def test_context_service_error_conditions(self, context_service):
-        """Test context service with various error conditions."""
         # Test with empty context names
         with pytest.raises(TaskWarriorError):
             context_service.define_context("", "status:pending")

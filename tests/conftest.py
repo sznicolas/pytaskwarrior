@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import pytest
-from pathlib import Path
 import os
 import subprocess
+from pathlib import Path
 
-from src.taskwarrior import TaskWarrior, TaskInputDTO 
+import pytest
+
+from src.taskwarrior import TaskInputDTO, TaskWarrior
 from src.taskwarrior.enums import Priority
 
 

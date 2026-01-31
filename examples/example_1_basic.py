@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Basic TaskWarrior example."""
 
-from src.taskwarrior import TaskWarrior, TaskInputDTO, Priority
+from taskwarrior import TaskWarrior, TaskInputDTO, Priority
 
 # Initialize TaskWarrior with local config
 tw = TaskWarrior(
