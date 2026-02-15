@@ -7,15 +7,15 @@ and retrieving tasks from TaskWarrior.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..enums import Priority, RecurrencePeriod, TaskStatus
 from ..exceptions import TaskValidationError
 from ..utils.conversions import parse_taskwarrior_date
 from .annotation_dto import AnnotationDTO
-from .uda_dto import UdaConfig
 
 
 class TaskInputDTO(BaseModel):
@@ -38,7 +38,7 @@ class TaskInputDTO(BaseModel):
         wait: Date until which the task is hidden from pending list.
         until: Expiration date for recurring task instances.
         annotations: List of annotation strings to add to the task.
-        udas: List of User Defined Attributes.
+        udas: Dictionary of User Defined Attribute values (e.g., {"severity": "high"}).
 
     Example:
         Create a simple task::
@@ -54,6 +54,13 @@ class TaskInputDTO(BaseModel):
                 tags=["urgent", "q1"],
                 due="friday",
                 scheduled="tomorrow",
+            )
+
+        Create a task with UDAs::
+
+            task = TaskInputDTO(
+                description="Fix critical bug",
+                udas={"severity": "critical", "estimate": 2.5}
             )
     """
 
@@ -88,8 +95,9 @@ class TaskInputDTO(BaseModel):
     annotations: list[str] = Field(
         default_factory=list, description="List of annotations for the task"
     )
-    udas: list[UdaConfig] = Field(
-        default_factory=list, description="User Defined Attributes"
+    udas: dict[str, Any] = Field(
+        default_factory=dict,
+        description="User Defined Attribute values (e.g., {'severity': 'high'})",
     )
 
     model_config = ConfigDict(
@@ -154,7 +162,7 @@ class TaskOutputDTO(BaseModel):
         until: Expiration date for recurring instances.
         urgency: Calculated urgency score (read-only).
         annotations: List of annotation objects with timestamps.
-        udas: List of User Defined Attributes.
+        udas: Dictionary of User Defined Attribute values.
         imask: Mask for recurring tasks or instance number.
         rtype: Type of recurring task.
 
@@ -165,6 +173,11 @@ class TaskOutputDTO(BaseModel):
             print(f"Task #{task.index}: {task.description}")
             print(f"Status: {task.status}")
             print(f"Urgency: {task.urgency}")
+
+        Access UDA values::
+
+            severity = task.get_uda("severity")
+            estimate = task.get_uda("estimate", default=0)
     """
 
     description: str = Field(..., description="Task description (required).")
@@ -218,8 +231,9 @@ class TaskOutputDTO(BaseModel):
     annotations: list[AnnotationDTO] = Field(
         default_factory=list, description="List of annotations for the task"
     )
-    udas: list[UdaConfig] = Field(
-        default_factory=list, description="User Defined Attributes"
+    udas: dict[str, Any] = Field(
+        default_factory=dict,
+        description="User Defined Attribute values",
     )
     imask: str | int | None = Field(
         default=None,
@@ -231,7 +245,7 @@ class TaskOutputDTO(BaseModel):
         use_enum_values=True,
         validate_assignment=True,
         populate_by_name=True,
-        extra="forbid",
+        extra="ignore",
         json_schema_extra={
             "examples": [
                 {"description": "a task"},
@@ -243,6 +257,40 @@ class TaskOutputDTO(BaseModel):
             ]
         },
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_udas_from_extra_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
+        """Extract unknown fields from TaskWarrior JSON into the udas dict.
+
+        TaskWarrior returns UDA values as top-level fields in the JSON.
+        This validator captures any field not defined in the model and
+        moves it to the 'udas' dictionary.
+
+        Args:
+            data: The raw input data dictionary.
+
+        Returns:
+            The data dictionary with extra fields moved to 'udas'.
+        """
+        if not isinstance(data, dict):
+            return data
+
+        known_fields = set(cls.model_fields.keys()) | {"id"}  # 'id' is alias for 'index'
+        udas = data.get("udas", {})
+        udas = dict(udas) if isinstance(udas, dict) else {}
+
+        extra_fields = []
+        for key, value in data.items():
+            if key not in known_fields and not key.startswith("_"):
+                udas[key] = value
+                extra_fields.append(key)
+
+        for key in extra_fields:
+            del data[key]
+
+        data["udas"] = udas
+        return data
 
     @field_validator(
         "entry",
@@ -271,3 +319,20 @@ class TaskOutputDTO(BaseModel):
         if isinstance(value, datetime):
             return value
         return parse_taskwarrior_date(value or "")
+
+    def get_uda(self, name: str, default: Any = None) -> Any:
+        """Get a User Defined Attribute value by name.
+
+        Args:
+            name: The name of the UDA to retrieve.
+            default: Value to return if the UDA is not set. Defaults to None.
+
+        Returns:
+            The UDA value if set, otherwise the default value.
+
+        Example:
+            >>> task = tw.get_task(uuid)
+            >>> severity = task.get_uda("severity")
+            >>> estimate = task.get_uda("estimate", default=0)
+        """
+        return self.udas.get(name, default)

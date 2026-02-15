@@ -79,11 +79,43 @@ estimate = UdaConfig(
 tw.uda_service.define_uda(estimate)
 ```
 
-### Loading Existing UDAs
+### Using UDAs in Tasks
 
 ```python
-# Load UDAs from taskrc
-tw.uda_service.load_udas_from_taskrc()
+# Create a task with UDA values
+task = TaskInputDTO(
+    description="Fix critical bug",
+    project="backend",
+    udas={"severity": "critical", "estimate": 4},
+)
+added = tw.add_task(task)
+
+# Read UDA values from a task
+task = tw.get_task(uuid)
+severity = task.get_uda("severity")  # "critical"
+estimate = task.get_uda("estimate", default=0)  # 4
+```
+
+### Listing UDAs
+
+```python
+# Get all defined UDA names
+names = tw.get_uda_names()
+print(names)  # {"severity", "estimate"}
+
+# Get configuration for a specific UDA
+config = tw.get_uda_config("severity")
+if config:
+    print(config.type)    # UdaType.STRING
+    print(config.values)  # ["low", "medium", "high", "critical"]
+```
+
+### Reloading UDAs
+
+If UDAs are modified externally, reload them:
+
+```python
+tw.reload_udas()
 ```
 
 ## Task Dependencies

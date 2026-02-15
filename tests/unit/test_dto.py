@@ -329,3 +329,116 @@ def test_exception_messages():
         raise TaskNotFound("Test not found error")
     except TaskNotFound as e:
         assert str(e) == "Test not found error"
+
+
+# ============================================================================
+# UDA Tests
+# ============================================================================
+
+
+def test_task_input_dto_with_udas():
+    """Test TaskInputDTO with UDA values."""
+    task = TaskInputDTO(
+        description="Test task with UDAs",
+        udas={"severity": "high", "estimate": 2.5, "customer": "ACME Corp"},
+    )
+
+    assert task.description == "Test task with UDAs"
+    assert task.udas == {"severity": "high", "estimate": 2.5, "customer": "ACME Corp"}
+
+
+def test_task_input_dto_with_empty_udas():
+    """Test TaskInputDTO with empty UDA dict."""
+    task = TaskInputDTO(description="Test task")
+    assert task.udas == {}
+
+
+def test_task_output_dto_get_uda():
+    """Test TaskOutputDTO.get_uda() method."""
+    task_uuid = uuid4()
+    task = TaskOutputDTO(
+        description="Test task",
+        id=1,
+        uuid=task_uuid,
+        status=TaskStatus.PENDING,
+        udas={"severity": "high", "estimate": 2.5},
+    )
+
+    assert task.get_uda("severity") == "high"
+    assert task.get_uda("estimate") == 2.5
+    assert task.get_uda("nonexistent") is None
+    assert task.get_uda("nonexistent", default="default") == "default"
+
+
+def test_task_output_dto_extracts_udas_from_json():
+    """Test that TaskOutputDTO extracts unknown fields as UDAs."""
+    task_uuid = uuid4()
+    json_data = {
+        "description": "Test task",
+        "id": 1,
+        "uuid": str(task_uuid),
+        "status": "pending",
+        "severity": "critical",
+        "estimate": 4,
+        "customer": "ACME",
+    }
+
+    task = TaskOutputDTO.model_validate(json_data)
+
+    assert task.description == "Test task"
+    assert task.status == TaskStatus.PENDING
+    assert task.udas == {"severity": "critical", "estimate": 4, "customer": "ACME"}
+    assert task.get_uda("severity") == "critical"
+    assert task.get_uda("estimate") == 4
+    assert task.get_uda("customer") == "ACME"
+
+
+def test_task_output_dto_preserves_existing_udas_dict():
+    """Test that existing udas dict is preserved and merged with extra fields."""
+    task_uuid = uuid4()
+    json_data = {
+        "description": "Test task",
+        "id": 1,
+        "uuid": str(task_uuid),
+        "status": "pending",
+        "udas": {"existing": "value"},
+        "new_uda": "new_value",
+    }
+
+    task = TaskOutputDTO.model_validate(json_data)
+
+    assert task.udas == {"existing": "value", "new_uda": "new_value"}
+
+
+def test_task_output_dto_with_taskwarrior_json():
+    """Test TaskOutputDTO with realistic TaskWarrior JSON including UDAs."""
+    json_data = {
+        "id": 5,
+        "description": "Fix critical bug",
+        "entry": "20260130T120000Z",
+        "modified": "20260130T150000Z",
+        "status": "pending",
+        "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "urgency": 8.5,
+        "project": "backend",
+        "tags": ["bug", "urgent"],
+        "severity": "critical",
+        "estimate": 3,
+        "sprint": "2026-Q1-S3",
+    }
+
+    task = TaskOutputDTO.model_validate(json_data)
+
+    # Standard fields
+    assert task.index == 5
+    assert task.description == "Fix critical bug"
+    assert task.status == TaskStatus.PENDING
+    assert task.project == "backend"
+    assert task.tags == ["bug", "urgent"]
+    assert task.urgency == 8.5
+
+    # UDA fields
+    assert task.get_uda("severity") == "critical"
+    assert task.get_uda("estimate") == 3
+    assert task.get_uda("sprint") == "2026-Q1-S3"
+    assert task.get_uda("nonexistent", default=0) == 0

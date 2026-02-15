@@ -150,6 +150,11 @@ rc.bulk=0
                 args.extend([f"depends+={shlex.quote(str(dep))}" for dep in value])
             elif field_name == "annotations" and value:
                 pass  # Handled separately via annotate command
+            elif field_name == "udas" and value:
+                # Handle UDA values from the dict
+                for uda_name, uda_value in value.items():
+                    if uda_value is not None:
+                        args.append(f"{uda_name}:{shlex.quote(str(uda_value))}")
             else:
                 if isinstance(value, (list, tuple)):
                     str_value = ",".join(shlex.quote(str(v)) for v in value)

@@ -33,6 +33,7 @@ Requirements:
 """
 
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
+from .dto.uda_dto import UdaConfig, UdaType
 from .enums import Priority, RecurrencePeriod, TaskStatus
 from .main import TaskWarrior
 from .registry.uda_registry import UdaRegistry
@@ -47,5 +48,7 @@ __all__ = [
     "TaskOutputDTO",
     "TaskWarrior",
     "task_output_to_input",
+    "UdaConfig",
     "UdaRegistry",
+    "UdaType",
 ]

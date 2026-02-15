@@ -12,6 +12,7 @@ from uuid import UUID
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
+from .dto.uda_dto import UdaConfig
 from .enums import TaskStatus
 from .services.context_service import ContextService
 from .services.uda_service import UdaService
@@ -77,6 +78,9 @@ class TaskWarrior:
         )
         self.context_service: ContextService = ContextService(self.adapter)
         self.uda_service: UdaService = UdaService(self.adapter)
+
+        # Auto-load UDA definitions from taskrc
+        self.uda_service.load_udas_from_taskrc()
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Add a new task to TaskWarrior.
@@ -415,3 +419,44 @@ class TaskWarrior:
             >>> tw.date_validator("invalid")  # False
         """
         return self.adapter.task_date_validator(date_str)
+
+    def reload_udas(self) -> None:
+        """Reload UDA definitions from the taskrc file.
+
+        Use this method to refresh UDA definitions if they have been
+        modified externally (e.g., by another program or manual edit).
+
+        Example:
+            >>> tw.reload_udas()
+            >>> names = tw.get_uda_names()
+        """
+        self.uda_service.load_udas_from_taskrc()
+
+    def get_uda_names(self) -> set[str]:
+        """Get all defined UDA names.
+
+        Returns:
+            Set of UDA names currently defined in taskrc.
+
+        Example:
+            >>> names = tw.get_uda_names()
+            >>> print(names)  # {"severity", "estimate", "customer"}
+        """
+        return self.uda_service.registry.get_uda_names()
+
+    def get_uda_config(self, name: str) -> UdaConfig | None:
+        """Get the configuration for a specific UDA.
+
+        Args:
+            name: The name of the UDA to retrieve.
+
+        Returns:
+            The UdaConfig if found, None otherwise.
+
+        Example:
+            >>> config = tw.get_uda_config("severity")
+            >>> if config:
+            ...     print(config.type)  # UdaType.STRING
+            ...     print(config.values)  # ["low", "medium", "high"]
+        """
+        return self.uda_service.registry.get_uda(name)

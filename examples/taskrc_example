@@ -1,0 +1,11 @@
+# Taskwarrior configuration file
+# This file was automatically created by pytaskwarrior
+# Default data location
+rc.data.location=task_data
+# Disable confirmation prompts
+rc.confirmation=off
+rc.bulk=0
+context.work.read=project:work
+context.work.write=project:work
+context.personal.read=project:personal
+context.personal.write=project:personal

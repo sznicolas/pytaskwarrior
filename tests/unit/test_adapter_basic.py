@@ -181,6 +181,28 @@ class TestTaskWarriorAdapterBasic:
         assert "wait=2026-01-10T12:30:45Z" in args
         assert "until=2027-01-01T00:00:00Z" in args
 
+    def test_build_args_with_udas(self, adapter: TaskWarriorAdapter):
+        """Test _build_args includes UDA values correctly."""
+        task = TaskInputDTO(
+            description="Task with UDAs",
+            udas={"severity": "high", "estimate": 2.5, "customer": "ACME Corp"},
+        )
+        args = adapter._build_args(task)
+
+        # UDAs should use colon format (shlex.quote only adds quotes when needed)
+        assert "severity:high" in args
+        assert "estimate:2.5" in args
+        assert "customer:'ACME Corp'" in args
+
+    def test_build_args_with_empty_udas(self, adapter: TaskWarriorAdapter):
+        """Test _build_args with empty UDAs dict."""
+        task = TaskInputDTO(description="Task without UDAs")
+        args = adapter._build_args(task)
+
+        # Should not contain any UDA-related args
+        uda_args = [a for a in args if ":" in a and "description" not in a]
+        assert len(uda_args) == 0
+
     def test_add_task_with_various_date_formats(self, adapter: TaskWarriorAdapter):
         """Test add_task with various date formats."""
         # Test with different valid date formats
