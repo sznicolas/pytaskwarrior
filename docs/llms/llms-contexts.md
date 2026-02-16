@@ -174,3 +174,9 @@ tw.define_context("pending-urgent", "status:pending and +urgent")
 tw.apply_context("urgent-work")
 urgent_work_tasks = tw.get_tasks()
 ```
+
+## Related Documentation
+
+- [Task Management Patterns](llms-task-patterns.md) - Common patterns for task management
+- [UDA Implementation](llms-udas.md) - User Defined Attributes best practices
+- [Task Dependencies](llms-dependencies.md) - Complex task relationships

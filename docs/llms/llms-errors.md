@@ -270,3 +270,11 @@ tasks_to_create = [
 successful, failed = batch_process_tasks(tw, tasks_to_create)
 print(f"Created {len(successful)} tasks, failed {len(failed)}")
 ```
+
+## Related Documentation
+
+- [Task Management Patterns](llms-task-patterns.md) - Common patterns for task management
+- [Context Workflows](llms-contexts.md) - Advanced context usage
+- [Recurring Tasks Strategy](llms-recurring.md) - Managing recurring workflows
+- [Task Dependencies](llms-dependencies.md) - Complex task relationships
+- [Performance Tips](llms-performance.md) - Optimizing pytaskwarrior usage

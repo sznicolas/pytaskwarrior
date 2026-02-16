@@ -223,3 +223,10 @@ task = TaskInputDTO(
     udas={"budget": 1500}
 )
 ```
+
+## Related Documentation
+
+- [Task Management Patterns](llms-task-patterns.md) - Common patterns for task management
+- [Context Workflows](llms-contexts.md) - Advanced context usage
+- [Recurring Tasks Strategy](llms-recurring.md) - Managing recurring workflows
+- [Task Dependencies](llms-dependencies.md) - Complex task relationships
