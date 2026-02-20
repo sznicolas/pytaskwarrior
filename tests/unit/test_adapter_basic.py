@@ -76,22 +76,22 @@ class TestTaskWarriorAdapterBasic:
         args = adapter._build_args(sample_task)
         assert len(args) == 9
 
-        assert "description='Test task'" in args
-        assert "priority=H" in args
-        assert "project=TestProject" in args
-        assert "tags=tag1,tag2" in args
-        assert "due=2023-12-31T23:59:59Z" in args
-        assert "scheduled=2023-12-30T00:00:00Z" in args
-        assert "wait=2023-12-29T00:00:00Z" in args
-        assert "until=2024-12-31T23:59:59Z" in args
-        assert "recur=weekly" in args
+        assert "description:'Test task'" in args
+        assert "priority:H" in args
+        assert "project:TestProject" in args
+        assert "tags:tag1,tag2" in args
+        assert "due:2023-12-31T23:59:59Z" in args
+        assert "scheduled:2023-12-30T00:00:00Z" in args
+        assert "wait:2023-12-29T00:00:00Z" in args
+        assert "until:2024-12-31T23:59:59Z" in args
+        assert "recur:weekly" in args
 
     def test_build_args_tags_handling(self, adapter: TaskWarriorAdapter):
         """Test _build_args with tags handling."""
         task = TaskInputDTO(description="Task with tags", tags=["tag1;ls /etc", "tag2", "tag3"])
         args = adapter._build_args(task)
 
-        assert "tags='tag1;ls /etc',tag2,tag3" in args
+        assert "tags:'tag1;ls /etc',tag2,tag3" in args
 
     def test_build_args_depends_handling(self, adapter: TaskWarriorAdapter):
         """Test _build_args with depends field handling."""
@@ -99,7 +99,7 @@ class TestTaskWarriorAdapterBasic:
         task = TaskInputDTO(description="Task with depends", depends=[dep_uuid])
         args = adapter._build_args(task)
 
-        assert f"depends+={str(dep_uuid)}" in args
+        assert f"depends:{str(dep_uuid)}" in args
 
     def test_build_args_uuid_fields(self, adapter: TaskWarriorAdapter):
         """Test _build_args with UUID fields."""
@@ -107,7 +107,7 @@ class TestTaskWarriorAdapterBasic:
         task = TaskInputDTO(description="Task with UUID", parent=task_uuid)
         args = adapter._build_args(task)
 
-        assert f"parent={str(task_uuid)}" in args
+        assert f"parent:{str(task_uuid)}" in args
 
     def test_add_task_validation_errors(self, adapter: TaskWarriorAdapter):
         """Test add_task validation errors."""
@@ -176,10 +176,10 @@ class TestTaskWarriorAdapterBasic:
         )
         args = adapter._build_args(task)
 
-        assert "due=2026-12-31T23:59:59Z" in args
-        assert "scheduled=2026-01-15T00:00:00Z" in args
-        assert "wait=2026-01-10T12:30:45Z" in args
-        assert "until=2027-01-01T00:00:00Z" in args
+        assert "due:2026-12-31T23:59:59Z" in args
+        assert "scheduled:2026-01-15T00:00:00Z" in args
+        assert "wait:2026-01-10T12:30:45Z" in args
+        assert "until:2027-01-01T00:00:00Z" in args
 
     def test_build_args_with_udas(self, adapter: TaskWarriorAdapter):
         """Test _build_args includes UDA values correctly."""

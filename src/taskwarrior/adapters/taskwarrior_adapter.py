@@ -143,11 +143,11 @@ rc.bulk=0
 
             if field_name == "tags" and value:
                 if isinstance(value, list):
-                    args.append(f"tags={','.join(shlex.quote(str(v)) for v in value)}")
+                    args.append(f"tags:{','.join(shlex.quote(str(v)) for v in value)}")
                 else:
-                    args.append(f"tags={shlex.quote(str(value))}")
+                    args.append(f"tags:{shlex.quote(str(value))}")
             elif field_name == "depends" and value:
-                args.extend([f"depends+={shlex.quote(str(dep))}" for dep in value])
+                args.extend([f"depends:{shlex.quote(str(dep))}" for dep in value])
             elif field_name == "annotations" and value:
                 pass  # Handled separately via annotate command
             elif field_name == "udas" and value:
@@ -163,7 +163,7 @@ rc.bulk=0
                 else:
                     str_value = shlex.quote(str(value))
 
-                args.append(f"{field_name}={str_value}")
+                args.append(f"{field_name}:{str_value}")
 
         logger.debug(f"Built arguments: {args}")
         return args

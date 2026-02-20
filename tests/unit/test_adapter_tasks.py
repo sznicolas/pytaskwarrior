@@ -112,8 +112,8 @@ class TestTaskWarriorAdapterTasks:
         )
         args = adapter._build_args(task)
 
-        assert f"depends+={str(dep_uuid1)}" in args
-        assert f"depends+={str(dep_uuid2)}" in args
+        assert f"depends:{str(dep_uuid1)}" in args
+        assert f"depends:{str(dep_uuid2)}" in args
 
     def test_modify_task_multiple_fields(self, adapter: TaskWarriorAdapter):
         """Test modify_task with multiple field modifications."""
