@@ -1,6 +1,6 @@
 [project]
 name = "pytaskwarrior"
-version = "0.3.0"
+version = "1.0.0rc2"
 description = "Taskwarrior wrapper python module"
 readme = "PYPI_README.md"
 requires-python = ">=3.12"

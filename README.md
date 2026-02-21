@@ -24,7 +24,7 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/), the command
 ## Installation
 
 ```bash
-pip install pytaskwarrior==1.0.0rc1
+pip install pytaskwarrior==1.0.0rc2
 ```
 
 Or install from source:
