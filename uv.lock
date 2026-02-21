@@ -678,7 +678,7 @@ wheels = [
 
 [[package]]
 name = "pytaskwarrior"
-version = "0.3.0"
+version = "1.0.0rc1"
 source = { virtual = "." }
 dependencies = [
     { name = "isodate" },
