@@ -27,6 +27,12 @@ class TaskWarrior:
     via CLI commands. It supports all common task operations, context management,
     and User Defined Attributes (UDAs).
 
+    Note:
+        When creating tasks with empty or None descriptions, the behavior depends
+        on the underlying TaskWarrior CLI validation. Empty descriptions may be
+        rejected with a TaskValidationError or passed through to TaskWarrior,
+        which might reject them with a CLI error.
+
     Attributes:
         adapter: The underlying TaskWarriorAdapter instance.
         context_service: Service for managing contexts.
