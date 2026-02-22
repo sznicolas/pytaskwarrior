@@ -64,7 +64,9 @@ class TaskInputDTO(BaseModel):
             )
     """
 
-    description: str = Field(..., description="Task description (required).")
+    description: str | None = Field(
+        default=None, description="Task description (optional)."
+    )
     priority: Priority | None = Field(
         default=None, description="Priority of the task (H, M, L, or empty)"
     )
@@ -118,7 +120,7 @@ class TaskInputDTO(BaseModel):
 
     @field_validator("description")
     @classmethod
-    def description_must_not_be_empty(cls, v: str) -> str:
+    def description_must_not_be_empty(cls, v: str | None) -> str | None:
         """Validate that task description is not empty.
 
         Args:
@@ -130,9 +132,9 @@ class TaskInputDTO(BaseModel):
         Raises:
             TaskValidationError: If the description is empty or whitespace-only.
         """
-        if not v.strip():
+        if v is not None and not v.strip():
             raise TaskValidationError("Task description cannot be empty")
-        return v.strip()
+        return v
 
 
 class TaskOutputDTO(BaseModel):
