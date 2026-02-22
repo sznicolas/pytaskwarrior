@@ -31,7 +31,8 @@ class TaskWarrior:
         When creating tasks with empty or None descriptions, the behavior depends
         on the underlying TaskWarrior CLI validation. Empty descriptions may be
         rejected with a TaskValidationError or passed through to TaskWarrior,
-        which might reject them with a CLI error.
+        which might reject them with a CLI error. The TaskInputDTO validation
+        will reject empty or None descriptions before they reach TaskWarrior.
 
     Attributes:
         adapter: The underlying TaskWarriorAdapter instance.
