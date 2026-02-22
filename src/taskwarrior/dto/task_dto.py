@@ -25,7 +25,7 @@ class TaskInputDTO(BaseModel):
     All fields except `description` are optional.
 
     Attributes:
-        description: Task description (required). Cannot be empty.
+        description: Task description.
         priority: Task priority level (H, M, L, or None).
         due: Due date/time. Accepts ISO format or TaskWarrior expressions
             like "tomorrow", "friday", "eom" (end of month).
