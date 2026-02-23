@@ -94,3 +94,5 @@ Data Transfer Object for task annotations.
 
 ### task_output_to_input
 Converts a TaskOutputDTO to a TaskInputDTO for modification purposes. This function is useful when you want to modify an existing task: retrieve it as TaskOutputDTO, convert to TaskInputDTO, make changes, then save. The conversion excludes read-only fields that are set by TaskWarrior (uuid, entry, start, end, modified, index, status, urgency, imask, rtype). DateTime fields are converted to ISO format strings as required by TaskInputDTO.
+
+**Usage Example:**
