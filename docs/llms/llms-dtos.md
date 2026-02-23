@@ -5,10 +5,10 @@ This document describes the Data Transfer Objects (DTOs) used by the LLMs servic
 ## Task DTOs
 
 ### TaskInputDTO
-Used for creating and updating tasks. All fields except `description` are optional.
+Used for creating and updating tasks. All fields except `description` are optional. The description field is required when creating a task, but optional when updating.
 
 **Fields:**
-- `description`: Task description (optional)
+- `description`: Task description (required when creating a task, optional when updating)
 - `priority`: Task priority level (H, M, L, or None)
 - `due`: Due date/time (ISO format or TaskWarrior expressions)
 - `project`: Project name
