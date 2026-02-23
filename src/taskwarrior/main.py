@@ -467,3 +467,16 @@ class TaskWarrior:
             ...     print(config.values)  # ["low", "medium", "high"]
         """
         return self.uda_service.registry.get_uda(name)
+
+    def get_projects(self) -> list[str]:
+        """Get all projects defined in TaskWarrior.
+
+        Returns:
+            List of project names.
+
+        Example:
+            >>> projects = tw.get_projects()
+            >>> print(projects)
+            ['dmc.fil.aretordre', 'dmc.fil.adérouler', 'perso', 'perso.natu', 'perso.orl', 'perso.watchA', 'pro.confMac']
+        """
+        return self.adapter.get_projects()

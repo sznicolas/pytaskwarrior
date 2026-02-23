@@ -455,3 +455,18 @@ rc.bulk=0
             return is_valid
         except subprocess.CalledProcessError:
             return False
+
+    def get_projects(self) -> list[str]:
+        """Get all projects defined in TaskWarrior.
+        
+        Returns:
+            List of project names.
+        """
+        result = self.run_task_command(["_projects"])
+        
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to get projects: {result.stderr}")
+        
+        # Split output by newlines and filter out empty lines
+        projects = [line.strip() for line in result.stdout.split('\n') if line.strip()]
+        return projects
