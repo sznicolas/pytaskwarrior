@@ -18,6 +18,11 @@ from ..utils.conversions import parse_taskwarrior_date
 from .annotation_dto import AnnotationDTO
 
 
+# Type aliases for better readability
+UUIDList = list[UUID]
+AnyDict = dict[str, Any]
+
+
 class TaskInputDTO(BaseModel):
     """Data Transfer Object for creating and updating tasks.
 
@@ -77,7 +82,7 @@ class TaskInputDTO(BaseModel):
     tags: list[str] = Field(
         default_factory=list, description="List of tags associated with the task"
     )
-    depends: list[UUID] = Field(
+    depends: UUIDList = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
     parent: UUID | None = Field(default=None, description="UUID of the template task")
@@ -97,7 +102,7 @@ class TaskInputDTO(BaseModel):
     annotations: list[str] = Field(
         default_factory=list, description="List of annotations for the task"
     )
-    udas: dict[str, Any] = Field(
+    udas: AnyDict = Field(
         default_factory=dict,
         description="User Defined Attribute values (e.g., {'severity': 'high'})",
     )
@@ -212,7 +217,7 @@ class TaskOutputDTO(BaseModel):
         default_factory=list, description="List of tags associated with the task"
     )
     project: str | None = Field(default=None, description="Project the task belongs to")
-    depends: list[UUID] = Field(
+    depends: UUIDList = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
     parent: UUID | None = Field(default=None, description="UUID of the template task")
@@ -233,7 +238,7 @@ class TaskOutputDTO(BaseModel):
     annotations: list[AnnotationDTO] = Field(
         default_factory=list, description="List of annotations for the task"
     )
-    udas: dict[str, Any] = Field(
+    udas: AnyDict = Field(
         default_factory=dict,
         description="User Defined Attribute values",
     )
