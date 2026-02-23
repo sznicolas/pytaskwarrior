@@ -7,7 +7,7 @@ and retrieving tasks from TaskWarrior.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeAlias
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -21,6 +21,7 @@ from .annotation_dto import AnnotationDTO
 # Type aliases for better readability
 UUIDList = list[UUID]
 AnyDict = dict[str, Any]
+AnnotationList: TypeAlias = list[AnnotationDTO]
 
 
 class TaskInputDTO(BaseModel):
@@ -235,7 +236,7 @@ class TaskOutputDTO(BaseModel):
         default=None, description="Expiration date for recurring tasks (ISO format)"
     )
     urgency: float | None = Field(default=None, description="Task urgency score")
-    annotations: list[AnnotationDTO] = Field(
+    annotations: AnnotationList = Field(
         default_factory=list, description="List of annotations for the task"
     )
     udas: AnyDict = Field(
