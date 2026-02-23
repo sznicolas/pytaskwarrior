@@ -28,7 +28,7 @@ class TaskInputDTO(BaseModel):
     """Data Transfer Object for creating and updating tasks.
 
     This model is used when adding new tasks or modifying existing ones.
-    All fields except `description` are optional.
+    All fields are optional, excepted `description` when creating a task (optional when updating a task).
 
     Attributes:
         description: Task description.

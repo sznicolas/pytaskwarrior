@@ -477,6 +477,6 @@ class TaskWarrior:
         Example:
             >>> projects = tw.get_projects()
             >>> print(projects)
-            ['dmc.fil.aretordre', 'dmc.fil.adérouler', 'perso', 'perso.natu', 'perso.orl', 'perso.watchA', 'pro.confMac']
+            ['dmc.fil.aretordre', 'dmc.fil.adérouler', 'perso', 'perso.orl', 'pro']
         """
         return self.adapter.get_projects()
