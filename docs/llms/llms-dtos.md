@@ -5,10 +5,10 @@ This document describes the Data Transfer Objects (DTOs) used by the LLMs servic
 ## Task DTOs
 
 ### TaskInputDTO
-Used for creating and updating tasks. All fields except `description` are optional. The description field is required when creating a task, but optional when updating.
+Used for creating and updating tasks. All fields are optional, except `description` which is required when creating a task.
 
 **Fields:**
-- `description`: Task description (required when creating a task, optional when updating)
+- `description`: Task description (required when creating a task)
 - `priority`: Task priority level (H, M, L, or None)
 - `due`: Due date/time (ISO format or TaskWarrior expressions)
 - `project`: Project name
@@ -89,3 +89,8 @@ Data Transfer Object for task annotations.
 **Fields:**
 - `entry`: Timestamp when the annotation was created
 - `description`: The annotation text content
+
+## Conversion Functions
+
+### task_output_to_input
+Converts a TaskOutputDTO to a TaskInputDTO for modification purposes. This function is useful when you want to modify an existing task: retrieve it as TaskOutputDTO, convert to TaskInputDTO, make changes, then save. The conversion excludes read-only fields that are set by TaskWarrior (uuid, entry, start, end, modified, index, status, urgency, imask, rtype). DateTime fields are converted to ISO format strings as required by TaskInputDTO.
