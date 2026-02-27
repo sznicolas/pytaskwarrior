@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Basic TaskWarrior example."""
 
-from taskwarrior import TaskWarrior, TaskInputDTO, Priority
+from taskwarrior import Priority, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config
 tw = TaskWarrior(
@@ -28,7 +28,7 @@ print(f"\nTotal tasks: {len(tasks)}")
 # Show first task details
 if tasks:
     task = tasks[0]
-    print(f"Task details:")
+    print("Task details:")
     print(f"  Description: {task.description}")
     print(f"  Status: {task.status}")
     print(f"  Priority: {task.priority}")

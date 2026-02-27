@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Context management example."""
 
-from taskwarrior import TaskWarrior, TaskInputDTO, Priority
+from taskwarrior import Priority, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config
 tw = TaskWarrior(

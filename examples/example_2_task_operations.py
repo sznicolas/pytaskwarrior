@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Task operations example."""
 
-from taskwarrior import TaskWarrior, TaskInputDTO, Priority
+from taskwarrior import Priority, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config
 tw = TaskWarrior(
@@ -42,7 +42,7 @@ for task_data in tasks_data:
 if added_tasks:
     task_to_modify = added_tasks[0]
     print(f"\nModifying task: {task_to_modify.description}")
-    
+
     # Update the task
     updated_task = TaskInputDTO(
         description="Complete project proposal - UPDATED",
@@ -50,7 +50,7 @@ if added_tasks:
         project="work",
         tags=["work", "urgent", "completed"]
     )
-    
+
     modified_task = tw.modify_task(updated_task, task_to_modify.uuid)
     print(f"Modified: {modified_task.description}")
 

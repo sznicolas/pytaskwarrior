@@ -2,12 +2,9 @@
 
 from taskwarrior import (
     Priority,
-    RecurrencePeriod,
     TaskInputDTO,
-    TaskOutputDTO,
     TaskWarrior,
 )
-
 
 # Create a new task warrior instance
 tw = TaskWarrior(

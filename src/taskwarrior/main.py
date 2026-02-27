@@ -9,7 +9,7 @@ import logging
 import os
 from uuid import UUID
 
-from .adapters.taskwarrior_adapter import TaskWarriorAdapter
+from .adapters.taskwarrior_adapter import TaskWarriorAdapter, TaskWarriorInfo
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.uda_dto import UdaConfig
@@ -78,7 +78,7 @@ class TaskWarrior:
         if taskrc_file is None:
             taskrc_file = os.environ.get("TASKRC", "$HOME/.taskrc")
         if data_location is None:
-            data_location = os.environ.get("TASKDATA") #, "$HOME/.task")
+            data_location = os.environ.get("TASKDATA")
 
         self.adapter: TaskWarriorAdapter = TaskWarriorAdapter(
             task_cmd=task_cmd, taskrc_file=taskrc_file, data_location=data_location
@@ -215,7 +215,7 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the task doesn't exist.
         """
-        return self.adapter.delete_task(task_id_or_uuid)
+        self.adapter.delete_task(task_id_or_uuid)
 
     def purge_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Permanently remove a task from the database.
@@ -228,7 +228,7 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the task doesn't exist.
         """
-        return self.adapter.purge_task(task_id_or_uuid)
+        self.adapter.purge_task(task_id_or_uuid)
 
     def done_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Mark a task as completed.
@@ -243,7 +243,7 @@ class TaskWarrior:
             >>> tw.done_task(1)
             >>> tw.done_task("abc-123-uuid")
         """
-        return self.adapter.done_task(task_id_or_uuid)
+        self.adapter.done_task(task_id_or_uuid)
 
     def start_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Start working on a task.
@@ -256,7 +256,7 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the task doesn't exist.
         """
-        return self.adapter.start_task(task_id_or_uuid)
+        self.adapter.start_task(task_id_or_uuid)
 
     def stop_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Stop working on a task.
@@ -269,7 +269,7 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the task doesn't exist.
         """
-        return self.adapter.stop_task(task_id_or_uuid)
+        self.adapter.stop_task(task_id_or_uuid)
 
     def annotate_task(self, task_id_or_uuid: str | int | UUID, annotation: str) -> None:
         """Add an annotation (note) to a task.
@@ -286,7 +286,7 @@ class TaskWarrior:
         Example:
             >>> tw.annotate_task(1, "Discussed with team, need more info")
         """
-        return self.adapter.annotate_task(task_id_or_uuid, annotation)
+        self.adapter.annotate_task(task_id_or_uuid, annotation)
 
     def define_context(self, context: str, filter_str: str) -> None:
         """Define a new context with the given filter.
@@ -376,7 +376,7 @@ class TaskWarrior:
         """
         return self.context_service.has_context(context)
 
-    def get_info(self) -> dict[str, object]:
+    def get_info(self) -> TaskWarriorInfo:
         """Get comprehensive TaskWarrior configuration information.
 
         Returns:

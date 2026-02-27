@@ -85,7 +85,7 @@ class ContextService:
         """List all defined contexts.
 
         Returns:
-            List of ContextDTO objects with name and filter for each context.
+            List of ContextDTO objects with name, filter, and active status.
 
         Raises:
             TaskWarriorError: If retrieval fails.
@@ -96,8 +96,9 @@ class ContextService:
             if result.returncode != 0:
                 raise TaskWarriorError(f"Failed to list contexts: {result.stderr}")
 
+            current = self.get_current_context()
+
             contexts = []
-            # Parse the output to extract context names and filters
             lines = result.stdout.strip().split("\n")
             if len(lines) > 2:  # Skip header lines
                 for line in lines[2:]:  # Skip "Context Filter" and empty line
@@ -106,7 +107,11 @@ class ContextService:
                         if len(parts) == 2:
                             context_name, filter_str = parts
                             contexts.append(
-                                ContextDTO(name=context_name, filter=filter_str)
+                                ContextDTO(
+                                    name=context_name,
+                                    filter=filter_str,
+                                    active=(context_name == current),
+                                )
                             )
             return contexts
         except Exception as e:

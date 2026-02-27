@@ -14,11 +14,12 @@ from ..exceptions import TaskWarriorError
 
 
 class UdaRegistry:
-    """Singleton registry for User Defined Attributes (UDAs).
+    """Registry for User Defined Attributes (UDAs).
 
     This class maintains a registry of UDA definitions, loaded from
-    the taskrc file or defined programmatically. It uses the singleton
-    pattern to ensure consistent state across the application.
+    the taskrc file or defined programmatically. Each instance has its
+    own isolated state, making it safe to use with multiple TaskWarrior
+    instances.
 
     Attributes:
         _udas: Dictionary mapping UDA names to their definitions.
@@ -29,18 +30,8 @@ class UdaRegistry:
         >>> names = registry.get_uda_names()
     """
 
-    _instance = None
-    _udas: dict[str, UdaConfig] = {}
-
-    def __new__(cls) -> UdaRegistry:
-        """Create or return the singleton instance.
-
-        Returns:
-            The singleton UdaRegistry instance.
-        """
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    def __init__(self) -> None:
+        self._udas: dict[str, UdaConfig] = {}
 
     def load_from_taskrc(self, taskrc_file: str | Path) -> None:
         """Load UDA definitions from a taskrc file.

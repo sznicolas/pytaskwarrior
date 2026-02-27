@@ -7,7 +7,7 @@ and retrieving tasks from TaskWarrior.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, TypeAlias
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -17,11 +17,10 @@ from ..exceptions import TaskValidationError
 from ..utils.conversions import parse_taskwarrior_date
 from .annotation_dto import AnnotationDTO
 
-
 # Type aliases for better readability
 UUIDList = list[UUID]
 AnyDict = dict[str, Any]
-AnnotationList: TypeAlias = list[AnnotationDTO]
+type AnnotationList = list[AnnotationDTO]
 
 
 class TaskInputDTO(BaseModel):
