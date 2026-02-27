@@ -1,10 +1,25 @@
 [project]
 name = "pytaskwarrior"
-version = "1.0.0rc3"
+version = "1.0.0"
 description = "Taskwarrior wrapper python module"
 readme = "PYPI_README.md"
 requires-python = ">=3.12"
-keywords = [ "taskwarrior" ]
+license = { text = "MIT" }
+keywords = [ "taskwarrior", "task", "productivity", "cli" ]
+authors = [
+    { name = "sznicolas", email = "sznicolas@users.noreply.github.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 dependencies = [
     "isodate>=0.7.2",
     "pydantic>=2.11.7",
@@ -24,7 +39,13 @@ docs = [
 ]
 
 [project.urls]
-homepage = "https://github.com/sznicolas/pytaskwarrior/"
+Homepage = "https://github.com/sznicolas/pytaskwarrior/"
+Repository = "https://github.com/sznicolas/pytaskwarrior/"
+Issues = "https://github.com/sznicolas/pytaskwarrior/issues"
+Changelog = "https://github.com/sznicolas/pytaskwarrior/blob/main/CHANGELOG.md"
+
+[tool.setuptools.package-data]
+taskwarrior = ["py.typed"]
 
 [tool.ruff]
 # Target Python 3.12+
@@ -50,7 +71,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
-    "N802",  # Function name should be lowercase (allow test_* methods)
+    "N802",    # Function name should be lowercase (allow test_* methods)
+    "SIM117",  # Nested `with` statements in tests (patch + pytest.raises idiom)
 ]
 
 [tool.mypy]
