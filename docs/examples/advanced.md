@@ -57,7 +57,7 @@ UDAs extend TaskWarrior with custom fields.
 ### Defining UDAs
 
 ```python
-from taskwarrior.dto.uda_dto import UdaConfig, UdaType
+from taskwarrior import UdaConfig, UdaType
 
 # String UDA with allowed values
 severity = UdaConfig(

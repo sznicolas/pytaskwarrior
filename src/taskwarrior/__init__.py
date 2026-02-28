@@ -34,6 +34,8 @@ Requirements:
 
 import importlib.metadata
 
+from .dto.annotation_dto import AnnotationDTO
+from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.uda_dto import UdaConfig, UdaType
 from .enums import Priority, RecurrencePeriod, TaskStatus
@@ -43,6 +45,8 @@ from .utils.dto_converter import task_output_to_input
 
 __version__ = importlib.metadata.version("pytaskwarrior")
 __all__ = [
+    "AnnotationDTO",
+    "ContextDTO",
     "Priority",
     "RecurrencePeriod",
     "TaskStatus",

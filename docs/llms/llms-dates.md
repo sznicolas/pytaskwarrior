@@ -18,7 +18,7 @@ pytaskwarrior passes date strings directly to TaskWarrior. TaskWarrior accepts a
 All four fields accept the same date formats listed below. They are `str | None` — pass any TaskWarrior-valid date string.
 
 ```python
-from pytaskwarrior import TaskWarrior, TaskInputDTO
+from taskwarrior import TaskWarrior, TaskInputDTO
 
 tw = TaskWarrior()
 
