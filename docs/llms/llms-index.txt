@@ -2,6 +2,7 @@
 
 - [TaskWarrior Integration](llms-taskwarrior.md) - How to use pytaskwarrior in projects
 - [Task Management Patterns](llms-task-patterns.md) - Common patterns for task management
+- [Date Fields and Date Calculations](llms-dates.md) - All date formats, synonyms, task_calc, date_validator
 - [Context Workflows](llms-contexts.md) - Advanced context usage
 - [UDA Implementation](llms-udas.md) - User Defined Attributes best practices
 - [Recurring Tasks Strategy](llms-recurring.md) - Managing recurring workflows
