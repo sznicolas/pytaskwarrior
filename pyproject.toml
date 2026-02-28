@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "Taskwarrior wrapper python module"
 readme = "PYPI_README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = "MIT"
 keywords = [ "taskwarrior", "task", "productivity", "cli" ]
 authors = [
     { name = "sznicolas", email = "sznicolas@users.noreply.github.com" },
@@ -21,7 +21,6 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "isodate>=0.7.2",
     "pydantic>=2.11.7",
 ]
 
@@ -46,6 +45,10 @@ Changelog = "https://github.com/sznicolas/pytaskwarrior/blob/main/CHANGELOG.md"
 
 [tool.setuptools.package-data]
 taskwarrior = ["py.typed"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 # Target Python 3.12+

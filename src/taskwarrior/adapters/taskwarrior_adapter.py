@@ -270,7 +270,7 @@ rc.bulk=0
 
     def get_tasks(
         self,
-        filter_args: str = f"(status.not:{TaskStatus.DELETED} and status.not:{TaskStatus.COMPLETED})",
+        filter_args: str = f"(status.not:{TaskStatus.DELETED.value} and status.not:{TaskStatus.COMPLETED.value})",
     ) -> list[TaskOutputDTO]:
         """Retrieve multiple tasks matching a filter."""
         logger.debug(f"Getting tasks with filters: {filter_args}")
