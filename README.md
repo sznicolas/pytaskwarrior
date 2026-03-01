@@ -7,7 +7,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen.svg)](https://github.com/sznicolas/pytaskwarrior)
 [![PyPI version](https://img.shields.io/pypi/v/pytaskwarrior.svg)](https://pypi.org/project/pytaskwarrior/)
 
-A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/), the command-line task management tool.
+A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the command-line task management tool.
 
 **v1.0.0**: Production-ready with 132 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, and PEP 561 type hints for IDE support.
 

@@ -50,8 +50,8 @@ class TestTaskWarriorTasks:
         # Add a few tasks
         task1 = TaskInputDTO(description="Task 1")
         task2 = TaskInputDTO(description="Task 2")
-        tw.add_task(task1)
-        tw.add_task(task2)
+        _ = tw.add_task(task1)
+        _ = tw.add_task(task2)
 
         # Get all tasks
         result = tw.get_tasks()
