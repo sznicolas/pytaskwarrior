@@ -100,16 +100,29 @@ class ContextService:
 
             contexts = []
             lines = result.stdout.strip().split("\n")
-            if len(lines) > 2:  # Skip header lines
-                for line in lines[2:]:  # Skip "Context Filter" and empty line
+            
+            # Skip header lines and process context lines
+            if len(lines) > 2:  # Skip "Context Filter" and empty line
+                for line in lines[2:]:  # Skip header lines
                     if line.strip():
-                        parts = line.split(None, 1)  # Split on first whitespace
-                        if len(parts) == 2:
-                            context_name, filter_str = parts
+                        # Split on first whitespace to separate name from filter
+                        parts = line.split(None, 1)  
+                        if len(parts) >= 2:
+                            context_name, filter_str = parts[0], " ".join(parts[1:])
                             contexts.append(
                                 ContextDTO(
                                     name=context_name,
                                     filter=filter_str,
+                                    active=(context_name == current),
+                                )
+                            )
+                        elif len(parts) == 1:
+                            # Handle case where there's only a name (no filter)
+                            context_name = parts[0]
+                            contexts.append(
+                                ContextDTO(
+                                    name=context_name,
+                                    filter="",
                                     active=(context_name == current),
                                 )
                             )
