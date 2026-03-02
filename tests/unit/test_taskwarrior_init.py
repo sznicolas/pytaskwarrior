@@ -39,3 +39,16 @@ class TestTaskWarriorInit:
         assert tw.adapter.taskrc_file == expected_taskrc
         assert tw.adapter.data_location is None
         assert "rc.confirmation=off" in tw.adapter._options
+
+    def test_get_projects(self, taskwarrior_config: str):
+        """Test getting projects from TaskWarrior."""
+        tw = TaskWarrior(taskrc_file=taskwarrior_config)
+
+        # This test verifies the method exists and returns a list
+        projects = tw.get_projects()
+        assert isinstance(projects, list)
+
+        # Verify all items are strings
+        for project in projects:
+            assert isinstance(project, str)
+            assert project.strip() != ""

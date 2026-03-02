@@ -44,11 +44,11 @@ tw.add_task(monthly)
 
 ```python
 # Create a task that recurs every 2 weeks
+# Use a custom string directly in the recur field for non-standard periods
 task = TaskInputDTO(
     description="Bi-weekly check-in",
     due="monday 10:00",
-    recur=RecurrencePeriod.WEEKLY,
-    recur_spec="2 weeks"
+    recur="2weeks",  # custom period string accepted by TaskWarrior
 )
 tw.add_task(task)
 ```

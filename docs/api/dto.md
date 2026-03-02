@@ -24,7 +24,7 @@ Returned when retrieving tasks from TaskWarrior.
 
 Represents a task annotation.
 
-::: taskwarrior.dto.annotation_dto.AnnotationDTO
+::: taskwarrior.AnnotationDTO
     options:
       show_source: false
       heading_level: 3
@@ -33,7 +33,7 @@ Represents a task annotation.
 
 Represents a TaskWarrior context.
 
-::: taskwarrior.dto.context_dto.ContextDTO
+::: taskwarrior.ContextDTO
     options:
       show_source: false
       heading_level: 3

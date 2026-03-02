@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# taskwarrior db
+*.sqlite3
+
 # vim
 *~
 *.swp
@@ -49,6 +52,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage.json
 *.cover
 *.py,cover
 .hypothesis/
@@ -189,6 +193,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Release artifacts
+*.tgz
 
 # Cursor
 #  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to

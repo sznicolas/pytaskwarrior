@@ -109,7 +109,7 @@ class TestHasContextReturnValue:
         service = ContextService(adapter)
 
         # Define a context first
-        service.define_context("test_ctx", "+test")
+        service.define_context("test_ctx", read_filter="+test", write_filter="+test")
 
         result = service.has_context("test_ctx")
         assert result is True

@@ -17,15 +17,20 @@ from ..exceptions import TaskValidationError
 from ..utils.conversions import parse_taskwarrior_date
 from .annotation_dto import AnnotationDTO
 
+# Type aliases for better readability
+UUIDList = list[UUID]
+AnyDict = dict[str, Any]
+type AnnotationList = list[AnnotationDTO]
+
 
 class TaskInputDTO(BaseModel):
     """Data Transfer Object for creating and updating tasks.
 
     This model is used when adding new tasks or modifying existing ones.
-    All fields except `description` are optional.
+    All fields are optional, excepted `description` when creating a task (optional when updating a task).
 
     Attributes:
-        description: Task description (required). Cannot be empty.
+        description: Task description.
         priority: Task priority level (H, M, L, or None).
         due: Due date/time. Accepts ISO format or TaskWarrior expressions
             like "tomorrow", "friday", "eom" (end of month).
@@ -64,7 +69,9 @@ class TaskInputDTO(BaseModel):
             )
     """
 
-    description: str = Field(..., description="Task description (required).")
+    description: str | None = Field(
+        default=None, description="Task description (optional)."
+    )
     priority: Priority | None = Field(
         default=None, description="Priority of the task (H, M, L, or empty)"
     )
@@ -75,7 +82,7 @@ class TaskInputDTO(BaseModel):
     tags: list[str] = Field(
         default_factory=list, description="List of tags associated with the task"
     )
-    depends: list[UUID] = Field(
+    depends: UUIDList = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
     parent: UUID | None = Field(default=None, description="UUID of the template task")
@@ -95,7 +102,7 @@ class TaskInputDTO(BaseModel):
     annotations: list[str] = Field(
         default_factory=list, description="List of annotations for the task"
     )
-    udas: dict[str, Any] = Field(
+    udas: AnyDict = Field(
         default_factory=dict,
         description="User Defined Attribute values (e.g., {'severity': 'high'})",
     )
@@ -118,7 +125,7 @@ class TaskInputDTO(BaseModel):
 
     @field_validator("description")
     @classmethod
-    def description_must_not_be_empty(cls, v: str) -> str:
+    def description_must_not_be_empty(cls, v: str | None) -> str | None:
         """Validate that task description is not empty.
 
         Args:
@@ -130,9 +137,9 @@ class TaskInputDTO(BaseModel):
         Raises:
             TaskValidationError: If the description is empty or whitespace-only.
         """
-        if not v.strip():
+        if v is not None and not v.strip():
             raise TaskValidationError("Task description cannot be empty")
-        return v.strip()
+        return v
 
 
 class TaskOutputDTO(BaseModel):
@@ -210,7 +217,7 @@ class TaskOutputDTO(BaseModel):
         default_factory=list, description="List of tags associated with the task"
     )
     project: str | None = Field(default=None, description="Project the task belongs to")
-    depends: list[UUID] = Field(
+    depends: UUIDList = Field(
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
     parent: UUID | None = Field(default=None, description="UUID of the template task")
@@ -228,10 +235,10 @@ class TaskOutputDTO(BaseModel):
         default=None, description="Expiration date for recurring tasks (ISO format)"
     )
     urgency: float | None = Field(default=None, description="Task urgency score")
-    annotations: list[AnnotationDTO] = Field(
+    annotations: AnnotationList = Field(
         default_factory=list, description="List of annotations for the task"
     )
-    udas: dict[str, Any] = Field(
+    udas: AnyDict = Field(
         default_factory=dict,
         description="User Defined Attribute values",
     )

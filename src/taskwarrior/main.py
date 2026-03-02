@@ -9,7 +9,7 @@ import logging
 import os
 from uuid import UUID
 
-from .adapters.taskwarrior_adapter import TaskWarriorAdapter
+from .adapters.taskwarrior_adapter import TaskWarriorAdapter, TaskWarriorInfo
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.uda_dto import UdaConfig
@@ -26,6 +26,13 @@ class TaskWarrior:
     This class provides a high-level interface for interacting with TaskWarrior
     via CLI commands. It supports all common task operations, context management,
     and User Defined Attributes (UDAs).
+
+    Note:
+        When creating tasks with empty or None descriptions, the behavior depends
+        on the underlying TaskWarrior CLI validation. Empty descriptions may be
+        rejected with a TaskValidationError or passed through to TaskWarrior,
+        which might reject them with a CLI error. The TaskInputDTO validation
+        will reject empty or None descriptions before they reach TaskWarrior.
 
     Attributes:
         adapter: The underlying TaskWarriorAdapter instance.
@@ -71,7 +78,7 @@ class TaskWarrior:
         if taskrc_file is None:
             taskrc_file = os.environ.get("TASKRC", "$HOME/.taskrc")
         if data_location is None:
-            data_location = os.environ.get("TASKDATA") #, "$HOME/.task")
+            data_location = os.environ.get("TASKDATA")
 
         self.adapter: TaskWarriorAdapter = TaskWarriorAdapter(
             task_cmd=task_cmd, taskrc_file=taskrc_file, data_location=data_location
@@ -208,7 +215,7 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the task doesn't exist.
         """
-        return self.adapter.delete_task(task_id_or_uuid)
+        self.adapter.delete_task(task_id_or_uuid)
 
     def purge_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Permanently remove a task from the database.
@@ -221,7 +228,7 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the task doesn't exist.
         """
-        return self.adapter.purge_task(task_id_or_uuid)
+        self.adapter.purge_task(task_id_or_uuid)
 
     def done_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Mark a task as completed.
@@ -236,7 +243,7 @@ class TaskWarrior:
             >>> tw.done_task(1)
             >>> tw.done_task("abc-123-uuid")
         """
-        return self.adapter.done_task(task_id_or_uuid)
+        self.adapter.done_task(task_id_or_uuid)
 
     def start_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Start working on a task.
@@ -249,7 +256,7 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the task doesn't exist.
         """
-        return self.adapter.start_task(task_id_or_uuid)
+        self.adapter.start_task(task_id_or_uuid)
 
     def stop_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Stop working on a task.
@@ -262,7 +269,7 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the task doesn't exist.
         """
-        return self.adapter.stop_task(task_id_or_uuid)
+        self.adapter.stop_task(task_id_or_uuid)
 
     def annotate_task(self, task_id_or_uuid: str | int | UUID, annotation: str) -> None:
         """Add an annotation (note) to a task.
@@ -279,25 +286,27 @@ class TaskWarrior:
         Example:
             >>> tw.annotate_task(1, "Discussed with team, need more info")
         """
-        return self.adapter.annotate_task(task_id_or_uuid, annotation)
+        self.adapter.annotate_task(task_id_or_uuid, annotation)
 
-    def define_context(self, context: str, filter_str: str) -> None:
-        """Define a new context with the given filter.
+    def define_context(self, context: str, read_filter: str, write_filter: str) -> None:
+        """Define a new context with explicit read and write filters.
 
-        Contexts allow you to focus on a subset of tasks by applying
-        filters automatically.
+        Both filters are required. Use an empty string for write_filter
+        if you want a read-only context (new tasks won't inherit a project).
 
         Args:
-            context: Name of the context to create.
-            filter_str: TaskWarrior filter expression for this context.
+            context:      Name of the context to create.
+            read_filter:  Filter applied when listing/querying tasks.
+            write_filter: Filter applied when creating or modifying tasks.
 
         Raises:
             TaskWarriorError: If context creation fails.
 
         Example:
-            >>> tw.define_context("work", "project:work or +urgent")
+            >>> tw.define_context("work", "project:work", "project:work")
+            >>> tw.define_context("review", "+urgent or priority:H", "")
         """
-        self.context_service.define_context(context, filter_str)
+        self.context_service.define_context(context, read_filter, write_filter)
 
     def apply_context(self, context: str) -> None:
         """Activate a context.
@@ -369,7 +378,7 @@ class TaskWarrior:
         """
         return self.context_service.has_context(context)
 
-    def get_info(self) -> dict[str, object]:
+    def get_info(self) -> TaskWarriorInfo:
         """Get comprehensive TaskWarrior configuration information.
 
         Returns:
@@ -460,3 +469,16 @@ class TaskWarrior:
             ...     print(config.values)  # ["low", "medium", "high"]
         """
         return self.uda_service.registry.get_uda(name)
+
+    def get_projects(self) -> list[str]:
+        """Get all projects defined in TaskWarrior.
+
+        Returns:
+            List of project names.
+
+        Example:
+            >>> projects = tw.get_projects()
+            >>> print(projects)
+            ['dmc.fil.aretordre', 'dmc.fil.adérouler', 'perso', 'perso.orl', 'pro']
+        """
+        return self.adapter.get_projects()

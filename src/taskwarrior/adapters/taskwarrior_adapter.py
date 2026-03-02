@@ -6,10 +6,12 @@ This module provides the low-level interface to TaskWarrior CLI commands.
 import json
 import logging
 import os
+import re
 import shlex
 import shutil
 import subprocess
 from pathlib import Path
+from typing import TypedDict
 from uuid import UUID
 
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
@@ -22,6 +24,15 @@ DEFAULT_OPTIONS = [
     "rc.confirmation=off",
     "rc.bulk=0",
 ]
+
+
+class TaskWarriorInfo(TypedDict, total=False):
+    """Type definition for TaskWarrior configuration information."""
+
+    task_cmd: Path
+    taskrc_file: Path
+    options: list[str]
+    version: str
 
 
 class TaskWarriorAdapter:
@@ -117,6 +128,7 @@ rc.bulk=0
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=30,
             )
 
             if result.returncode != 0:
@@ -129,7 +141,7 @@ rc.bulk=0
             )
             return result
 
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError) as e:
             logger.error(f"Exception while running '{cmd}': {e}")
             raise
 
@@ -172,7 +184,7 @@ rc.bulk=0
         """Add a new task. Returns the created task."""
         logger.info(f"Adding task with description: {task.description}")
 
-        if not task.description.strip():
+        if not task.description or not task.description.strip():
             raise TaskValidationError("Task description cannot be empty")
 
         args = self._build_args(task)
@@ -183,18 +195,26 @@ rc.bulk=0
             logger.error(error_msg)
             raise TaskValidationError(error_msg)
 
-        tasks = self.get_tasks(filter_args="+LATEST")
-        if not tasks:
-            error_msg = "Failed to retrieve added task"
-            logger.error(error_msg)
-            raise RuntimeError(error_msg)
+        # Parse the task ID from TaskWarrior output: "Created task N."
+        match = re.search(r"Created task (\d+)", result.stdout)
+        if match:
+            task_id = int(match.group(1))
+            added_task = self.get_task(task_id)
+        else:
+            # Fallback: retrieve the most recently added task
+            tasks = self.get_tasks(filter_args="+LATEST")
+            if not tasks:
+                error_msg = "Failed to retrieve added task"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            added_task = tasks[0]
 
         if task.annotations:
             for annotation in task.annotations:
-                self.annotate_task(tasks[0].uuid, annotation)
+                self.annotate_task(added_task.uuid, annotation)
 
-        logger.info(f"Successfully added task with UUID: {tasks[0].uuid}")
-        return tasks[0]
+        logger.info(f"Successfully added task with UUID: {added_task.uuid}")
+        return added_task
 
     def modify_task(
         self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID
@@ -250,7 +270,7 @@ rc.bulk=0
 
     def get_tasks(
         self,
-        filter_args: str = f"(status.not:{TaskStatus.DELETED} and status.not:{TaskStatus.COMPLETED})",
+        filter_args: str = f"(status.not:{TaskStatus.DELETED.value} and status.not:{TaskStatus.COMPLETED.value})",
     ) -> list[TaskOutputDTO]:
         """Retrieve multiple tasks matching a filter."""
         logger.debug(f"Getting tasks with filters: {filter_args}")
@@ -416,9 +436,9 @@ rc.bulk=0
 
         logger.info(f"Successfully annotated task: {task_ref}")
 
-    def get_info(self) -> dict[str, object]:
+    def get_info(self) -> TaskWarriorInfo:
         """Get TaskWarrior configuration and version info."""
-        info = {
+        info: TaskWarriorInfo = {
             "task_cmd": self.task_cmd,
             "taskrc_file": self.taskrc_file,
             "options": self._options,
@@ -427,8 +447,7 @@ rc.bulk=0
         try:
             version_result = self.run_task_command(["--version"], no_opt=True)
             if version_result.returncode == 0 and version_result.stdout:
-                version = version_result.stdout.strip()
-                info["version"] = version
+                info["version"] = version_result.stdout.strip()
         except Exception:
             info["version"] = "unknown"
         return info
@@ -448,10 +467,25 @@ rc.bulk=0
     def task_date_validator(self, date_str: str) -> bool:
         """Validate a TaskWarrior date expression. Returns True if valid."""
         try:
-            result = self.run_task_command(["calc", date_str, "+ P1D"])
-            if result.returncode:
+            result = self.run_task_command(["calc", date_str])
+            if result.returncode != 0:
                 return False
-            is_valid: bool = result.stdout.strip() != date_str.strip() + "P1D"
-            return is_valid
-        except subprocess.CalledProcessError:
+            # TaskWarrior returns an ISO datetime for valid dates (e.g. 2026-02-26T00:00:00)
+            # and returns the input unchanged for invalid expressions
+            return bool(re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", result.stdout.strip()))
+        except subprocess.SubprocessError:
             return False
+
+    def get_projects(self) -> list[str]:
+        """Get all projects defined in TaskWarrior.
+
+        Returns:
+            List of project names.
+        """
+        result = self.run_task_command(["_projects"])
+
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to get projects: {result.stderr}")
+
+        projects = [line.strip() for line in result.stdout.split("\n") if line.strip()]
+        return projects

@@ -78,6 +78,13 @@ class RecurrencePeriod(str, Enum):
         ...     due="monday",
         ...     recur=RecurrencePeriod.WEEKLY
         ... )
+
+    Note:
+        For custom periods not listed here (e.g. ``"2weeks"``, ``"10days"``,
+        ``"6months"``), pass a plain string directly to the ``recur`` field —
+        TaskWarrior accepts any valid recurrence expression:
+
+        >>> custom_task = TaskInputDTO(description="Bi-weekly review", recur="2weeks")
     """
 
     DAILY = "daily"

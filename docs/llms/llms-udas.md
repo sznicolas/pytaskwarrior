@@ -7,8 +7,7 @@ User Defined Attributes (UDAs) extend TaskWarrior with custom fields to meet spe
 ### String UDA with Allowed Values
 
 ```python
-from taskwarrior import TaskWarrior
-from taskwarrior.dto.uda_dto import UdaConfig, UdaType
+from taskwarrior import TaskWarrior, UdaConfig, UdaType
 
 tw = TaskWarrior()
 

@@ -5,6 +5,8 @@ from uuid import uuid4
 
 import pytest
 
+from src.taskwarrior.dto.annotation_dto import AnnotationDTO
+from src.taskwarrior.dto.context_dto import ContextDTO
 from src.taskwarrior.dto.task_dto import TaskInputDTO, TaskOutputDTO
 from src.taskwarrior.enums import Priority, RecurrencePeriod, TaskStatus
 from src.taskwarrior.exceptions import TaskValidationError
@@ -442,3 +444,24 @@ def test_task_output_dto_with_taskwarrior_json():
     assert task.get_uda("estimate") == 3
     assert task.get_uda("sprint") == "2026-Q1-S3"
     assert task.get_uda("nonexistent", default=0) == 0
+
+
+class TestPublicAPIContract:
+    """Verify that AnnotationDTO and ContextDTO are importable from the top-level package."""
+
+    def test_annotation_dto_importable(self) -> None:
+        assert AnnotationDTO is not None
+
+    def test_context_dto_importable(self) -> None:
+        assert ContextDTO is not None
+
+    def test_annotation_dto_fields(self) -> None:
+        from datetime import datetime
+        annotation = AnnotationDTO(entry=datetime(2024, 1, 1), description="note")
+        assert annotation.description == "note"
+
+    def test_context_dto_fields(self) -> None:
+        ctx = ContextDTO(name="work", read_filter="project:work", write_filter="project:work.inbox")
+        assert ctx.name == "work"
+        assert ctx.read_filter == "project:work"
+        assert ctx.write_filter == "project:work.inbox"

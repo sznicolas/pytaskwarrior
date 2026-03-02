@@ -59,3 +59,15 @@ nav:
       - Basic Usage: examples/basic.md
       - Contexts: examples/contexts.md
       - Advanced: examples/advanced.md
+  - LLMs Guides:
+      - Overview: llms/llms-taskwarrior.md
+      - DTOs: llms/llms-dtos.md
+      - Date Handling: llms/llms-dates.md
+      - Task Patterns: llms/llms-task-patterns.md
+      - Contexts: llms/llms-contexts.md
+      - Recurring Tasks: llms/llms-recurring.md
+      - UDAs: llms/llms-udas.md
+      - Dependencies: llms/llms-dependencies.md
+      - Error Handling: llms/llms-errors.md
+      - Performance: llms/llms-performance.md
+  - Troubleshooting: troubleshooting.md
