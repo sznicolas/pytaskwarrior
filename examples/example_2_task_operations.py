@@ -11,6 +11,7 @@ Demonstrates:
 """
 
 import os
+
 from taskwarrior import Priority, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config using example-local files
@@ -81,7 +82,7 @@ if added_tasks:
     task_to_complete = added_tasks[1]
     print(f"Completing: {task_to_complete.description}")
     tw.done_task(task_to_complete.uuid)
-    print(f"Status changed to: completed")
+    print("Status changed to: completed")
 
 # === List all pending tasks ===
 print("\n=== Pending tasks ===")

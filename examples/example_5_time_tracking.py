@@ -11,7 +11,8 @@ Demonstrates:
 """
 
 import os
-from taskwarrior import TaskWarrior, TaskInputDTO, Priority
+
+from taskwarrior import Priority, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config using example-local files
 base_dir = os.path.dirname(__file__)
@@ -42,22 +43,22 @@ print(f"  Start time: {task.start}")
 # === Add initial annotation ===
 print("\n=== Adding annotations ===")
 tw.annotate_task(task.uuid, "Started implementation with OAuth2")
-print(f"Added annotation: 'Started implementation with OAuth2'")
+print("Added annotation: 'Started implementation with OAuth2'")
 
 tw.annotate_task(task.uuid, "Found legacy code to refactor")
-print(f"Added annotation: 'Found legacy code to refactor'")
+print("Added annotation: 'Found legacy code to refactor'")
 
 tw.annotate_task(task.uuid, "Pair programming session with Alice")
-print(f"Added annotation: 'Pair programming session with Alice'")
+print("Added annotation: 'Pair programming session with Alice'")
 
 # === Start working on the task ===
 print("\n=== Starting work on the task ===")
 tw.start_task(task.uuid)
-print(f"Task started (time-tracking enabled)")
+print("Task started (time-tracking enabled)")
 
 # Retrieve updated task to see start time
 task_started = tw.get_task(task.uuid)
-print(f"Task details after start:")
+print("Task details after start:")
 print(f"  Description: {task_started.description}")
 print(f"  Status: {task_started.status}")
 print(f"  Start time: {task_started.start}")
@@ -65,15 +66,15 @@ print(f"  Start time: {task_started.start}")
 # === Add annotation while working ===
 print("\n=== Adding progress annotation ===")
 tw.annotate_task(task.uuid, "Completed authentication middleware")
-print(f"Added annotation: 'Completed authentication middleware'")
+print("Added annotation: 'Completed authentication middleware'")
 
 # === Stop working on the task ===
 print("\n=== Stopping work on the task ===")
 tw.stop_task(task.uuid)
-print(f"Task stopped (time-tracking paused)")
+print("Task stopped (time-tracking paused)")
 
 task_stopped = tw.get_task(task.uuid)
-print(f"Task details after stop:")
+print("Task details after stop:")
 print(f"  Status: {task_stopped.status}")
 print(f"  Start time: {task_stopped.start}")
 
@@ -120,7 +121,7 @@ print(f"Stopped working on task #{task2.index}")
 
 # Retrieve final state
 task2_final = tw.get_task(task2.uuid)
-print(f"\nTask details:")
+print("\nTask details:")
 print(f"  {task2_final.description}")
 print(f"  Status: {task2_final.status}")
 print(f"  Annotations: {len(task2_final.annotations)}")

@@ -11,7 +11,8 @@ Demonstrates:
 """
 
 import os
-from taskwarrior import TaskWarrior, TaskInputDTO, Priority, RecurrencePeriod
+
+from taskwarrior import Priority, RecurrencePeriod, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config using example-local files
 base_dir = os.path.dirname(__file__)
@@ -90,7 +91,7 @@ print(f"  Due: {added_monthly.due}")
 #print(f"  Recurrence: {added_biweekly.recur}")
 
 # === Get the parent recurring task template ===
-print(f"\n=== Retrieving parent recurring task template ===")
+print("\n=== Retrieving parent recurring task template ===")
 parent_daily = tw.get_recurring_task(added_daily.uuid)
 print(f"Parent task: {parent_daily.description}")
 print(f"  Status: {parent_daily.status}")
@@ -98,7 +99,7 @@ print(f"  Recur: {parent_daily.recur}")
 print(f"  Rtype: {parent_daily.rtype}")  # Recurring task type
 
 # === Get all instances of a recurring task ===
-print(f"\n=== Instances of the daily standup recurring task ===")
+print("\n=== Instances of the daily standup recurring task ===")
 instances = tw.get_recurring_instances(added_daily.uuid)
 print(f"Found {len(instances)} instance(s) of the recurring task")
 for instance in instances:
@@ -108,19 +109,19 @@ for instance in instances:
     print(f"      Status: {instance.status}")
 
 # === Complete one instance of a recurring task ===
-print(f"\n=== Completing an instance of a recurring task ===")
+print("\n=== Completing an instance of a recurring task ===")
 if instances:
     first_instance = instances[0]
     print(f"Completing task #{first_instance.index}")
     tw.done_task(first_instance.uuid)
-    print(f"Task marked as completed")
-    
+    print("Task marked as completed")
+
     # The parent task template remains and will generate new instances
     parent_after = tw.get_recurring_task(added_daily.uuid)
     print(f"Parent task still exists: {parent_after.description}")
 
 # === List all recurring tasks ===
-print(f"\n=== All recurring task templates ===")
+print("\n=== All recurring task templates ===")
 all_tasks = tw.get_tasks()
 print(f"Total pending tasks: {len(all_tasks)}")
 

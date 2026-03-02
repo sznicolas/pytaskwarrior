@@ -13,7 +13,8 @@ Demonstrates:
 """
 
 import os
-from taskwarrior import TaskWarrior, TaskInputDTO, Priority
+
+from taskwarrior import Priority, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config using example-local files
 base_dir = os.path.dirname(__file__)
@@ -125,7 +126,7 @@ for project_name, desc in projects_to_demo:
     print(f"  Created task in project '{project_name}'")
 
 # Get all projects
-print(f"\nAll defined projects:")
+print("\nAll defined projects:")
 all_projects = tw.get_projects()
 for proj in sorted(all_projects):
     print(f"  - {proj}")
@@ -177,7 +178,7 @@ if uda_names:
     try:
         added_uda = tw.add_task(task_with_uda)
         print(f"Created task with UDAs: {added_uda.description}")
-        
+
         # Retrieve and show UDA values
         retrieved = tw.get_task(added_uda.uuid)
         print(f"  Severity: {retrieved.get_uda('severity')}")

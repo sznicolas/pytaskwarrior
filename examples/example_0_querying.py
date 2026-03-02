@@ -11,7 +11,8 @@ Demonstrates:
 """
 
 import os
-from taskwarrior import TaskWarrior, TaskInputDTO, Priority, TaskStatus
+
+from taskwarrior import Priority, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config using example-local files
 base_dir = os.path.dirname(__file__)

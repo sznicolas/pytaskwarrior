@@ -5,6 +5,7 @@ This example is isolated from the user's TaskWarrior configuration. It uses the 
 """
 
 import os
+
 from taskwarrior import Priority, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config using example-local files
