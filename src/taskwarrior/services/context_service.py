@@ -4,6 +4,8 @@ This module provides the ContextService class for managing TaskWarrior
 contexts (named filters).
 """
 
+import re
+
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.context_dto import ContextDTO
 from ..exceptions import TaskWarriorError
@@ -12,9 +14,9 @@ from ..exceptions import TaskWarriorError
 class ContextService:
     """Service for managing TaskWarrior contexts.
 
-    Contexts are named filters that can be applied globally to focus
-    on specific subsets of tasks. This service handles creating,
-    applying, and managing contexts.
+    Contexts are named filters applied globally to focus on specific subsets
+    of tasks. Each context has a read_filter (applied when listing tasks) and
+    a write_filter (applied when creating or modifying tasks).
 
     Attributes:
         adapter: The TaskWarriorAdapter instance for CLI communication.
@@ -23,7 +25,7 @@ class ContextService:
         This service is typically accessed via TaskWarrior::
 
             tw = TaskWarrior()
-            tw.define_context("work", "project:work")
+            tw.define_context("work", read_filter="project:work", write_filter="project:work")
             tw.apply_context("work")
     """
 
@@ -35,23 +37,41 @@ class ContextService:
         """
         self.adapter: TaskWarriorAdapter = adapter
 
-    def define_context(self, name: str, filter_str: str) -> None:
-        """Create a new context with the given name and filter.
+    def _validate_name(self, name: str) -> None:
+        if not name or not name.strip():
+            raise TaskWarriorError("Context name cannot be empty")
+
+    def define_context(
+        self, name: str, read_filter: str, write_filter: str
+    ) -> None:
+        """Create or update a context with explicit read and write filters.
+
+        TaskWarrior stores read and write filters separately in .taskrc.
+        Both must be provided — there is no implicit default.
 
         Args:
-            name: Unique name for the context.
-            filter_str: TaskWarrior filter expression.
+            name:         Unique context name.
+            read_filter:  Filter applied when listing/querying tasks.
+            write_filter: Filter applied when creating or modifying tasks.
 
         Raises:
             TaskWarriorError: If the name is empty or creation fails.
 
         Example:
-            >>> service.define_context("urgent", "+urgent or priority:H")
+            >>> service.define_context("work", "project:work", "project:work")
+            >>> service.define_context("urgent", "+urgent", "")  # read-only filter
         """
-        if not name or not name.strip():
-            raise TaskWarriorError("Context name cannot be empty")
-
-        self.adapter.run_task_command(["context", "define", name, filter_str])
+        self._validate_name(name)
+        result = self.adapter.run_task_command(["context", "define", name, read_filter])
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to define context '{name}': {result.stderr}")
+        result = self.adapter.run_task_command(
+            ["config", f"context.{name}.write", write_filter]
+        )
+        if result.returncode != 0:
+            raise TaskWarriorError(
+                f"Failed to set write filter for context '{name}': {result.stderr}"
+            )
 
     def apply_context(self, name: str) -> None:
         """Apply a context, making it the active filter.
@@ -62,9 +82,7 @@ class ContextService:
         Raises:
             TaskWarriorError: If the name is empty or the context doesn't exist.
         """
-        if not name or not name.strip():
-            raise TaskWarriorError("Context name cannot be empty")
-
+        self._validate_name(name)
         result = self.adapter.run_task_command(["context", name])
         if result.returncode != 0:
             raise TaskWarriorError(f"Failed to apply context '{name}': {result.stderr}")
@@ -82,51 +100,43 @@ class ContextService:
             raise TaskWarriorError(f"Failed to unset context: {result.stderr}")
 
     def get_contexts(self) -> list[ContextDTO]:
-        """List all defined contexts.
+        """List all defined contexts with their read and write filters.
+
+        Reads context.*.read and context.*.write entries directly from
+        .taskrc to guarantee correctness regardless of CLI output format.
 
         Returns:
-            List of ContextDTO objects with name, filter, and active status.
+            List of ContextDTO objects (name, read_filter, write_filter, active).
 
         Raises:
             TaskWarriorError: If retrieval fails.
         """
         try:
-            result = self.adapter.run_task_command(["context", "list"])
-
-            if result.returncode != 0:
-                raise TaskWarriorError(f"Failed to list contexts: {result.stderr}")
-
             current = self.get_current_context()
+            taskrc_path = self.adapter.taskrc_file
+            content = taskrc_path.read_text(encoding="utf-8")
 
-            contexts = []
-            lines = result.stdout.strip().split("\n")
-            
-            # Skip header lines and process context lines
-            if len(lines) > 2:  # Skip "Context Filter" and empty line
-                for line in lines[2:]:  # Skip header lines
-                    if line.strip():
-                        # Split on first whitespace to separate name from filter
-                        parts = line.split(None, 1)  
-                        if len(parts) >= 2:
-                            context_name, filter_str = parts[0], " ".join(parts[1:])
-                            contexts.append(
-                                ContextDTO(
-                                    name=context_name,
-                                    filter=filter_str,
-                                    active=(context_name == current),
-                                )
-                            )
-                        elif len(parts) == 1:
-                            # Handle case where there's only a name (no filter)
-                            context_name = parts[0]
-                            contexts.append(
-                                ContextDTO(
-                                    name=context_name,
-                                    filter="",
-                                    active=(context_name == current),
-                                )
-                            )
-            return contexts
+            # Collect all context.*.read entries as canonical source of truth
+            names: dict[str, dict[str, str]] = {}
+            for m in re.finditer(
+                r"^\s*context\.([^.\s]+)\.(read|write)\s*=\s*(.*)",
+                content,
+                re.MULTILINE,
+            ):
+                ctx_name = m.group(1)
+                kind = m.group(2)
+                value = m.group(3).strip()
+                names.setdefault(ctx_name, {})[kind] = value
+
+            return [
+                ContextDTO(
+                    name=n,
+                    read_filter=filters.get("read", ""),
+                    write_filter=filters.get("write", ""),
+                    active=(n == current),
+                )
+                for n, filters in names.items()
+            ]
         except Exception as e:
             raise TaskWarriorError(f"Error retrieving contexts: {str(e)}") from e
 
@@ -141,17 +151,15 @@ class ContextService:
         """
         try:
             result = self.adapter.run_task_command(["_get", "rc.context"])
-
             if result.returncode != 0:
                 return None
-
             context_name = result.stdout.strip()
             return context_name if context_name else None
         except Exception as e:
             raise TaskWarriorError(f"Error retrieving current context: {str(e)}") from e
 
     def delete_context(self, name: str) -> None:
-        """Delete a defined context.
+        """Delete a defined context (both read and write filters).
 
         Args:
             name: Name of the context to delete.
@@ -159,9 +167,7 @@ class ContextService:
         Raises:
             TaskWarriorError: If the name is empty or deletion fails.
         """
-        if not name or not name.strip():
-            raise TaskWarriorError("Context name cannot be empty")
-
+        self._validate_name(name)
         result = self.adapter.run_task_command(["context", "delete", name])
         if result.returncode != 0:
             raise TaskWarriorError(
@@ -178,8 +184,6 @@ class ContextService:
             True if the context exists, False otherwise.
         """
         try:
-            contexts = self.get_contexts()
-            return any(ctx.name == name for ctx in contexts)
+            return any(ctx.name == name for ctx in self.get_contexts())
         except TaskWarriorError:
-            # If we can't retrieve contexts, assume context doesn't exist
             return False

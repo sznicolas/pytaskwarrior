@@ -42,6 +42,25 @@ pip install -e .
 
 ## Quick Start
 
+### Running the bundled examples in isolation
+
+The examples in the examples/ directory are designed to be independent of your personal TaskWarrior configuration. They use the bundled examples/taskrc_example and examples/task_data so they won't modify your default ~/.taskrc or TaskWarrior database.
+
+To run an example script (from the repository root):
+
+```bash
+python examples/example_1_basic.py
+```
+
+To run the task CLI manually with the same resources (from the repository root):
+
+```bash
+task rc:examples/taskrc_example rc.data.location=examples/task_data <command>
+```
+
+Replace the relative paths with absolute paths (for example, $(pwd)/examples/taskrc_example) if you prefer.
+
+
 ```python
 from taskwarrior import TaskWarrior, TaskInputDTO, Priority
 

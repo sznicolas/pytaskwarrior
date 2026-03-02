@@ -242,7 +242,6 @@ rc.bulk=0
         logger.debug(f"Retrieving task with ID/UUID: {task_id_or_uuid}")
 
         args = [filter_args, task_id_or_uuid, "export"]
-        print("**** ", args)
         result = self.run_task_command(args)
         if result.returncode == 0:
             try:
@@ -275,7 +274,7 @@ rc.bulk=0
     ) -> list[TaskOutputDTO]:
         """Retrieve multiple tasks matching a filter."""
         logger.debug(f"Getting tasks with filters: {filter_args}")
-        args = [filter_args + "export"]
+        args = [filter_args, "export"]
         result = self.run_task_command(args)
 
         if result.returncode != 0:

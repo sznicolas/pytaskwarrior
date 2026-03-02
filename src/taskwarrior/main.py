@@ -288,23 +288,25 @@ class TaskWarrior:
         """
         self.adapter.annotate_task(task_id_or_uuid, annotation)
 
-    def define_context(self, context: str, filter_str: str) -> None:
-        """Define a new context with the given filter.
+    def define_context(self, context: str, read_filter: str, write_filter: str) -> None:
+        """Define a new context with explicit read and write filters.
 
-        Contexts allow you to focus on a subset of tasks by applying
-        filters automatically.
+        Both filters are required. Use an empty string for write_filter
+        if you want a read-only context (new tasks won't inherit a project).
 
         Args:
-            context: Name of the context to create.
-            filter_str: TaskWarrior filter expression for this context.
+            context:      Name of the context to create.
+            read_filter:  Filter applied when listing/querying tasks.
+            write_filter: Filter applied when creating or modifying tasks.
 
         Raises:
             TaskWarriorError: If context creation fails.
 
         Example:
-            >>> tw.define_context("work", "project:work or +urgent")
+            >>> tw.define_context("work", "project:work", "project:work")
+            >>> tw.define_context("review", "+urgent or priority:H", "")
         """
-        self.context_service.define_context(context, filter_str)
+        self.context_service.define_context(context, read_filter, write_filter)
 
     def apply_context(self, context: str) -> None:
         """Activate a context.

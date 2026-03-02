@@ -461,6 +461,7 @@ class TestPublicAPIContract:
         assert annotation.description == "note"
 
     def test_context_dto_fields(self) -> None:
-        ctx = ContextDTO(name="work", filter="project:work")
+        ctx = ContextDTO(name="work", read_filter="project:work", write_filter="project:work.inbox")
         assert ctx.name == "work"
-        assert ctx.filter == "project:work"
+        assert ctx.read_filter == "project:work"
+        assert ctx.write_filter == "project:work.inbox"
