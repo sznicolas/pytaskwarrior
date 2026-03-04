@@ -130,7 +130,7 @@ tw = TaskWarrior(
 
 | Method | Description |
 |--------|-------------|
-| `define_context(name, filter)` | Create a context with filter |
+| `define_context(name, read_filter, write_filter)` | Create a context with read and write filters |
 | `apply_context(name)` | Activate a context |
 | `unset_context()` | Deactivate current context |
 | `get_contexts()` | List all contexts |
@@ -212,8 +212,8 @@ RecurrencePeriod.YEARLY
 
 ```python
 # Define contexts for different workflows
-tw.define_context("work", "project:work or +urgent")
-tw.define_context("home", "project:home or project:personal")
+tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
+tw.define_context("home", read_filter="project:home or project:personal", write_filter="project:home or project:personal")
 
 # Switch to work context
 tw.apply_context("work")

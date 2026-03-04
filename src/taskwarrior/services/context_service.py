@@ -58,8 +58,8 @@ class ContextService:
             TaskWarriorError: If the name is empty or creation fails.
 
         Example:
-            >>> service.define_context("work", "project:work", "project:work")
-            >>> service.define_context("urgent", "+urgent", "")  # read-only filter
+            >>> service.define_context("work", read_filter="project:work", write_filter="project:work")
+            >>> service.define_context("urgent", read_filter="+urgent", write_filter="")  # read-only filter
         """
         self._validate_name(name)
         result = self.adapter.run_task_command(["context", "define", name, read_filter])

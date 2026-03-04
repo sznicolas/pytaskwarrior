@@ -303,8 +303,8 @@ class TaskWarrior:
             TaskWarriorError: If context creation fails.
 
         Example:
-            >>> tw.define_context("work", "project:work", "project:work")
-            >>> tw.define_context("review", "+urgent or priority:H", "")
+            >>> tw.define_context("work", read_filter="project:work", write_filter="project:work")
+            >>> tw.define_context("review", read_filter="+urgent or priority:H", write_filter="")
         """
         self.context_service.define_context(context, read_filter, write_filter)
 

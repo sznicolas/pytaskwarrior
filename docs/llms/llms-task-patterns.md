@@ -43,7 +43,7 @@ print(f"Low priority: {len(low_priority)}")
 
 ```python
 # Define project context
-tw.define_context("work", "project:work or +urgent")
+tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
 
 # Switch to work context
 tw.apply_context("work")
@@ -54,7 +54,7 @@ work_tasks = tw.get_tasks()
 
 ```python
 # Define personal context
-tw.define_context("personal", "project:home or project:personal")
+tw.define_context("personal", read_filter="project:home or project:personal", write_filter="project:home or project:personal")
 
 # Switch to personal context
 tw.apply_context("personal")

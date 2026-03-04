@@ -117,9 +117,10 @@ rc.bulk=0
             CompletedProcess with stdout, stderr, and returncode.
         """
         cmd = [str(self.task_cmd)]
-        cmd.extend(args)
+        # Options (rc:...) must come before command and filter arguments so they are applied properly.
         if not no_opt:
             cmd.extend(self._options)
+        cmd.extend(args)
         logger.debug(f"Running command: {' '.join(cmd)}")
 
         try:

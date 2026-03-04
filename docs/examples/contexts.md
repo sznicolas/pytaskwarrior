@@ -11,9 +11,9 @@ from taskwarrior import TaskWarrior
 tw = TaskWarrior()
 
 # Create contexts for different workflows
-tw.define_context("work", "project:work or +urgent")
-tw.define_context("home", "project:home or project:personal")
-tw.define_context("errands", "+errand or +shopping")
+tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
+tw.define_context("home", read_filter="project:home or project:personal", write_filter="project:home or project:personal")
+tw.define_context("errands", read_filter="+errand or +shopping", write_filter="+errand or +shopping")
 ```
 
 ## Applying Contexts
@@ -42,7 +42,7 @@ else:
 ```python
 contexts = tw.get_contexts()
 for ctx in contexts:
-    print(f"{ctx.name}: {ctx.filter}")
+    print(f"{ctx.name}: read={ctx.read_filter} write={ctx.write_filter}")
 ```
 
 ## Removing Context
@@ -65,7 +65,7 @@ tw.delete_context("errands")
 if tw.has_context("work"):
     tw.apply_context("work")
 else:
-    tw.define_context("work", "project:work")
+    tw.define_context("work", read_filter="project:work", write_filter="project:work")
     tw.apply_context("work")
 ```
 
@@ -78,7 +78,7 @@ tw = TaskWarrior()
 
 # Setup contexts once
 if not tw.has_context("focus"):
-    tw.define_context("focus", "priority:H or +urgent")
+    tw.define_context("focus", read_filter="priority:H or +urgent", write_filter="priority:H or +urgent")
 
 # Morning routine: check high-priority items
 tw.apply_context("focus")
