@@ -106,7 +106,7 @@ print(f"Soft deleting task #{task_to_delete.index}: {task_to_delete.description}
 tw.delete_task(task_to_delete.uuid)
 
 # After soft delete, the task is still in the database with status=deleted
-all_tasks_including_deleted = tw.get_tasks(filter_args="status:deleted")
+all_tasks_including_deleted = tw.get_tasks(filter="status:deleted", include_deleted=True)
 print(f"Tasks with status=deleted: {len(all_tasks_including_deleted)}")
 if all_tasks_including_deleted:
     print(f"  - {all_tasks_including_deleted[0].description} (status: {all_tasks_including_deleted[0].status})")
@@ -115,8 +115,8 @@ if all_tasks_including_deleted:
 print(f"\nPermanently purging task #{task_to_delete.index}")
 tw.purge_task(task_to_delete.uuid)
 
-# After purge, task is completely gone
-all_remaining = tw.get_tasks("status.not:completed")
+# After purge, task is completely gone — show everything still in the database
+all_remaining = tw.get_tasks(include_deleted=True)
 print(f"Remaining tasks after purge: {len(all_remaining)}")
 
 # === Show all tasks in different statuses ===

@@ -13,7 +13,7 @@ from .adapters.taskwarrior_adapter import TaskWarriorAdapter, TaskWarriorInfo
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.uda_dto import UdaConfig
-from .enums import TaskStatus
+from .enums import TaskStatus  # noqa: F401 — re-exported for public API
 from .services.context_service import ContextService
 from .services.uda_service import UdaService
 
@@ -150,29 +150,41 @@ class TaskWarrior:
 
     def get_tasks(
         self,
-        filter_args: str = f"(status.not:{TaskStatus.DELETED.value} and status.not:{TaskStatus.COMPLETED.value})",
+        filter: str = "",
+        include_completed: bool = False,
+        include_deleted: bool = False,
     ) -> list[TaskOutputDTO]:
         """Retrieve multiple tasks matching a filter.
 
-        By default, returns all pending and waiting tasks (excludes deleted
-        and completed tasks).
+        The filter expression is automatically wrapped in parentheses so
+        compound expressions (e.g. ``"project:a or project:b"``) work
+        correctly without needing manual parentheses.
+
+        Deleted and completed tasks are excluded by default; use
+        *include_completed* / *include_deleted* to override.
 
         Args:
-            filter_args: TaskWarrior filter expression. Defaults to excluding
-                deleted and completed tasks.
+            filter: TaskWarrior filter expression.  Examples::
+
+                tw.get_tasks()                                  # pending only
+                tw.get_tasks("project:work +urgent")            # project filter
+                tw.get_tasks("project:dmc or project:pro")      # OR — works!
+                tw.get_tasks("project:work", include_completed=True)
+
+            include_completed: Include completed tasks (default ``False``).
+            include_deleted: Include deleted tasks (default ``False``).
 
         Returns:
             List of tasks matching the filter.
 
         Raises:
             TaskWarriorError: If the query fails.
-
-        Example:
-            >>> tasks = tw.get_tasks()  # All pending tasks
-            >>> tasks = tw.get_tasks("project:work +urgent")
-            >>> tasks = tw.get_tasks("status:completed")
         """
-        return self.adapter.get_tasks(filter_args)
+        return self.adapter.get_tasks(
+            filter=filter,
+            include_completed=include_completed,
+            include_deleted=include_deleted,
+        )
 
     def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the parent recurring task template.

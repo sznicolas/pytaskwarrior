@@ -50,6 +50,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - Building TaskWarrior: building-taskwarrior.md
   - API Reference:
       - TaskWarrior: api/taskwarrior.md
       - Data Models: api/dto.md
@@ -59,6 +60,7 @@ nav:
       - Basic Usage: examples/basic.md
       - Contexts: examples/contexts.md
       - Advanced: examples/advanced.md
+  - Tips & Tricks: tips-and-tricks.md
   - LLMs Guides:
       - Overview: llms/llms-taskwarrior.md
       - DTOs: llms/llms-dtos.md

@@ -157,7 +157,7 @@ class TestTaskWarriorTasks:
 
     def test_get_tasks_not_found(self, tw: TaskWarrior):
         """Test that get_tasks works with no matching tasks."""
-        result = tw.get_tasks(filter_args="description:nonexistent")
+        result = tw.get_tasks(filter="description:nonexistent")
 
         assert len(result) == 0
 

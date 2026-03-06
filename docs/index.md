@@ -16,6 +16,11 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/), the command
 - ✅ **Annotations** - Add notes to tasks
 - ✅ **Date calculations** - Use TaskWarrior's date expressions
 
+!!! warning
+    When using `TaskWarrior()` without parameters, it will interact with your system's default TaskWarrior data.
+    This means any operations performed will affect your actual tasks stored in the default location (typically `~/.task/`).  
+    Make sure you are aware of this behavior and consider using custom `taskrc_file` and `data_location` parameters if you want to avoid affecting your real tasks.
+
 ## Quick Example
 
 ```python

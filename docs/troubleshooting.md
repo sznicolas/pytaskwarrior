@@ -93,7 +93,7 @@ task --version
 3. **Filter too restrictive** — check the filter string:
 
     ```python
-    tasks = tw.get_tasks(filter_str="status:pending")
+    tasks = tw.get_tasks("status:pending")
     ```
 
 ---

@@ -26,6 +26,8 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the co
 - Python 3.12+
 - TaskWarrior 3.4+ installed and accessible via `task` command
 
+> **Note:** If you need to build TaskWarrior 3.x from source, see [Building TaskWarrior 3.x](docs/building-taskwarrior.md) for a Docker-based build process and detailed instructions.
+
 ## Installation
 
 ```bash
@@ -117,7 +119,7 @@ tw = TaskWarrior(
 |--------|-------------|
 | `add_task(task: TaskInputDTO)` | Create a new task |
 | `get_task(uuid)` | Get a single task by UUID or ID |
-| `get_tasks(filter_args="")` | Get tasks matching filter |
+| `get_tasks(filter="", include_completed=False, include_deleted=False)` | Get tasks matching filter |
 | `modify_task(task: TaskInputDTO, uuid)` | Modify an existing task |
 | `delete_task(uuid)` | Mark task as deleted |
 | `purge_task(uuid)` | Permanently remove task |
