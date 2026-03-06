@@ -115,13 +115,8 @@ if all_tasks_including_deleted:
 print(f"\nPermanently purging task #{task_to_delete.index}")
 tw.purge_task(task_to_delete.uuid)
 
-<<<<<<< HEAD
 # After purge, task is completely gone — show everything still in the database
 all_remaining = tw.get_tasks(include_deleted=True)
-=======
-# After purge, task is completely gone
-all_remaining = tw.get_tasks("status.not:completed")
->>>>>>> 36213a1405b29204ca2df62a7278aea2eb6abb59
 print(f"Remaining tasks after purge: {len(all_remaining)}")
 
 # === Show all tasks in different statuses ===
