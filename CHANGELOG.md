@@ -5,62 +5,6 @@ All notable changes to pytaskwarrior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2026-03-06
-
-
-### Breaking Changes
-
-- **`define_context` signature changed**: now requires explicit `read_filter` and `write_filter` named
-  parameters. The old single-filter positional form no longer works.
-
-  ```python
-  # Before (1.0.0)
-  tw.define_context("work", "project:work")
-
-  # After
-  tw.define_context("work", read_filter="project:work", write_filter="project:work")
-  ```
-
-  **Migration**: set `write_filter` to the same value as the old single filter, or to `""` for a
-  read-only context (tasks created while the context is active won't inherit a project).
-
-- **`get_tasks` signature changed**: `filter_args` renamed to `filter`; status exclusion is now
-  controlled by dedicated parameters instead of being part of the filter string.
-
-  ```python
-  # Before (1.0.0)
-  tw.get_tasks()                                       # all non-deleted/completed
-  tw.get_tasks("project:work")                         # still works (positional)
-  tw.get_tasks(filter_args="status:completed")         # ← broken keyword
-
-  # After
-  tw.get_tasks()                                       # same default behaviour
-  tw.get_tasks("project:work")                         # unchanged
-  tw.get_tasks(include_completed=True)                 # include completed tasks
-  tw.get_tasks("project:work", include_deleted=True)   # include deleted
-  tw.get_tasks(filter="project:work", include_completed=True)  # explicit keyword
-  ```
-
-  **Key improvement**: compound `or`/`and` filters no longer need manual parentheses —
-  `get_tasks("project:dmc or project:pro")` now works correctly.
-
-### Added
-
-- **`get_tasks(filter, include_completed, include_deleted)`**: new parameters give fine-grained
-  control over status exclusion without requiring raw filter strings.
-- **Auto-wrapping of filter expressions**: compound filters passed to `get_tasks` are automatically
-  wrapped in parentheses so that `or`/`and` expressions are evaluated correctly by Taskwarrior.
-- **`TaskInputDTO.recur` accepts ISO-8601 durations**: in addition to `RecurrencePeriod` enum values
-  and Taskwarrior shorthand strings (e.g. `"2weeks"`), you can now pass ISO-8601 duration strings
-  such as `"P1D"`, `"P3DT4H"`, or `"PT30M"`.  Note: the week designator `PnW` (e.g. `"P2W"`) is not
-  yet validated by the built-in regex; use `"P14D"` or `"2weeks"` instead.
-
-### Fixed
-
-- **`run_task_command` option ordering**: `rc:` and `rc.data.location=` options are now placed
-  *before* the command and filter arguments in the subprocess call, which fixes cases where
-  TaskWarrior silently ignored the custom taskrc or data location.
-
 ## [1.0.0] - 2026-02-26
 
 **PyTaskWarrior 1.0.0** is a complete production-ready rewrite with professional-grade code quality: 132 tests (96% coverage), strict type checking (mypy), zero linting errors (ruff), and clean architecture (adapters/services/DTOs). Full async-ready subprocess handling, comprehensive error recovery, and PEP 561 type hints.
