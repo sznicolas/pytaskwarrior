@@ -117,9 +117,10 @@ rc.bulk=0
             CompletedProcess with stdout, stderr, and returncode.
         """
         cmd = [str(self.task_cmd)]
-        cmd.extend(args)
+        # Options (rc:...) must come before command and filter arguments so they are applied properly.
         if not no_opt:
             cmd.extend(self._options)
+        cmd.extend(args)
         logger.debug(f"Running command: {' '.join(cmd)}")
 
         try:
@@ -144,6 +145,24 @@ rc.bulk=0
         except (OSError, subprocess.SubprocessError) as e:
             logger.error(f"Exception while running '{cmd}': {e}")
             raise
+
+    @staticmethod
+    def _wrap_filter(f: str) -> str:
+        """Wrap a non-empty filter expression in parentheses.
+
+        Taskwarrior requires parentheses around compound expressions (those
+        containing ``or`` or ``and``) when they are passed as a single CLI
+        argument.  Wrapping unconditionally is safe: ``(x)`` and ``((x))``
+        are equivalent to Taskwarrior.
+
+        Args:
+            f: Raw filter string, possibly empty.
+
+        Returns:
+            ``"(f)"`` if *f* is non-empty after stripping, else ``""``.
+        """
+        f = f.strip()
+        return f"({f})" if f else ""
 
     def _build_args(self, task: TaskInputDTO) -> list[str]:
         """Build CLI arguments from a TaskInputDTO."""
@@ -202,7 +221,7 @@ rc.bulk=0
             added_task = self.get_task(task_id)
         else:
             # Fallback: retrieve the most recently added task
-            tasks = self.get_tasks(filter_args="+LATEST")
+            tasks = self.get_tasks(filter="+LATEST", include_completed=True, include_deleted=True)
             if not tasks:
                 error_msg = "Failed to retrieve added task"
                 logger.error(error_msg)
@@ -270,11 +289,50 @@ rc.bulk=0
 
     def get_tasks(
         self,
-        filter_args: str = f"(status.not:{TaskStatus.DELETED.value} and status.not:{TaskStatus.COMPLETED.value})",
+        filter: str = "",
+        include_completed: bool = False,
+        include_deleted: bool = False,
     ) -> list[TaskOutputDTO]:
-        """Retrieve multiple tasks matching a filter."""
-        logger.debug(f"Getting tasks with filters: {filter_args}")
-        args = [filter_args, "export"]
+        """Retrieve multiple tasks matching a filter.
+
+        The user filter is automatically wrapped in parentheses so that
+        compound expressions (e.g. ``"project:a or project:b"``) are
+        evaluated correctly by Taskwarrior.
+
+        A status exclusion clause is combined automatically unless overridden:
+        - deleted tasks are excluded unless *include_deleted* is ``True``
+        - completed tasks are excluded unless *include_completed* is ``True``
+
+        Args:
+            filter: TaskWarrior filter expression (e.g. ``"project:work +urgent"``).
+                Defaults to no additional filter (all non-deleted/completed tasks).
+            include_completed: If ``True``, completed tasks are included.
+            include_deleted: If ``True``, deleted tasks are included.
+
+        Returns:
+            List of tasks matching the combined filter.
+
+        Raises:
+            TaskWarriorError: If the query fails.
+        """
+        # Build status exclusion clause
+        status_parts: list[str] = []
+        if not include_deleted:
+            status_parts.append(f"status.not:{TaskStatus.DELETED.value}")
+        if not include_completed:
+            status_parts.append(f"status.not:{TaskStatus.COMPLETED.value}")
+        status_clause = " and ".join(status_parts)
+
+        # Combine user filter (wrapped) with status clause
+        wrapped = self._wrap_filter(filter)
+        wrapped_status = self._wrap_filter(status_clause)
+        if wrapped and wrapped_status:
+            combined = f"{wrapped} and {wrapped_status}"
+        else:
+            combined = wrapped or wrapped_status
+
+        logger.debug(f"Getting tasks with combined filter: {combined!r}")
+        args = [combined, "export"] if combined else ["export"]
         result = self.run_task_command(args)
 
         if result.returncode != 0:
@@ -294,6 +352,7 @@ rc.bulk=0
             raise TaskValidationError(
                 f"Invalid response from TaskWarrior: {result.stdout}"
             ) from e
+
 
     def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the parent recurring task template."""

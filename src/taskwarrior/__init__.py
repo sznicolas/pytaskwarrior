@@ -44,9 +44,13 @@ from .registry.uda_registry import UdaRegistry
 from .utils.dto_converter import task_output_to_input
 
 __version__ = importlib.metadata.version("pytaskwarrior")
+# Backwards-compatible alias
+version = __version__
+
 __all__ = [
     "AnnotationDTO",
     "ContextDTO",
+    "version",
     "Priority",
     "RecurrencePeriod",
     "TaskStatus",

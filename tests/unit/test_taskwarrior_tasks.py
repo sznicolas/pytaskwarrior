@@ -50,8 +50,8 @@ class TestTaskWarriorTasks:
         # Add a few tasks
         task1 = TaskInputDTO(description="Task 1")
         task2 = TaskInputDTO(description="Task 2")
-        tw.add_task(task1)
-        tw.add_task(task2)
+        _ = tw.add_task(task1)
+        _ = tw.add_task(task2)
 
         # Get all tasks
         result = tw.get_tasks()
@@ -157,7 +157,7 @@ class TestTaskWarriorTasks:
 
     def test_get_tasks_not_found(self, tw: TaskWarrior):
         """Test that get_tasks works with no matching tasks."""
-        result = tw.get_tasks(filter_args="description:nonexistent")
+        result = tw.get_tasks(filter="description:nonexistent")
 
         assert len(result) == 0
 

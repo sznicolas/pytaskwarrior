@@ -7,7 +7,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen.svg)](https://github.com/sznicolas/pytaskwarrior)
 [![PyPI version](https://img.shields.io/pypi/v/pytaskwarrior.svg)](https://pypi.org/project/pytaskwarrior/)
 
-A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/), the command-line task management tool.
+A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the command-line task management tool.
 
 **v1.0.0**: Production-ready with 132 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, and PEP 561 type hints for IDE support.
 
@@ -26,6 +26,8 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/), the command
 - Python 3.12+
 - TaskWarrior 3.4+ installed and accessible via `task` command
 
+> **Note:** If you need to build TaskWarrior 3.x from source, see [Building TaskWarrior 3.x](docs/building-taskwarrior.md) for a Docker-based build process and detailed instructions.
+
 ## Installation
 
 ```bash
@@ -41,6 +43,25 @@ pip install -e .
 ```
 
 ## Quick Start
+
+### Running the bundled examples in isolation
+
+The examples in the examples/ directory are designed to be independent of your personal TaskWarrior configuration. They use the bundled examples/taskrc_example and examples/task_data so they won't modify your default ~/.taskrc or TaskWarrior database.
+
+To run an example script (from the repository root):
+
+```bash
+python examples/example_1_basic.py
+```
+
+To run the task CLI manually with the same resources (from the repository root):
+
+```bash
+task rc:examples/taskrc_example rc.data.location=examples/task_data <command>
+```
+
+Replace the relative paths with absolute paths (for example, $(pwd)/examples/taskrc_example) if you prefer.
+
 
 ```python
 from taskwarrior import TaskWarrior, TaskInputDTO, Priority
@@ -98,7 +119,7 @@ tw = TaskWarrior(
 |--------|-------------|
 | `add_task(task: TaskInputDTO)` | Create a new task |
 | `get_task(uuid)` | Get a single task by UUID or ID |
-| `get_tasks(filter_args="")` | Get tasks matching filter |
+| `get_tasks(filter="", include_completed=False, include_deleted=False)` | Get tasks matching filter |
 | `modify_task(task: TaskInputDTO, uuid)` | Modify an existing task |
 | `delete_task(uuid)` | Mark task as deleted |
 | `purge_task(uuid)` | Permanently remove task |
@@ -111,7 +132,7 @@ tw = TaskWarrior(
 
 | Method | Description |
 |--------|-------------|
-| `define_context(name, filter)` | Create a context with filter |
+| `define_context(name, read_filter, write_filter)` | Create a context with read and write filters |
 | `apply_context(name)` | Activate a context |
 | `unset_context()` | Deactivate current context |
 | `get_contexts()` | List all contexts |
@@ -193,8 +214,8 @@ RecurrencePeriod.YEARLY
 
 ```python
 # Define contexts for different workflows
-tw.define_context("work", "project:work or +urgent")
-tw.define_context("home", "project:home or project:personal")
+tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
+tw.define_context("home", read_filter="project:home or project:personal", write_filter="project:home or project:personal")
 
 # Switch to work context
 tw.apply_context("work")

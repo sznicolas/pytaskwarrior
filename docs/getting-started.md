@@ -49,7 +49,7 @@ print(f"Created task #{added.index}: {added.uuid}")
 tw = TaskWarrior(
     taskrc_file="/path/to/.taskrc",
     data_location="/path/to/task/data",
-    task_cmd="task"  # Path to task binary
+    task_cmd="/usr/bin/task"  # Path to task binary
 )
 ```
 

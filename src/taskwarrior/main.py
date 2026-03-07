@@ -13,7 +13,7 @@ from .adapters.taskwarrior_adapter import TaskWarriorAdapter, TaskWarriorInfo
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.uda_dto import UdaConfig
-from .enums import TaskStatus
+from .enums import TaskStatus  # noqa: F401 — re-exported for public API
 from .services.context_service import ContextService
 from .services.uda_service import UdaService
 
@@ -150,29 +150,41 @@ class TaskWarrior:
 
     def get_tasks(
         self,
-        filter_args: str = f"(status.not:{TaskStatus.DELETED.value} and status.not:{TaskStatus.COMPLETED.value})",
+        filter: str = "",
+        include_completed: bool = False,
+        include_deleted: bool = False,
     ) -> list[TaskOutputDTO]:
         """Retrieve multiple tasks matching a filter.
 
-        By default, returns all pending and waiting tasks (excludes deleted
-        and completed tasks).
+        The filter expression is automatically wrapped in parentheses so
+        compound expressions (e.g. ``"project:a or project:b"``) work
+        correctly without needing manual parentheses.
+
+        Deleted and completed tasks are excluded by default; use
+        *include_completed* / *include_deleted* to override.
 
         Args:
-            filter_args: TaskWarrior filter expression. Defaults to excluding
-                deleted and completed tasks.
+            filter: TaskWarrior filter expression.  Examples::
+
+                tw.get_tasks()                                  # pending only
+                tw.get_tasks("project:work +urgent")            # project filter
+                tw.get_tasks("project:dmc or project:pro")      # OR — works!
+                tw.get_tasks("project:work", include_completed=True)
+
+            include_completed: Include completed tasks (default ``False``).
+            include_deleted: Include deleted tasks (default ``False``).
 
         Returns:
             List of tasks matching the filter.
 
         Raises:
             TaskWarriorError: If the query fails.
-
-        Example:
-            >>> tasks = tw.get_tasks()  # All pending tasks
-            >>> tasks = tw.get_tasks("project:work +urgent")
-            >>> tasks = tw.get_tasks("status:completed")
         """
-        return self.adapter.get_tasks(filter_args)
+        return self.adapter.get_tasks(
+            filter=filter,
+            include_completed=include_completed,
+            include_deleted=include_deleted,
+        )
 
     def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the parent recurring task template.
@@ -288,23 +300,25 @@ class TaskWarrior:
         """
         self.adapter.annotate_task(task_id_or_uuid, annotation)
 
-    def define_context(self, context: str, filter_str: str) -> None:
-        """Define a new context with the given filter.
+    def define_context(self, context: str, read_filter: str, write_filter: str) -> None:
+        """Define a new context with explicit read and write filters.
 
-        Contexts allow you to focus on a subset of tasks by applying
-        filters automatically.
+        Both filters are required. Use an empty string for write_filter
+        if you want a read-only context (new tasks won't inherit a project).
 
         Args:
-            context: Name of the context to create.
-            filter_str: TaskWarrior filter expression for this context.
+            context:      Name of the context to create.
+            read_filter:  Filter applied when listing/querying tasks.
+            write_filter: Filter applied when creating or modifying tasks.
 
         Raises:
             TaskWarriorError: If context creation fails.
 
         Example:
-            >>> tw.define_context("work", "project:work or +urgent")
+            >>> tw.define_context("work", read_filter="project:work", write_filter="project:work")
+            >>> tw.define_context("review", read_filter="+urgent or priority:H", write_filter="")
         """
-        self.context_service.define_context(context, filter_str)
+        self.context_service.define_context(context, read_filter, write_filter)
 
     def apply_context(self, context: str) -> None:
         """Activate a context.
