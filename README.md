@@ -9,7 +9,7 @@
 
 A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the command-line task management tool.
 
-**v1.0.0**: Production-ready with 132 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, and PEP 561 type hints for IDE support.
+**v1.1.1**: Production-ready with 132 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, and PEP 561 type hints for IDE support.
 
 ## Features
 

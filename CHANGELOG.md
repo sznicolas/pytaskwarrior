@@ -5,9 +5,18 @@ All notable changes to pytaskwarrior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026‑03‑07
+### Added
+- Automated publishing to PyPI via GitHub Actions (trusted publishing with OIDC).
+- Updated documentation links to reflect the new release.
+
+### Changed
+- Bumped package version to 1.1.1 (patch release).
+
+### Fixed
+- Minor typo fixes in the README badge URLs.
+
 ## [1.1.0] - 2026-03-06
-
-
 ### Breaking Changes
 
 - **`define_context` signature changed**: now requires explicit `read_filter` and `write_filter` named
