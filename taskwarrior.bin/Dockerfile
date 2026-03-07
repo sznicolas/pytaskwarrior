@@ -1,5 +1,7 @@
 FROM python:3.12-bookworm AS twbuilder
 
+# Credits : https://github.com/GothenburgBitFactory/taskwarrior/blob/develop/docker/task.dockerfile
+
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update && \
@@ -21,7 +23,7 @@ ADD . /root/code/
 WORKDIR /root/code/
 
 
-# Setup Rust
+# Setup Rust and build
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup.sh && \
     sh rustup.sh -y --profile minimal --default-toolchain stable --component rust-docs &&\
     git clone https://github.com/GothenburgBitFactory/taskwarrior.git &&\
