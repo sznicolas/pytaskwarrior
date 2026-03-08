@@ -283,6 +283,46 @@ class TestGetProjects:
 
 
 # ---------------------------------------------------------------------------
+# synchronize / is_sync_configured — sync logic
+# ---------------------------------------------------------------------------
+
+class TestSync:
+    def test_is_sync_configured_false_when_no_taskrc(self, tmp_path):
+        config = tmp_path / ".taskrc"
+        # Do not create the file
+        with patch("shutil.which", return_value="/usr/bin/task"), \
+             patch.object(TaskWarriorAdapter, "_check_or_create_taskfiles"):
+            adapter = TaskWarriorAdapter(task_cmd="task", taskrc_file=str(config))
+            assert adapter.is_sync_configured() is False
+
+    def test_is_sync_configured_true_with_sync_vars(self, tmp_path):
+        config = tmp_path / ".taskrc"
+        config.write_text("sync.local.server_dir=/tmp/syncdir\n")
+        with patch("shutil.which", return_value="/usr/bin/task"), \
+             patch.object(TaskWarriorAdapter, "_check_or_create_taskfiles"):
+            adapter = TaskWarriorAdapter(task_cmd="task", taskrc_file=str(config))
+            assert adapter.is_sync_configured() is True
+
+    def test_synchronize_success(self, adapter):
+        # Pass a mock SyncProtocol to the adapter
+        class MockSync:
+            def synchronize(self):
+                self.called = True
+        mock_sync = MockSync()
+        adapter._sync = mock_sync
+        adapter.synchronize()
+        assert hasattr(mock_sync, 'called')
+
+    def test_synchronize_raises_on_error(self, adapter):
+        from src.taskwarrior.exceptions import TaskSyncError
+        class MockSync:
+            def synchronize(self):
+                raise Exception("sync error")
+        adapter._sync = MockSync()
+        with pytest.raises(TaskSyncError, match="SyncProtocol synchronization failed: sync error"):
+            adapter.synchronize()
+
+# ---------------------------------------------------------------------------
 # conversions.py — fallback date parsing (lines 43-45)
 # ---------------------------------------------------------------------------
 

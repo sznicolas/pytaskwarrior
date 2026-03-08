@@ -16,7 +16,7 @@ from uuid import UUID
 
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 from ..enums import TaskStatus
-from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
+from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError, TaskSyncError
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,13 @@ class TaskWarriorInfo(TypedDict, total=False):
     version: str
 
 
+from ..protocols.sync import SyncProtocol
+from ..sync_backends.sync_local import SyncLocal
+from typing import Optional
+
 class TaskWarriorAdapter:
+    _sync_configured: bool | None = None
+
     """Low-level adapter for TaskWarrior CLI commands.
 
     This class handles direct communication with the TaskWarrior binary,
@@ -52,7 +58,8 @@ class TaskWarriorAdapter:
         self,
         task_cmd: str = "task",
         taskrc_file: str = "~/.taskrc",
-        data_location: str | None = None
+        data_location: str | None = None,
+        sync: SyncProtocol | None = None
     ):
         """Initialize the adapter.
 
@@ -60,6 +67,7 @@ class TaskWarriorAdapter:
             task_cmd: TaskWarrior binary name or path.
             taskrc_file: Path to taskrc file.
             data_location: Path to data directory (optional).
+            sync: Optional SyncProtocol instance to handle synchronization.
 
         Raises:
             TaskValidationError: If TaskWarrior binary not found.
@@ -76,6 +84,37 @@ class TaskWarriorAdapter:
         self._check_or_create_taskfiles()
 
         self._options.extend(DEFAULT_OPTIONS)
+
+        # --- Begin sync config parsing ---
+        self.sync_config = self._parse_sync_config()
+        # --- End sync config parsing ---
+
+        # SyncProtocol injection or auto-detection
+        if sync is not None:
+            self._sync = sync
+        elif self.sync_config.get('sync.local.server_dir'):
+            # Prepare SyncLocal if sync.local.server is present
+            try:
+                self._sync = SyncLocal(self.sync_config.get('sync.local.server_dir'))
+            except Exception:
+                self._sync = None
+        else:
+            self._sync = None
+
+    def _parse_sync_config(self) -> dict:
+        """Parse the taskrc file and return all keys starting with 'sync.'"""
+        config = {}
+        if self.taskrc_file.exists():
+            with self.taskrc_file.open("r") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if line.startswith('sync.'):
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            config[key.strip()] = value.strip()
+        return config
 
     def _check_binary_path(self, task_cmd: str) -> Path:
         """Verify TaskWarrior binary exists in PATH."""
@@ -103,6 +142,12 @@ rc.bulk=0
         if self.data_location and not self.data_location.exists():
             self.data_location.mkdir(parents=True, exist_ok=True)
             logger.info(f"Created Task data direcory '{self.data_location}'")
+
+    def is_sync_configured(self) -> bool:
+        """Return True if synchronization is configured via SyncProtocol."""
+        if self._sync is None:
+            return False
+        return  True
 
     def run_task_command(
         self, args: list[str], no_opt: bool = False
@@ -145,6 +190,16 @@ rc.bulk=0
         except (OSError, subprocess.SubprocessError) as e:
             logger.error(f"Exception while running '{cmd}': {e}")
             raise
+
+    def synchronize(self) -> None:
+        """Synchronize tasks using the injected or auto-detected SyncProtocol."""
+        if self._sync is not None:
+            try:
+                self._sync.synchronize()
+            except Exception as e:
+                raise TaskSyncError(f"SyncProtocol synchronization failed: {e}")
+        else:
+            raise TaskSyncError("No SyncProtocol is configured for synchronization.")
 
     @staticmethod
     def _wrap_filter(f: str) -> str:

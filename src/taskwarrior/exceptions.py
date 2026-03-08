@@ -21,6 +21,14 @@ class TaskWarriorError(Exception):
     pass
 
 
+class TaskSyncError(TaskWarriorError):
+    """Raised when a synchronization error occurs in TaskWarrior.
+
+    This exception is used to signal errors encountered during sync operations.
+    """
+    pass
+
+
 class TaskNotFound(TaskWarriorError):  # noqa: N818
     """Raised when a requested task does not exist.
 

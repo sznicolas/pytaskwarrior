@@ -673,6 +673,7 @@ version = "1.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
+    { name = "taskchampion-py" },
 ]
 
 [package.dev-dependencies]
@@ -689,7 +690,10 @@ docs = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.11.7" }]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.11.7" },
+    { name = "taskchampion-py", specifier = ">=2.0.2" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -852,6 +856,28 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
+name = "taskchampion-py"
+version = "2.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/cd/3f987eff34c0e90630bc210faac873940d44f5c789610de7ee27855593e6/taskchampion_py-2.0.2.tar.gz", hash = "sha256:eaf8d6e5f74d960cb9748ea7ec6208fa17069ae0fe936f21a63a6e6d67a81ca7", size = 45201, upload-time = "2025-01-07T15:34:55.596Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/db/d501f89a893cd3ed91b99c05a9bed4e47b418af75c82d0468a8d3374b0b0/taskchampion_py-2.0.2-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:b598a3939b27742dc6a4ade7fd214e8931272a909d7f9bf4ff60f4f242e0a866", size = 7758620, upload-time = "2025-01-07T15:33:19.25Z" },
+    { url = "https://files.pythonhosted.org/packages/57/fe/97a6cc4b947cedbf36923e4e1975fbeb92df30e0ca5ebb9d0817b898e1ac/taskchampion_py-2.0.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b93bf7036dbc4c483799e184e5b92a8e5fb1c4800fc222ceca093534bb64d9ea", size = 7504893, upload-time = "2025-01-07T15:33:07.765Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/42/0e23d5f17cd31f25550bf58db7a5efb5a081a225bb2ca022aa574b865fe5/taskchampion_py-2.0.2-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:da4ccc880d80e7366dba10f1b63a3c76efddd773a60e3ae50d7989a474ec247c", size = 8693923, upload-time = "2025-01-07T15:33:32.125Z" },
+    { url = "https://files.pythonhosted.org/packages/25/e4/513147e6ac21cb1ac2bc62e2f2c13a24516727f136d3d1ee9585d331118d/taskchampion_py-2.0.2-cp312-cp312-musllinux_1_2_armv7l.whl", hash = "sha256:d72fc755eae7aa5c59bf6e6f72d4d5211a067c9981a6094e5a76334a8307105c", size = 8454450, upload-time = "2025-01-07T15:33:52.403Z" },
+    { url = "https://files.pythonhosted.org/packages/02/94/db0c4000dc5bc5690dfd0eeb462f147444530a61653725c031ad1dff6dc7/taskchampion_py-2.0.2-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:3ce9730d103b320bae28ee89451b7cd4bd170e1a05371198bf33221a5b40e1e4", size = 8761972, upload-time = "2025-01-07T15:34:16.167Z" },
+    { url = "https://files.pythonhosted.org/packages/20/7f/174c496817ca78cbca1407fe151361f382c59ba5238d790f76c7f6ca9fa2/taskchampion_py-2.0.2-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:e71e2dadfedb9d55aa732b44406b9fda63d8c7b226d436749a85a52c1dac39dc", size = 8792423, upload-time = "2025-01-07T15:34:41.456Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/99/69c8b51f7d735f8523593310f72a91309f104bcb6c156dc10c4f38d5738b/taskchampion_py-2.0.2-cp312-cp312-win32.whl", hash = "sha256:c9e315cc41494f2d0ac77e5a3c7d100cebf70152cba5eaac91f88a7d0feb612e", size = 5907130, upload-time = "2025-01-07T15:35:14.074Z" },
+    { url = "https://files.pythonhosted.org/packages/66/b5/879503a239fd1215122902359018e586b67b2b04aa97663e2d4459eec32f/taskchampion_py-2.0.2-cp312-cp312-win_amd64.whl", hash = "sha256:0bbc1b21abbb7e53d644318684b1b232e937b0aead9e4d99105fe84659c366e0", size = 6702706, upload-time = "2025-01-07T15:35:03.189Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/99/95cee52b31523b193e2f83debb5d0dffc14411b7c0a9b13cd9c9b2585fd5/taskchampion_py-2.0.2-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:166263db7df050ea65ee85231d2c93ac7b2d28aabc0222788d6d1fdf41aa3071", size = 7757758, upload-time = "2025-01-07T15:33:22.965Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/4e/ba2a6eab185d75409216fe64f459ad4b7103951f053f1bd84377744247b5/taskchampion_py-2.0.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:94cb3d4858b410e31db89fa506a2bbb69d3d4efb35c897422d638dce4ab70152", size = 7504238, upload-time = "2025-01-07T15:33:11.869Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/54/face9427378b78452892272a3dcc8a6e79017247c04119f8b753c7222f58/taskchampion_py-2.0.2-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:5495f589850a9dc22b7e2be661ec7a0f5d8611b6c8fd6d6c9e8e769566033104", size = 8692637, upload-time = "2025-01-07T15:33:34.658Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/85/1f47a55a567f7c9da49f593067ac954a32329972e0b49ff700f17c82fc41/taskchampion_py-2.0.2-cp313-cp313-musllinux_1_2_armv7l.whl", hash = "sha256:b0f8d89a73442a75b75aa428f6a659c8ac1ff2dd67d40f48f7d41db7e4b4ac79", size = 8453666, upload-time = "2025-01-07T15:33:55.054Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/7f/b1acb33bb6ab2528bffb7e0fdc01c16bf31f680f676251b0a292f88a4d44/taskchampion_py-2.0.2-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:47cb2ee893f3b1a30992db418e7aa303d9a6b56dc007791e722b0ca7d3615a80", size = 8761017, upload-time = "2025-01-07T15:34:20.849Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/83/3e8cc221bb84d44c0ac63f44d931bd0563914d501ce05ea60353c4bc873f/taskchampion_py-2.0.2-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:8ac3d2008e61c6c16733a8192202ac01e8681741504dfe417201790df20aaf88", size = 8791486, upload-time = "2025-01-07T15:34:44.437Z" },
 ]
 
 [[package]]

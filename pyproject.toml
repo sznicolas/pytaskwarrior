@@ -21,6 +21,7 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.11.7",
+    "taskchampion-py>=2.0.2",
 ]
 
 [dependency-groups]
