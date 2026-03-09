@@ -36,8 +36,9 @@ class TaskWarriorInfo(TypedDict, total=False):
 
 
 from ..protocols.sync import SyncProtocol
-from ..sync_backends.sync_local import SyncLocal
+from ..sync_backends.factory import create_sync_backend
 from typing import Optional
+from ..config.config_service import extract_taskrc_config, get_sync_config
 
 class TaskWarriorAdapter:
     _sync_configured: bool | None = None
@@ -86,35 +87,36 @@ class TaskWarriorAdapter:
         self._options.extend(DEFAULT_OPTIONS)
 
         # --- Begin sync config parsing ---
-        self.sync_config = self._parse_sync_config()
+        # Use config_service to extract and filter sync config
+        try:
+            full_config = extract_taskrc_config(str(self.taskrc_file))
+            self.sync_config = get_sync_config(full_config)
+        except Exception as e:
+            logger.warning(f"Failed to load sync config: {e}")
+            self.sync_config = {}
         # --- End sync config parsing ---
 
         # SyncProtocol injection or auto-detection
         if sync is not None:
             self._sync = sync
-        elif self.sync_config.get('sync.local.server_dir'):
-            # Prepare SyncLocal if sync.local.server is present
-            try:
-                self._sync = SyncLocal(self.sync_config.get('sync.local.server_dir'))
-            except Exception:
-                self._sync = None
         else:
-            self._sync = None
+            # Utilise la factory pour créer le backend de synchronisation
+            # Adapte la config pour la factory si possible
+            factory_config = {}
+            if self.sync_config.get('sync.local.server_dir'):
+                factory_config = {
+                    'type': 'local',
+                    'sync_dir': self.sync_config.get('sync.local.server_dir')
+                }
+            if factory_config:
+                try:
+                    self._sync = create_sync_backend(factory_config)
+                except Exception:
+                    self._sync = None
+            else:
+                self._sync = None
 
-    def _parse_sync_config(self) -> dict:
-        """Parse the taskrc file and return all keys starting with 'sync.'"""
-        config = {}
-        if self.taskrc_file.exists():
-            with self.taskrc_file.open("r") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or line.startswith('#'):
-                        continue
-                    if line.startswith('sync.'):
-                        if '=' in line:
-                            key, value = line.split('=', 1)
-                            config[key.strip()] = value.strip()
-        return config
+    # _parse_sync_config is now obsolete, replaced by config_service usage
 
     def _check_binary_path(self, task_cmd: str) -> Path:
         """Verify TaskWarrior binary exists in PATH."""
@@ -590,7 +592,13 @@ rc.bulk=0
         except subprocess.SubprocessError:
             return False
 
+    def config_sync(self) -> dict:
+        """Retourne la configuration de synchronisation extraite du fichier taskrc."""
+        full_config = extract_taskrc_config(str(self.taskrc_file))
+        return get_sync_config(full_config)
+
     def get_projects(self) -> list[str]:
+
         """Get all projects defined in TaskWarrior.
 
         Returns:
