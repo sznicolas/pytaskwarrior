@@ -6,8 +6,14 @@ from src.taskwarrior.services.uda_service import UdaService
 
 def test_uda_service_uses_own_registry():
     """Test that each UdaService has its own isolated UdaRegistry instance."""
-    service1 = UdaService(adapter=MagicMock())
-    service2 = UdaService(adapter=MagicMock())
+    import tempfile, os
+    from src.taskwarrior.config.config_store import ConfigStore
+    tmpdir = tempfile.mkdtemp()
+    taskrc = os.path.join(tmpdir, ".taskrc")
+    open(taskrc, "w").close()
+    mock_config_store = ConfigStore(taskrc)
+    service1 = UdaService(adapter=MagicMock(), config_store=mock_config_store)
+    service2 = UdaService(adapter=MagicMock(), config_store=mock_config_store)
     assert service1.registry is not service2.registry
 
 
@@ -15,7 +21,12 @@ def test_uda_service_load_udas_from_taskrc():
     """Test loading UDAs from taskrc file through UdaService."""
     mock_adapter = MagicMock()
     mock_adapter.taskrc_file = "/fake/path"
-    service = UdaService(adapter=mock_adapter)
+    # Provide a simple config_store object with _taskrc_path attribute
+    class DummyConfig:
+        pass
+    dummy_config = DummyConfig()
+    dummy_config._taskrc_path = "/fake/path"
+    service = UdaService(adapter=mock_adapter, config_store=dummy_config)
 
     taskrc_content = "uda.test.type=string\nuda.test.label=Test Label\n"
     with patch("builtins.open", mock_open(read_data=taskrc_content)):
@@ -30,7 +41,7 @@ def test_uda_service_load_udas_from_taskrc():
 def test_uda_service_define_uda():
     """Test defining a new UDA through UdaService."""
     mock_adapter = MagicMock()
-    service = UdaService(adapter=mock_adapter)
+    service = UdaService(adapter=mock_adapter, config_store=MagicMock())
 
     uda = UdaConfig(
         name="test_uda",
@@ -53,7 +64,7 @@ def test_uda_service_define_uda():
 def test_uda_service_update_uda():
     """Test updating an existing UDA through UdaService."""
     mock_adapter = MagicMock()
-    service = UdaService(adapter=mock_adapter)
+    service = UdaService(adapter=mock_adapter, config_store=MagicMock())
 
     service.define_uda(UdaConfig(name="test_uda", type=UdaType.STRING, label="Original Label"))
 
@@ -75,7 +86,7 @@ def test_uda_service_update_uda():
 def test_uda_service_delete_uda():
     """Test deleting a UDA through UdaService."""
     mock_adapter = MagicMock()
-    service = UdaService(adapter=mock_adapter)
+    service = UdaService(adapter=mock_adapter, config_store=MagicMock())
 
     uda = UdaConfig(name="test_uda", type=UdaType.STRING, label="Test UDA")
     service.define_uda(uda)
@@ -96,7 +107,7 @@ def test_uda_service_delete_uda():
 def test_uda_service_integration_with_registry():
     """Test that UdaService properly integrates with UdaRegistry."""
     mock_adapter = MagicMock()
-    service = UdaService(adapter=mock_adapter)
+    service = UdaService(adapter=mock_adapter, config_store=MagicMock())
 
     uda = UdaConfig(name="integration_test", type=UdaType.DATE, label="Integration Test")
     service.define_uda(uda)

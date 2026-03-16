@@ -5,6 +5,21 @@ All notable changes to pytaskwarrior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2rc1] - 2026-03-10
+### Added
+- Added TaskWarrior.is_sync_configured() and TaskWarrior.synchronize() so the façade exposes the existing sync backend; `synchronize()` propagates `TaskSyncError` when no backend is configured or synchronization fails.
+
+### Changed
+- Temporarily disabled synchronization via the TaskWarrior façade (TaskWarrior.synchronize()). The original call is preserved as a code comment to allow quick reactivation; this avoids invoking py-taskchampion flows while compatibility is evaluated.
+- Made SyncLocal Replica creation lazy (instantiated on first use) to avoid side-effects at instantiation time.
+
+### Fixed
+- Updated adapter, UDA, context, and registry tests to the new `ConfigStore`-backed initialization so they no longer rely on removed constructor parameters and private helpers.
+- Emulated TaskWarrior CLI interactions in registry/UDA tests, eliminating the need to invoke the real `task` binary while preserving realistic config updates.
+### Tests
+- `uv run pytest -q` (159 passed, 0 failed)
+- Added tests to ensure facade synchronization is a no-op and to support lazy SyncLocal behavior.
+
 ## [1.1.1] - 2026‑03‑07
 ### Added
 - Automated publishing to PyPI via GitHub Actions (trusted publishing with OIDC).

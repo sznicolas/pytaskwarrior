@@ -4,11 +4,14 @@ This module provides the ContextService class for managing TaskWarrior
 contexts (named filters).
 """
 
-import re
 
+from typing import TYPE_CHECKING
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.context_dto import ContextDTO
 from ..exceptions import TaskWarriorError
+
+if TYPE_CHECKING:
+    from ..config.config_store import ConfigStore
 
 
 class ContextService:
@@ -29,13 +32,15 @@ class ContextService:
             tw.apply_context("work")
     """
 
-    def __init__(self, adapter: TaskWarriorAdapter):
+    def __init__(self, adapter: TaskWarriorAdapter, config_store: 'ConfigStore') -> None:
         """Initialize the context service.
 
         Args:
             adapter: The TaskWarriorAdapter to use for CLI commands.
+            config_store: The configuration store instance (required).
         """
         self.adapter: TaskWarriorAdapter = adapter
+        self.config_store = config_store
 
     def _validate_name(self, name: str) -> None:
         if not name or not name.strip():
@@ -72,6 +77,7 @@ class ContextService:
             raise TaskWarriorError(
                 f"Failed to set write filter for context '{name}': {result.stderr}"
             )
+        self.config_store.refresh()
 
     def apply_context(self, name: str) -> None:
         """Apply a context, making it the active filter.
@@ -100,10 +106,11 @@ class ContextService:
             raise TaskWarriorError(f"Failed to unset context: {result.stderr}")
 
     def get_contexts(self) -> list[ContextDTO]:
-        """List all defined contexts with their read and write filters.
+        """Return list of ContextDTO by delegating to ConfigStore and marking active state.
 
-        Reads context.*.read and context.*.write entries directly from
-        .taskrc to guarantee correctness regardless of CLI output format.
+        The ConfigStore returns ContextDTO instances; this wrapper simply forwards them.
+        """
+        """List all defined contexts with their read and write filters.
 
         Returns:
             List of ContextDTO objects (name, read_filter, write_filter, active).
@@ -113,30 +120,7 @@ class ContextService:
         """
         try:
             current = self.get_current_context()
-            taskrc_path = self.adapter.taskrc_file
-            content = taskrc_path.read_text(encoding="utf-8")
-
-            # Collect all context.*.read entries as canonical source of truth
-            names: dict[str, dict[str, str]] = {}
-            for m in re.finditer(
-                r"^\s*context\.([^.\s]+)\.(read|write)\s*=\s*(.*)",
-                content,
-                re.MULTILINE,
-            ):
-                ctx_name = m.group(1)
-                kind = m.group(2)
-                value = m.group(3).strip()
-                names.setdefault(ctx_name, {})[kind] = value
-
-            return [
-                ContextDTO(
-                    name=n,
-                    read_filter=filters.get("read", ""),
-                    write_filter=filters.get("write", ""),
-                    active=(n == current),
-                )
-                for n, filters in names.items()
-            ]
+            return self.config_store.get_contexts(current_context=current)
         except Exception as e:
             raise TaskWarriorError(f"Error retrieving contexts: {str(e)}") from e
 
@@ -173,6 +157,7 @@ class ContextService:
             raise TaskWarriorError(
                 f"Failed to delete context '{name}': {result.stderr}"
             )
+        self.config_store.refresh()
 
     def has_context(self, name: str) -> bool:
         """Check if a context with the given name exists.

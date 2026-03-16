@@ -13,15 +13,54 @@ class TestTaskWarriorInit:
         """Test TaskWarrior initialization with custom parameters."""
         tw = TaskWarrior(
             task_cmd="task",
-            taskrc_file=taskwarrior_config,
-            data_location="/tmp/test"
+            taskrc_file=taskwarrior_config
         )
 
         assert "task" in str(tw.adapter.task_cmd)
-        assert str(tw.adapter.taskrc_file) == taskwarrior_config
-        assert str(tw.adapter.data_location) == "/tmp/test"
+        assert str(tw.config_store._taskrc_path) == taskwarrior_config
+        # No data_location anymore
         # Also verify adapter options are set correctly
-        assert "rc.data.location=/tmp/test" in tw.adapter._options
+        assert isinstance(tw.adapter.cli_options, list)
+        # get_info returns correct types
+        info = tw.get_info()
+        assert isinstance(info["task_cmd"], str)
+        assert isinstance(info["taskrc_file"], str)
+        assert isinstance(info["options"], list)
+        assert isinstance(info["version"], str)
+        assert info["taskrc_file"] == str(taskwarrior_config)
+
+    def test_get_info_comprehensive(self, taskwarrior_config: str):
+        """Test get_info with comprehensive information retrieval."""
+        tw = TaskWarrior(taskrc_file=taskwarrior_config)
+        info = tw.get_info()
+
+        assert "task_cmd" in info
+        assert "taskrc_file" in info
+        assert "options" in info
+        assert "version" in info
+
+        # Verify types
+        assert isinstance(info["task_cmd"], str)
+        assert isinstance(info["taskrc_file"], str)
+        assert isinstance(info["options"], list)
+        assert isinstance(info["version"], str)
+
+    def test_get_info_with_custom_params(self, taskwarrior_config: str):
+        """Test get_info with custom parameters."""
+        tw = TaskWarrior(
+            task_cmd="task",
+            taskrc_file=taskwarrior_config
+        )
+
+        info = tw.get_info()
+
+        assert "task" in info["task_cmd"]
+        assert info["taskrc_file"] == str(taskwarrior_config)
+        assert isinstance(tw.adapter._cli_options, list)
+        assert isinstance(info["task_cmd"], str)
+        assert isinstance(info["taskrc_file"], str)
+        assert isinstance(info["options"], list)
+        assert isinstance(info["version"], str)
 
     def test_taskwarrior_init_defaults(self):
         """Test TaskWarrior and Adapter initialization with defaults."""
@@ -30,15 +69,15 @@ class TestTaskWarriorInit:
         if "TASKDATA" in os.environ:
             del os.environ["TASKDATA"]
 
-        tw = TaskWarrior()
+        tw = TaskWarrior()  # config_store injected automatically
         assert "task" in str(tw.adapter.task_cmd)
-        assert tw.adapter.taskrc_file is not None
-        assert isinstance(tw.adapter.taskrc_file, Path)
+        # On ne teste plus l'attribut interne supprimé
+        info = tw.get_info()
+        assert info["taskrc_file"] is not None and info["taskrc_file"] != ""
         # Default should expand to real home directory
         expected_taskrc = Path.home() / ".taskrc"
-        assert tw.adapter.taskrc_file == expected_taskrc
-        assert tw.adapter.data_location is None
-        assert "rc.confirmation=off" in tw.adapter._options
+        assert Path(os.path.expandvars(info['taskrc_file'])).expanduser() == expected_taskrc
+        assert "rc.confirmation=off" in tw.adapter.cli_options
 
     def test_get_projects(self, taskwarrior_config: str):
         """Test getting projects from TaskWarrior."""

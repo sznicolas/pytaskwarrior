@@ -11,6 +11,8 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the co
 
 **v1.1.1**: Production-ready with 132 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, and PEP 561 type hints for IDE support.
 
+> **Temporary notice (2026-03-15)**: Synchronization via the TaskWarrior façade is temporarily disabled due to compatibility concerns with py-taskchampion. The sync call is preserved as a comment in the code; sync backends are now lazily instantiated to avoid side effects. See CHANGELOG.md for details.
+
 ## Features
 
 - ✅ **Full CRUD operations** - Create, read, update, delete tasks
@@ -139,6 +141,13 @@ tw = TaskWarrior(
 | `get_current_context()` | Get active context name |
 | `delete_context(name)` | Remove a context |
 | `has_context(name)` | Check if context exists |
+
+#### Synchronization Operations
+
+| Method | Description |
+|--------|-------------|
+| `is_sync_configured()` | Return `True` if a sync backend is configured via `taskrc` (e.g., `sync.local.server_dir`). |
+| `synchronize()` | Trigger TaskWarrior synchronization; raises `TaskSyncError` if sync is not configured or the backend fails. |
 
 ### Data Models
 
@@ -340,4 +349,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [TaskWarrior](https://taskwarrior.org/) - The underlying task management tool
 - [GitHub Repository](https://github.com/sznicolas/pytaskwarrior/)
 - [PyPI Package](https://pypi.org/project/pytaskwarrior/)
-

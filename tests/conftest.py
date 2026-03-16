@@ -41,7 +41,7 @@ def tw(taskwarrior_config: str, taskwarrior_data: str) -> TaskWarrior:
         subprocess.run(["task", "--version"], capture_output=True, check=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
         pytest.skip("Taskwarrior is not installed or not found in PATH.")
-    return TaskWarrior(taskrc_file=taskwarrior_config, data_location=taskwarrior_data)
+    return TaskWarrior(taskrc_file=taskwarrior_config)
 
 
 @pytest.fixture

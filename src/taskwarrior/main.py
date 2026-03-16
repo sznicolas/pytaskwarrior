@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from uuid import UUID
+from typing import Any
 
-from .adapters.taskwarrior_adapter import TaskWarriorAdapter, TaskWarriorInfo
+from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.uda_dto import UdaConfig
@@ -69,22 +71,28 @@ class TaskWarrior:
             task_cmd: Path or name of the TaskWarrior binary. Defaults to "task".
             taskrc_file: Path to the taskrc configuration file. If None, uses
                 the TASKRC environment variable or defaults to ~/.taskrc.
-            data_location: Path to the task data directory. If None, uses
-                the TASKDATA environment variable or the value in taskrc.
+            data_location: Optional path to TaskWarrior data directory. If None,
+                TASKDATA environment variable or taskrc value will be used.
 
         Raises:
             TaskValidationError: If the TaskWarrior binary is not found.
         """
         if taskrc_file is None:
             taskrc_file = os.environ.get("TASKRC", "$HOME/.taskrc")
-        if data_location is None:
-            data_location = os.environ.get("TASKDATA")
 
+        if data_location is None:
+            data_location = os.environ.get("TASKDATA", None)
+
+        from .config.config_store import ConfigStore
+
+        self.config_store = ConfigStore(taskrc_file, data_location)
         self.adapter: TaskWarriorAdapter = TaskWarriorAdapter(
-            task_cmd=task_cmd, taskrc_file=taskrc_file, data_location=data_location
+            task_cmd=task_cmd, config_store=self.config_store
         )
-        self.context_service: ContextService = ContextService(self.adapter)
-        self.uda_service: UdaService = UdaService(self.adapter)
+        self.task_cmd = task_cmd
+        self.taskrc_file = Path(taskrc_file)
+        self.context_service: ContextService = ContextService(self.adapter, self.config_store)
+        self.uda_service: UdaService = UdaService(self.adapter, self.config_store)
 
         # Auto-load UDA definitions from taskrc
         self.uda_service.load_udas_from_taskrc()
@@ -108,9 +116,7 @@ class TaskWarrior:
         """
         return self.adapter.add_task(task)
 
-    def modify_task(
-        self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID
-    ) -> TaskOutputDTO:
+    def modify_task(self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Modify an existing task.
 
         Args:
@@ -200,9 +206,7 @@ class TaskWarrior:
         """
         return self.adapter.get_recurring_task(task_id_or_uuid)
 
-    def get_recurring_instances(
-        self, task_id_or_uuid: str | int | UUID
-    ) -> list[TaskOutputDTO]:
+    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task.
 
         Args:
@@ -390,7 +394,29 @@ class TaskWarrior:
         """
         return self.context_service.has_context(context)
 
-    def get_info(self) -> TaskWarriorInfo:
+    def is_sync_configured(self) -> bool:
+        """Return True if synchronization is configured for this TaskWarrior instance."""
+        return self.adapter.is_sync_configured()
+
+    def synchronize(self) -> None:
+        """Run TaskWarrior synchronization.
+
+        Raises:
+            TaskSyncError: If no sync backend is configured or synchronization fails.
+
+        Note:
+            Synchronization is temporarily commented out at the facade level due to
+            py-taskchampion compatibility concerns. The original call is preserved
+            below as a comment for easy reactivation.
+        """
+        logger.warning(
+            "Synchronization disabled (temporary): facade-level synchronize() is a no-op."
+        )
+        # Original implementation (commented out to disable facade-level sync):
+        # self.adapter.synchronize()
+        return
+
+    def get_info(self) -> dict[str, Any]:
         """Get comprehensive TaskWarrior configuration information.
 
         Returns:
@@ -401,7 +427,14 @@ class TaskWarrior:
             >>> info = tw.get_info()
             >>> print(info["version"])
         """
-        return self.adapter.get_info()
+        # Compose info from TaskWarrior instance, not adapter
+        info = {
+            "task_cmd": str(self.task_cmd),
+            "taskrc_file": str(self.taskrc_file),
+            "options": self.adapter.cli_options,
+            "version": self.adapter.get_version(),
+        }
+        return info
 
     def task_calc(self, date_str: str) -> str:
         """Calculate a TaskWarrior date expression.

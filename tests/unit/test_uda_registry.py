@@ -114,7 +114,23 @@ def test_define_update_uda_with_empty_fields(tmp_path):
     taskrc_file.write_text("")
 
     registry = UdaRegistry()
-    adapter = TaskWarriorAdapter(taskrc_file=str(taskrc_file))
+    # Use a fake adapter that writes config changes to the taskrc file to avoid calling external 'task'
+    from unittest.mock import MagicMock
+    def _fake_run(args):
+        # emulate 'task config key value' by writing to the file
+        if args and args[0] == "config":
+            key = args[1]
+            value = args[2] if len(args) > 2 else ""
+            with open(str(taskrc_file), "a", encoding="utf-8") as f:
+                f.write(f"{key}={value}\n")
+        m = MagicMock()
+        m.returncode = 0
+        m.stdout = ""
+        m.stderr = ""
+        return m
+
+    adapter = MagicMock()
+    adapter.run_task_command.side_effect = _fake_run
 
     uda = UdaConfig(
         name="test_uda", type=UdaType.STRING, label="", default="default_value"
@@ -134,7 +150,32 @@ def test_delete_uda(tmp_path):
     taskrc_file = tmp_path / ".taskrc"
     taskrc_file.write_text("uda.test_uda.type=string\nuda.test_uda.label=Test UDA\n")
 
-    adapter = TaskWarriorAdapter(taskrc_file=str(taskrc_file))
+    # Use a fake adapter that removes UDA config entries from the taskrc file
+    from unittest.mock import MagicMock
+    def _fake_run(args):
+        if args and args[0] == "config":
+            key = args[1]
+            if len(args) > 2:
+                value = args[2]
+                # set or append
+                with open(str(taskrc_file), "a", encoding="utf-8") as f:
+                    f.write(f"{key}={value}\n")
+            else:
+                # delete lines matching the key
+                if taskrc_file.exists():
+                    lines = taskrc_file.read_text(encoding="utf-8").splitlines()
+                else:
+                    lines = []
+                new_lines = [ln for ln in lines if not ln.strip().startswith(f"{key}=")]
+                taskrc_file.write_text("\n".join(new_lines))
+        m = MagicMock()
+        m.returncode = 0
+        m.stdout = ""
+        m.stderr = ""
+        return m
+
+    adapter = MagicMock()
+    adapter.run_task_command.side_effect = _fake_run
     registry = UdaRegistry()
     registry.load_from_taskrc(str(taskrc_file))
 

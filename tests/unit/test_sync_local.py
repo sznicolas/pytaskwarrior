@@ -1,7 +1,9 @@
-import os
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import MagicMock, patch
+
 from src.taskwarrior.sync_backends.sync_local import SyncLocal
+
 
 class DummyReplica:
     def __init__(self):

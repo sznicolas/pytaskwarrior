@@ -5,43 +5,27 @@ This module provides the low-level interface to TaskWarrior CLI commands.
 
 import json
 import logging
-import os
+import json
+import logging
 import re
 import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import TypedDict
 from uuid import UUID
+from typing import Optional
 
+from ..config.config_store import ConfigStore
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 from ..enums import TaskStatus
-from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError, TaskSyncError
+from ..exceptions import TaskNotFound, TaskSyncError, TaskValidationError, TaskWarriorError
+from ..sync_backends.factory import create_sync_backend
+from ..sync_backends.sync_protocol import SyncProtocol
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OPTIONS = [
-    "rc.confirmation=off",
-    "rc.bulk=0",
-]
-
-
-class TaskWarriorInfo(TypedDict, total=False):
-    """Type definition for TaskWarrior configuration information."""
-
-    task_cmd: Path
-    taskrc_file: Path
-    options: list[str]
-    version: str
-
-
-from ..protocols.sync import SyncProtocol
-from ..sync_backends.factory import create_sync_backend
-from typing import Optional
-from ..config.config_service import extract_taskrc_config, get_sync_config
 
 class TaskWarriorAdapter:
-    _sync_configured: bool | None = None
 
     """Low-level adapter for TaskWarrior CLI commands.
 
@@ -51,105 +35,44 @@ class TaskWarriorAdapter:
 
     Attributes:
         task_cmd: Path to the TaskWarrior binary.
-        taskrc_file: Path to the taskrc configuration file.
-        data_location: Path to the task data directory.
     """
 
     def __init__(
         self,
+        config_store: ConfigStore,
         task_cmd: str = "task",
-        taskrc_file: str = "~/.taskrc",
-        data_location: str | None = None,
-        sync: SyncProtocol | None = None
     ):
         """Initialize the adapter.
 
         Args:
             task_cmd: TaskWarrior binary name or path.
-            taskrc_file: Path to taskrc file.
-            data_location: Path to data directory (optional).
-            sync: Optional SyncProtocol instance to handle synchronization.
+            config_store: The configuration store instance (required).
 
         Raises:
             TaskValidationError: If TaskWarrior binary not found.
         """
+
         self.task_cmd: Path = self._check_binary_path(task_cmd)
-        self._options: list[str] = []
-        self.taskrc_file = Path(os.path.expandvars(taskrc_file)).expanduser()
-        self._options.extend([f"rc:{self.taskrc_file}"])
-        if data_location:
-            self.data_location: Path | None = Path(os.path.expandvars(data_location)).expanduser()
-            self._options.extend([f"rc.data.location={self.data_location}"])
-        else:
-            self.data_location = None
-        self._check_or_create_taskfiles()
+        self._cli_options: list[str] = config_store.cli_options
+        self._sync: SyncProtocol | None = create_sync_backend(config_store.get_sync_config())
 
-        self._options.extend(DEFAULT_OPTIONS)
-
-        # --- Begin sync config parsing ---
-        # Use config_service to extract and filter sync config
-        try:
-            full_config = extract_taskrc_config(str(self.taskrc_file))
-            self.sync_config = get_sync_config(full_config)
-        except Exception as e:
-            logger.warning(f"Failed to load sync config: {e}")
-            self.sync_config = {}
-        # --- End sync config parsing ---
-
-        # SyncProtocol injection or auto-detection
-        if sync is not None:
-            self._sync = sync
-        else:
-            # Utilise la factory pour créer le backend de synchronisation
-            # Adapte la config pour la factory si possible
-            factory_config = {}
-            if self.sync_config.get('sync.local.server_dir'):
-                factory_config = {
-                    'type': 'local',
-                    'sync_dir': self.sync_config.get('sync.local.server_dir')
-                }
-            if factory_config:
-                try:
-                    self._sync = create_sync_backend(factory_config)
-                except Exception:
-                    self._sync = None
-            else:
-                self._sync = None
-
-    # _parse_sync_config is now obsolete, replaced by config_service usage
+    @property
+    def cli_options(self) -> list[str]:
+        """Public accessor for CLI options."""
+        return self._cli_options
 
     def _check_binary_path(self, task_cmd: str) -> Path:
         """Verify TaskWarrior binary exists in PATH."""
         resolved_path = shutil.which(task_cmd)
         if not resolved_path:
-            raise TaskValidationError(
-                f"TaskWarrior command '{task_cmd}' not found in PATH"
-            )
+            raise TaskValidationError(f"TaskWarrior command '{task_cmd}' not found in PATH")
         return Path(resolved_path)
 
-    def _check_or_create_taskfiles(self) -> None:
-        """Create taskrc and data directory if they don't exist."""
-        if not self.taskrc_file.exists():
-            default_content = """# Taskwarrior configuration file
-# This file was automatically created by pytaskwarrior
-# Default data location
-rc.data.location={data_location}
-# Disable confirmation prompts
-rc.confirmation=off
-rc.bulk=0
-""".format(data_location=self.data_location or "~/.task")
-            self.taskrc_file.parent.mkdir(parents=True, exist_ok=True)
-            self.taskrc_file.write_text(default_content)
-            logger.info(f"Created Taskrc file '{self.taskrc_file}'")
-        if self.data_location and not self.data_location.exists():
-            self.data_location.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Created Task data direcory '{self.data_location}'")
+    # Taskrc and data directory creation now handled in ConfigStore
 
     def is_sync_configured(self) -> bool:
         """Return True if synchronization is configured via SyncProtocol."""
-        if self._sync is None:
-            return False
-        return  True
+        return self._sync is not None
 
     def run_task_command(
         self, args: list[str], no_opt: bool = False
@@ -166,7 +89,7 @@ rc.bulk=0
         cmd = [str(self.task_cmd)]
         # Options (rc:...) must come before command and filter arguments so they are applied properly.
         if not no_opt:
-            cmd.extend(self._options)
+            cmd.extend(self._cli_options)
         cmd.extend(args)
         logger.debug(f"Running command: {' '.join(cmd)}")
 
@@ -197,9 +120,12 @@ rc.bulk=0
         """Synchronize tasks using the injected or auto-detected SyncProtocol."""
         if self._sync is not None:
             try:
-                self._sync.synchronize()
+                logger.warning(
+                    "Synchronization disabled (temporary): facade-level synchronize() is a no-op."
+                )
+                # self._sync.synchronize()
             except Exception as e:
-                raise TaskSyncError(f"SyncProtocol synchronization failed: {e}")
+                raise TaskSyncError(f"SyncProtocol synchronization failed: {e}") from e
         else:
             raise TaskSyncError("No SyncProtocol is configured for synchronization.")
 
@@ -292,9 +218,7 @@ rc.bulk=0
         logger.info(f"Successfully added task with UUID: {added_task.uuid}")
         return added_task
 
-    def modify_task(
-        self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID
-    ) -> TaskOutputDTO:
+    def modify_task(self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Modify an existing task. Returns the updated task."""
         logger.info(f"Modifying task with UUID: {task_id_or_uuid}")
 
@@ -310,9 +234,7 @@ rc.bulk=0
         logger.info(f"Successfully modified task with UUID: {task_id_or_uuid}")
         return updated_task
 
-    def get_task(
-        self, task_id_or_uuid: str | int | UUID, filter_args: str = ""
-    ) -> TaskOutputDTO:
+    def get_task(self, task_id_or_uuid: str | int | UUID, filter_args: str = "") -> TaskOutputDTO:
         """Retrieve a single task by ID or UUID."""
         task_id_or_uuid = str(task_id_or_uuid)
         logger.debug(f"Retrieving task with ID/UUID: {task_id_or_uuid}")
@@ -399,17 +321,12 @@ rc.bulk=0
 
         try:
             tasks_data = json.loads(result.stdout)
-            tasks = [
-                TaskOutputDTO.model_validate(task_data) for task_data in tasks_data
-            ]
+            tasks = [TaskOutputDTO.model_validate(task_data) for task_data in tasks_data]
             logger.debug(f"Retrieved {len(tasks)} tasks")
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise TaskValidationError(
-                f"Invalid response from TaskWarrior: {result.stdout}"
-            ) from e
-
+            raise TaskValidationError(f"Invalid response from TaskWarrior: {result.stdout}") from e
 
     def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the parent recurring task template."""
@@ -432,9 +349,7 @@ rc.bulk=0
         )
         return self.get_task(task_id_or_uuid)
 
-    def get_recurring_instances(
-        self, task_id_or_uuid: str | int | UUID
-    ) -> list[TaskOutputDTO]:
+    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task."""
         task_id_or_uuid = str(task_id_or_uuid)
         logger.debug(f"Getting recurring instances for parent UUID: {task_id_or_uuid}")
@@ -458,9 +373,7 @@ rc.bulk=0
 
         try:
             tasks_data = json.loads(result.stdout)
-            tasks = [
-                TaskOutputDTO.model_validate(task_data) for task_data in tasks_data
-            ]
+            tasks = [TaskOutputDTO.model_validate(task_data) for task_data in tasks_data]
             logger.debug(f"Retrieved {len(tasks)} recurring instances")
             return tasks
         except json.JSONDecodeError as e:
@@ -552,22 +465,6 @@ rc.bulk=0
 
         logger.info(f"Successfully annotated task: {task_ref}")
 
-    def get_info(self) -> TaskWarriorInfo:
-        """Get TaskWarrior configuration and version info."""
-        info: TaskWarriorInfo = {
-            "task_cmd": self.task_cmd,
-            "taskrc_file": self.taskrc_file,
-            "options": self._options,
-        }
-
-        try:
-            version_result = self.run_task_command(["--version"], no_opt=True)
-            if version_result.returncode == 0 and version_result.stdout:
-                info["version"] = version_result.stdout.strip()
-        except Exception:
-            info["version"] = "unknown"
-        return info
-
     def task_calc(self, date_str: str) -> str:
         """Calculate a TaskWarrior date expression."""
         try:
@@ -592,13 +489,14 @@ rc.bulk=0
         except subprocess.SubprocessError:
             return False
 
-    def config_sync(self) -> dict:
-        """Retourne la configuration de synchronisation extraite du fichier taskrc."""
-        full_config = extract_taskrc_config(str(self.taskrc_file))
-        return get_sync_config(full_config)
+    def get_version(self) -> str:
+        """Return the TaskWarrior CLI version as a string."""
+        version_result = self.run_task_command(["--version"], no_opt=True)
+        if version_result.returncode == 0 and version_result.stdout:
+            return version_result.stdout.strip()
+        return "unknown"
 
     def get_projects(self) -> list[str]:
-
         """Get all projects defined in TaskWarrior.
 
         Returns:

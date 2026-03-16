@@ -13,8 +13,13 @@ class TestTaskWarriorAdapterContext:
 
     @pytest.fixture
     def context_service(self, taskwarrior_config: str):
-        adapter = TaskWarriorAdapter(task_cmd="task", taskrc_file=taskwarrior_config)
-        return ContextService(adapter)
+        from src.taskwarrior.config.config_store import ConfigStore
+
+        adapter = TaskWarriorAdapter(
+            config_store=ConfigStore(taskwarrior_config),
+            task_cmd="task",
+        )
+        return ContextService(adapter, ConfigStore(taskwarrior_config))
 
     # ------------------------------------------------------------------
     # define_context
