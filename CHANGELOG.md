@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`Context in get_info`** — TaskWarrior.get_info() now includes `current_context` and `current_context_details` (name, read_filter, write_filter, active).
+
 - **`TaskConfigurationError`** — new exception for environment and configuration errors:
   binary not found in PATH, taskrc file missing or unreadable.
 - **`TaskOperationError`** — new exception for write-operation failures on existing tasks
