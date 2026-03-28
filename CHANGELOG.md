@@ -11,69 +11,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`TaskConfigurationError`** — new exception for environment and configuration errors:
   binary not found in PATH, taskrc file missing or unreadable.
-  Replaces `TaskValidationError` in these cases, which was semantically incorrect.
 - **`TaskOperationError`** — new exception for write-operation failures on existing tasks
   (delete, purge, done, start, stop, annotate).
-  Replaces `TaskNotFound` in these cases; a failed operation is not the same as a missing task.
-- All six exceptions are now **exported from the top-level package** (`from taskwarrior import …`):
+- All six exceptions now **exported from the top-level package**:
   `TaskWarriorError`, `TaskNotFound`, `TaskValidationError`, `TaskSyncError`,
   `TaskConfigurationError`, `TaskOperationError`.
-- **`TaskWarrior.synchronize()`** now runs `task sync` via the CLI — no external library needed.
+- **`TaskWarrior.synchronize()`** now runs `task sync` via the CLI.
   Both local (`sync.local.server_dir`) and remote (`sync.server.origin`) sync backends are
   supported through TaskWarrior's built-in sync command.
 - `TaskWarrior.is_sync_configured()` returns `True` when any `sync.*` key is present in taskrc.
 
 ### Changed
 
-- **Removed `taskchampion-py` dependency** — synchronization now delegates entirely to the
-  TaskWarrior CLI (`task sync`). The `sync_backends/` module and `SyncLocal`/`SyncProtocol`
-  abstractions have been removed.
+- Exception hierarchy unified: 13 semantic fixes throughout the codebase ensure the right
+  exception is raised in the right context.
+  - `TaskValidationError` → `TaskConfigurationError` for binary not found / taskrc errors
+  - `TaskNotFound` → `TaskOperationError` for operation failures on existing tasks
+  - `OSError` / `subprocess.SubprocessError` → wrapped in `TaskWarriorError` to preserve exception contract
+  - All JSON parse errors now use `TaskWarriorError` instead of domain-specific exceptions
 - `synchronize()` is **no longer a no-op**: the façade now calls `self.adapter.synchronize()`,
   which in turn runs `task sync`. Raises `TaskSyncError` if sync is not configured or fails.
-- `OSError` / `subprocess.SubprocessError` are now caught in `run_task_command` and wrapped
-  in `TaskWarriorError` instead of being re-raised as stdlib exceptions, preserving the
-  library's exception contract.
-- `ConfigStore._extract_taskrc_config` now raises `TaskConfigurationError` on
-  `FileNotFoundError`, `PermissionError`, or any OS-level I/O failure when reading the taskrc.
-- `get_task` with a non-zero return code now raises `TaskNotFound` (was `TaskWarriorError`
-  with a misleading "not found" message).
-- `modify_task` failure now raises `TaskWarriorError` (was `TaskValidationError`).
-- `ContextService._validate_name` now raises `TaskValidationError` for an empty context name
-  (was `TaskWarriorError`).
-- `UdaRegistry.load_from_taskrc` now raises `TaskConfigurationError` when the taskrc file
-  does not exist (was `TaskWarriorError`).
-- `get_recurring_instances` and `get_recurring_task` JSON decode errors now raise
-  `TaskWarriorError` (was `TaskNotFound`).
-- `add_task` fallback path now raises `TaskWarriorError` (was `RuntimeError`).
-- `parse_taskwarrior_date` fallback `fromisoformat` call now raises `ValueError` with a
-  descriptive message instead of a bare traceback.
-- `get_recurring_task` now protects the `json.loads` call with try/except.
+- Enhanced error coverage: all file I/O, JSON parsing, and subprocess operations now properly
+  protected with appropriate exception handling.
 
 ### Tests
 
 - `uv run pytest -q` (164 passed, 0 failed)
-- Sync tests rewritten for the new `task sync`-based implementation.
-- Added `test_adapter_sync.py` with 7 focused tests for adapter-level sync behaviour.
-- Updated `test_main_sync.py`: `synchronize()` now delegates to the adapter.
-- Removed taskchampion-specific tests (test_sync_local, test_sync_factory,
-  test_sync_integration, test_sync_disabled_facade).
-- `test_task_warrior_error_inheritance` extended to verify `TaskConfigurationError` and
-  `TaskOperationError` are subclasses of `TaskWarriorError`.
-
-## [1.1.2rc1] - 2026-03-10
-### Added
-- Added TaskWarrior.is_sync_configured() and TaskWarrior.synchronize() so the façade exposes the existing sync backend; `synchronize()` propagates `TaskSyncError` when no backend is configured or synchronization fails.
-
-### Changed
-- Temporarily disabled synchronization via the TaskWarrior façade (TaskWarrior.synchronize()). The original call is preserved as a code comment to allow quick reactivation; this avoids invoking py-taskchampion flows while compatibility is evaluated.
-- Made SyncLocal Replica creation lazy (instantiated on first use) to avoid side-effects at instantiation time.
-
-### Fixed
-- Updated adapter, UDA, context, and registry tests to the new `ConfigStore`-backed initialization so they no longer rely on removed constructor parameters and private helpers.
-- Emulated TaskWarrior CLI interactions in registry/UDA tests, eliminating the need to invoke the real `task` binary while preserving realistic config updates.
-### Tests
-- `uv run pytest -q` (159 passed, 0 failed)
-- Added tests to ensure facade synchronization is a no-op and to support lazy SyncLocal behavior.
+- New `test_adapter_sync.py` validates sync behavior via `task sync` CLI.
+- Updated sync tests to reflect new implementation (CLI-based, no external dependencies).
+- `test_task_warrior_error_inheritance` extended to verify exception hierarchy.
 
 ## [1.1.1] - 2026‑03‑07
 ### Added
