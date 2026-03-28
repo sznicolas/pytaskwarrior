@@ -89,8 +89,6 @@ class TaskWarrior:
         self.adapter: TaskWarriorAdapter = TaskWarriorAdapter(
             task_cmd=task_cmd, config_store=self.config_store
         )
-        self.task_cmd = task_cmd
-        self.taskrc_file = Path(taskrc_file)
         self.context_service: ContextService = ContextService(self.adapter, self.config_store)
         self.uda_service: UdaService = UdaService(self.adapter, self.config_store)
 
@@ -427,8 +425,8 @@ class TaskWarrior:
         """
         # Compose info from TaskWarrior instance, not adapter
         info = {
-            "task_cmd": str(self.task_cmd),
-            "taskrc_file": str(self.taskrc_file),
+            "task_cmd": str(self.adapter.task_cmd),
+            "taskrc_file": str(self.config_store.taskrc_path),
             "options": self.adapter.cli_options,
             "version": self.adapter.get_version(),
         }

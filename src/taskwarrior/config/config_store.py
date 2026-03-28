@@ -82,6 +82,11 @@ rc.bulk=0
         return self._config
 
     @property
+    def taskrc_path(self) -> Path:
+        """Return the path to the taskrc file."""
+        return self._taskrc_path
+
+    @property
     def cli_options(self) -> list[str]:
         """Return CLI options for Taskwarrior commands, including defaults."""
         options = [f"rc:{self._taskrc_path}"]
