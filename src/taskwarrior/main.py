@@ -417,7 +417,7 @@ class TaskWarrior:
 
         Returns:
             Dictionary containing task_cmd path, taskrc_file path,
-            options, and TaskWarrior version.
+            options, TaskWarrior version, and active context information.
 
         Example:
             >>> info = tw.get_info()
@@ -430,6 +430,33 @@ class TaskWarrior:
             "options": self.adapter.cli_options,
             "version": self.adapter.get_version(),
         }
+
+        # Add current context information (name and details) if available.
+        current_context: str | None = None
+        current_context_details: dict | None = None
+        try:
+            current_context = self.get_current_context()
+            if current_context:
+                contexts = self.context_service.get_contexts()
+                active = next((c for c in contexts if c.active or c.name == current_context), None)
+                if active:
+                    current_context_details = {
+                        "name": active.name,
+                        "read_filter": active.read_filter,
+                        "write_filter": active.write_filter,
+                        "active": active.active,
+                    }
+        except Exception as e:
+            # Do not fail get_info() for context lookup issues — log and return None fields
+            logger.debug("Failed to retrieve current context for get_info(): %s", e)
+            current_context = None
+            current_context_details = None
+
+        info.update({
+            "current_context": current_context,
+            "current_context_details": current_context_details,
+        })
+
         return info
 
     def task_calc(self, date_str: str) -> str:
