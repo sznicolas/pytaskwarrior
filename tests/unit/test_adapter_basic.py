@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -22,7 +21,6 @@ class TestTaskWarriorAdapterBasic:
     @pytest.fixture
     def adapter(self, taskwarrior_config: str):
         """Create a TaskWarriorAdapter instance for testing."""
-        from src.taskwarrior.config.config_store import ConfigStore
 
         return TaskWarriorAdapter(
             config_store=ConfigStore(taskwarrior_config),

@@ -16,7 +16,11 @@ import pytest
 
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from src.taskwarrior.dto.task_dto import TaskInputDTO
-from src.taskwarrior.exceptions import TaskNotFound, TaskValidationError, TaskWarriorError, TaskOperationError
+from src.taskwarrior.exceptions import (
+    TaskOperationError,
+    TaskValidationError,
+    TaskWarriorError,
+)
 from src.taskwarrior.utils.conversions import parse_taskwarrior_date
 
 # ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ contexts (named filters).
 
 
 from typing import TYPE_CHECKING
+
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.context_dto import ContextDTO
 from ..exceptions import TaskValidationError, TaskWarriorError

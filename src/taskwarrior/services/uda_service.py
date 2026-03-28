@@ -4,6 +4,7 @@ This module provides the UdaService class for managing custom task attributes.
 """
 
 from typing import TYPE_CHECKING
+
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.uda_dto import UdaConfig
 from ..registry.uda_registry import UdaRegistry

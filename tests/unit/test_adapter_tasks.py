@@ -10,7 +10,6 @@ from src.taskwarrior.dto.task_dto import TaskInputDTO
 from src.taskwarrior.enums import Priority, RecurrencePeriod
 from src.taskwarrior.exceptions import (
     TaskNotFound,
-    TaskValidationError,
     TaskWarriorError,
 )
 

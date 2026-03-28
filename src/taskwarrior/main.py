@@ -7,9 +7,8 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
-from uuid import UUID
 from typing import Any
+from uuid import UUID
 
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .dto.context_dto import ContextDTO

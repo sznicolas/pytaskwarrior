@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from src.taskwarrior.exceptions import TaskSyncError
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
+from src.taskwarrior.exceptions import TaskSyncError
 
 
 def _make_adapter(sync_configured: bool = True) -> TaskWarriorAdapter:

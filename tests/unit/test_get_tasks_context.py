@@ -1,6 +1,4 @@
-import pathlib
 
-import pytest
 
 from taskwarrior import TaskWarrior
 from taskwarrior.dto.context_dto import ContextDTO

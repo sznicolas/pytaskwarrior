@@ -2,7 +2,6 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from src.taskwarrior.dto.uda_dto import UdaConfig, UdaType
 from src.taskwarrior.exceptions import TaskWarriorError
 from src.taskwarrior.registry.uda_registry import UdaRegistry

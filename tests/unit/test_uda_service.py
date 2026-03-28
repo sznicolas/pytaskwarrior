@@ -6,7 +6,9 @@ from src.taskwarrior.services.uda_service import UdaService
 
 def test_uda_service_uses_own_registry():
     """Test that each UdaService has its own isolated UdaRegistry instance."""
-    import tempfile, os
+    import os
+    import tempfile
+
     from src.taskwarrior.config.config_store import ConfigStore
     tmpdir = tempfile.mkdtemp()
     taskrc = os.path.join(tmpdir, ".taskrc")
