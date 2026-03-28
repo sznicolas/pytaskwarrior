@@ -5,15 +5,12 @@ This module provides the low-level interface to TaskWarrior CLI commands.
 
 import json
 import logging
-import json
-import logging
 import re
 import shlex
 import shutil
 import subprocess
 from pathlib import Path
 from uuid import UUID
-from typing import Optional
 
 from ..config.config_store import ConfigStore
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
@@ -26,8 +23,6 @@ from ..exceptions import (
     TaskValidationError,
     TaskWarriorError,
 )
-from ..sync_backends.factory import create_sync_backend
-from ..sync_backends.sync_protocol import SyncProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +51,12 @@ class TaskWarriorAdapter:
             config_store: The configuration store instance (required).
 
         Raises:
-            TaskValidationError: If TaskWarrior binary not found.
+            TaskConfigurationError: If TaskWarrior binary not found.
         """
 
         self.task_cmd: Path = self._check_binary_path(task_cmd)
         self._cli_options: list[str] = config_store.cli_options
-        self._sync: SyncProtocol | None = create_sync_backend(config_store.get_sync_config())
+        self._sync_configured: bool = bool(config_store.get_sync_config())
 
     @property
     def cli_options(self) -> list[str]:
@@ -75,11 +70,9 @@ class TaskWarriorAdapter:
             raise TaskConfigurationError(f"TaskWarrior command '{task_cmd}' not found in PATH")
         return Path(resolved_path)
 
-    # Taskrc and data directory creation now handled in ConfigStore
-
     def is_sync_configured(self) -> bool:
-        """Return True if synchronization is configured via SyncProtocol."""
-        return self._sync is not None
+        """Return True if sync settings are present in taskrc (any ``sync.*`` key)."""
+        return self._sync_configured
 
     def run_task_command(
         self, args: list[str], no_opt: bool = False
@@ -124,17 +117,26 @@ class TaskWarriorAdapter:
             raise TaskWarriorError(f"Command execution failed: {e}") from e
 
     def synchronize(self) -> None:
-        """Synchronize tasks using the injected or auto-detected SyncProtocol."""
-        if self._sync is not None:
-            try:
-                logger.warning(
-                    "Synchronization disabled (temporary): facade-level synchronize() is a no-op."
-                )
-                # self._sync.synchronize()
-            except Exception as e:
-                raise TaskSyncError(f"SyncProtocol synchronization failed: {e}") from e
-        else:
-            raise TaskSyncError("No SyncProtocol is configured for synchronization.")
+        """Synchronize tasks by running ``task sync``.
+
+        Delegates to the TaskWarrior CLI's built-in sync command, which handles
+        both local (``sync.local.server_dir``) and remote (``sync.server.origin``)
+        synchronization based on the taskrc configuration.
+
+        Raises:
+            TaskSyncError: If no sync settings are configured, or if the sync
+                command exits with a non-zero return code.
+        """
+        if not self._sync_configured:
+            raise TaskSyncError(
+                "No sync server is configured. "
+                "Add sync.* settings to your taskrc (e.g. sync.local.server_dir)."
+            )
+        result = self.run_task_command(["sync"])
+        if result.returncode != 0:
+            raise TaskSyncError(
+                f"Synchronization failed: {result.stderr or result.stdout}"
+            )
 
     @staticmethod
     def _wrap_filter(f: str) -> str:

@@ -399,22 +399,20 @@ class TaskWarrior:
         return self.adapter.is_sync_configured()
 
     def synchronize(self) -> None:
-        """Run TaskWarrior synchronization.
+        """Run TaskWarrior synchronization via ``task sync``.
+
+        Delegates to the TaskWarrior CLI's built-in sync command. Synchronization
+        settings (server address, credentials, or local path) must be configured
+        in the taskrc file before calling this method.
 
         Raises:
             TaskSyncError: If no sync backend is configured or synchronization fails.
 
-        Note:
-            Synchronization is temporarily commented out at the facade level due to
-            py-taskchampion compatibility concerns. The original call is preserved
-            below as a comment for easy reactivation.
+        Example:
+            >>> tw = TaskWarrior(taskrc_file="/path/to/.taskrc")
+            >>> tw.synchronize()  # requires sync.* settings in taskrc
         """
-        logger.warning(
-            "Synchronization disabled (temporary): facade-level synchronize() is a no-op."
-        )
-        # Original implementation (commented out to disable facade-level sync):
-        # self.adapter.synchronize()
-        return
+        self.adapter.synchronize()
 
     def get_info(self) -> dict[str, Any]:
         """Get comprehensive TaskWarrior configuration information.

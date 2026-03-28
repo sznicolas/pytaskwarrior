@@ -144,11 +144,8 @@ tw = TaskWarrior(
 
 | Method | Description |
 |--------|-------------|
-| `is_sync_configured()` | Return `True` if a sync backend is configured via `taskrc` (e.g., `sync.local.server_dir`). |
-| `synchronize()` | Trigger TaskWarrior synchronization; raises `TaskSyncError` if sync is not configured or the backend fails. |
-
-> **Note (1.2.0)**: Synchronization via the façade is temporarily disabled due to compatibility
-> concerns with py-taskchampion. The call is preserved as a code comment for easy reactivation.
+| `is_sync_configured()` | Return `True` if any `sync.*` key is present in taskrc. |
+| `synchronize()` | Run `task sync`; raises `TaskSyncError` if not configured or sync fails. |
 
 ### Exceptions
 

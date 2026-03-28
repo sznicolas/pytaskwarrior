@@ -18,11 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All six exceptions are now **exported from the top-level package** (`from taskwarrior import …`):
   `TaskWarriorError`, `TaskNotFound`, `TaskValidationError`, `TaskSyncError`,
   `TaskConfigurationError`, `TaskOperationError`.
-- `TaskWarrior.is_sync_configured()` and `TaskWarrior.synchronize()` — the façade now exposes
-  the sync backend; `synchronize()` propagates `TaskSyncError` when no backend is configured.
+- **`TaskWarrior.synchronize()`** now runs `task sync` via the CLI — no external library needed.
+  Both local (`sync.local.server_dir`) and remote (`sync.server.origin`) sync backends are
+  supported through TaskWarrior's built-in sync command.
+- `TaskWarrior.is_sync_configured()` returns `True` when any `sync.*` key is present in taskrc.
 
 ### Changed
 
+- **Removed `taskchampion-py` dependency** — synchronization now delegates entirely to the
+  TaskWarrior CLI (`task sync`). The `sync_backends/` module and `SyncLocal`/`SyncProtocol`
+  abstractions have been removed.
+- `synchronize()` is **no longer a no-op**: the façade now calls `self.adapter.synchronize()`,
+  which in turn runs `task sync`. Raises `TaskSyncError` if sync is not configured or fails.
 - `OSError` / `subprocess.SubprocessError` are now caught in `run_task_command` and wrapped
   in `TaskWarriorError` instead of being re-raised as stdlib exceptions, preserving the
   library's exception contract.
@@ -30,28 +37,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `FileNotFoundError`, `PermissionError`, or any OS-level I/O failure when reading the taskrc.
 - `get_task` with a non-zero return code now raises `TaskNotFound` (was `TaskWarriorError`
   with a misleading "not found" message).
-- `modify_task` failure now raises `TaskWarriorError` (was `TaskValidationError` — a CLI
-  command failure is not a data-validation issue).
+- `modify_task` failure now raises `TaskWarriorError` (was `TaskValidationError`).
 - `ContextService._validate_name` now raises `TaskValidationError` for an empty context name
   (was `TaskWarriorError`).
 - `UdaRegistry.load_from_taskrc` now raises `TaskConfigurationError` when the taskrc file
   does not exist (was `TaskWarriorError`).
 - `get_recurring_instances` and `get_recurring_task` JSON decode errors now raise
-  `TaskWarriorError` (was `TaskNotFound` — parsing failure ≠ task not found).
-- `add_task` fallback path now raises `TaskWarriorError` (was `RuntimeError`, which broke
-  the library exception contract).
-- Synchronization via the `TaskWarrior` façade is temporarily disabled due to compatibility
-  concerns with py-taskchampion. The original call is preserved as a code comment for easy
-  reactivation. `SyncLocal` replica creation is now lazy to avoid side effects at init time.
-- `parse_taskwarrior_date` fallback `fromisoformat` call is now wrapped in a proper try/except;
-  invalid dates raise `ValueError` with a descriptive message instead of a bare traceback.
-- `get_recurring_task` now protects the `json.loads` call with try/except (only method that
-  was missing this guard).
+  `TaskWarriorError` (was `TaskNotFound`).
+- `add_task` fallback path now raises `TaskWarriorError` (was `RuntimeError`).
+- `parse_taskwarrior_date` fallback `fromisoformat` call now raises `ValueError` with a
+  descriptive message instead of a bare traceback.
+- `get_recurring_task` now protects the `json.loads` call with try/except.
 
 ### Tests
 
 - `uv run pytest -q` (164 passed, 0 failed)
-- Updated all mocked and integration tests to reflect the new exception semantics.
+- Sync tests rewritten for the new `task sync`-based implementation.
+- Added `test_adapter_sync.py` with 7 focused tests for adapter-level sync behaviour.
+- Updated `test_main_sync.py`: `synchronize()` now delegates to the adapter.
+- Removed taskchampion-specific tests (test_sync_local, test_sync_factory,
+  test_sync_integration, test_sync_disabled_facade).
 - `test_task_warrior_error_inheritance` extended to verify `TaskConfigurationError` and
   `TaskOperationError` are subclasses of `TaskWarriorError`.
 
