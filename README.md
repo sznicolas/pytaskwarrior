@@ -9,9 +9,7 @@
 
 A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the command-line task management tool.
 
-**v1.1.1**: Production-ready with 132 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, and PEP 561 type hints for IDE support.
-
-> **Temporary notice (2026-03-15)**: Synchronization via the TaskWarrior façade is temporarily disabled due to compatibility concerns with py-taskchampion. The sync call is preserved as a comment in the code; sync backends are now lazily instantiated to avoid side effects. See CHANGELOG.md for details.
+**v1.2.0**: Production-ready with 164 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, PEP 561 type hints for IDE support, and a consistent exception hierarchy.
 
 ## Features
 
@@ -33,7 +31,7 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the co
 ## Installation
 
 ```bash
-pip install pytaskwarrior==1.0.0
+pip install pytaskwarrior==1.2.0
 ```
 
 Or install from source:
@@ -148,6 +146,33 @@ tw = TaskWarrior(
 |--------|-------------|
 | `is_sync_configured()` | Return `True` if a sync backend is configured via `taskrc` (e.g., `sync.local.server_dir`). |
 | `synchronize()` | Trigger TaskWarrior synchronization; raises `TaskSyncError` if sync is not configured or the backend fails. |
+
+> **Note (1.2.0)**: Synchronization via the façade is temporarily disabled due to compatibility
+> concerns with py-taskchampion. The call is preserved as a code comment for easy reactivation.
+
+### Exceptions
+
+All exceptions inherit from `TaskWarriorError` and are importable from the top-level package:
+
+```python
+from taskwarrior import (
+    TaskWarriorError,        # Base class — catch all library errors
+    TaskNotFound,            # Task does not exist
+    TaskValidationError,     # Invalid input data (empty description, etc.)
+    TaskOperationError,      # Operation failed on an existing task
+    TaskConfigurationError,  # Environment issue (binary not found, taskrc missing)
+    TaskSyncError,           # Synchronization failure
+)
+```
+
+| Exception | Raised when |
+|-----------|-------------|
+| `TaskWarriorError` | Base class; catch-all for any library error |
+| `TaskNotFound` | The requested task does not exist |
+| `TaskValidationError` | Input data is invalid (e.g., empty description) |
+| `TaskOperationError` | A write operation failed on an existing task (delete, done, start…) |
+| `TaskConfigurationError` | Environment error (binary not in PATH, taskrc missing/unreadable) |
+| `TaskSyncError` | Sync backend not configured or synchronization failed |
 
 ### Data Models
 

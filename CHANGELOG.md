@@ -5,6 +5,56 @@ All notable changes to pytaskwarrior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-28
+
+### Added
+
+- **`TaskConfigurationError`** — new exception for environment and configuration errors:
+  binary not found in PATH, taskrc file missing or unreadable.
+  Replaces `TaskValidationError` in these cases, which was semantically incorrect.
+- **`TaskOperationError`** — new exception for write-operation failures on existing tasks
+  (delete, purge, done, start, stop, annotate).
+  Replaces `TaskNotFound` in these cases; a failed operation is not the same as a missing task.
+- All six exceptions are now **exported from the top-level package** (`from taskwarrior import …`):
+  `TaskWarriorError`, `TaskNotFound`, `TaskValidationError`, `TaskSyncError`,
+  `TaskConfigurationError`, `TaskOperationError`.
+- `TaskWarrior.is_sync_configured()` and `TaskWarrior.synchronize()` — the façade now exposes
+  the sync backend; `synchronize()` propagates `TaskSyncError` when no backend is configured.
+
+### Changed
+
+- `OSError` / `subprocess.SubprocessError` are now caught in `run_task_command` and wrapped
+  in `TaskWarriorError` instead of being re-raised as stdlib exceptions, preserving the
+  library's exception contract.
+- `ConfigStore._extract_taskrc_config` now raises `TaskConfigurationError` on
+  `FileNotFoundError`, `PermissionError`, or any OS-level I/O failure when reading the taskrc.
+- `get_task` with a non-zero return code now raises `TaskNotFound` (was `TaskWarriorError`
+  with a misleading "not found" message).
+- `modify_task` failure now raises `TaskWarriorError` (was `TaskValidationError` — a CLI
+  command failure is not a data-validation issue).
+- `ContextService._validate_name` now raises `TaskValidationError` for an empty context name
+  (was `TaskWarriorError`).
+- `UdaRegistry.load_from_taskrc` now raises `TaskConfigurationError` when the taskrc file
+  does not exist (was `TaskWarriorError`).
+- `get_recurring_instances` and `get_recurring_task` JSON decode errors now raise
+  `TaskWarriorError` (was `TaskNotFound` — parsing failure ≠ task not found).
+- `add_task` fallback path now raises `TaskWarriorError` (was `RuntimeError`, which broke
+  the library exception contract).
+- Synchronization via the `TaskWarrior` façade is temporarily disabled due to compatibility
+  concerns with py-taskchampion. The original call is preserved as a code comment for easy
+  reactivation. `SyncLocal` replica creation is now lazy to avoid side effects at init time.
+- `parse_taskwarrior_date` fallback `fromisoformat` call is now wrapped in a proper try/except;
+  invalid dates raise `ValueError` with a descriptive message instead of a bare traceback.
+- `get_recurring_task` now protects the `json.loads` call with try/except (only method that
+  was missing this guard).
+
+### Tests
+
+- `uv run pytest -q` (164 passed, 0 failed)
+- Updated all mocked and integration tests to reflect the new exception semantics.
+- `test_task_warrior_error_inheritance` extended to verify `TaskConfigurationError` and
+  `TaskOperationError` are subclasses of `TaskWarriorError`.
+
 ## [1.1.2rc1] - 2026-03-10
 ### Added
 - Added TaskWarrior.is_sync_configured() and TaskWarrior.synchronize() so the façade exposes the existing sync backend; `synchronize()` propagates `TaskSyncError` when no backend is configured or synchronization fails.
