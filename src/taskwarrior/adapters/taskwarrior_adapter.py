@@ -18,7 +18,14 @@ from typing import Optional
 from ..config.config_store import ConfigStore
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 from ..enums import TaskStatus
-from ..exceptions import TaskNotFound, TaskSyncError, TaskValidationError, TaskWarriorError
+from ..exceptions import (
+    TaskConfigurationError,
+    TaskNotFound,
+    TaskOperationError,
+    TaskSyncError,
+    TaskValidationError,
+    TaskWarriorError,
+)
 from ..sync_backends.factory import create_sync_backend
 from ..sync_backends.sync_protocol import SyncProtocol
 
@@ -65,7 +72,7 @@ class TaskWarriorAdapter:
         """Verify TaskWarrior binary exists in PATH."""
         resolved_path = shutil.which(task_cmd)
         if not resolved_path:
-            raise TaskValidationError(f"TaskWarrior command '{task_cmd}' not found in PATH")
+            raise TaskConfigurationError(f"TaskWarrior command '{task_cmd}' not found in PATH")
         return Path(resolved_path)
 
     # Taskrc and data directory creation now handled in ConfigStore
@@ -114,7 +121,7 @@ class TaskWarriorAdapter:
 
         except (OSError, subprocess.SubprocessError) as e:
             logger.error(f"Exception while running '{cmd}': {e}")
-            raise
+            raise TaskWarriorError(f"Command execution failed: {e}") from e
 
     def synchronize(self) -> None:
         """Synchronize tasks using the injected or auto-detected SyncProtocol."""
@@ -208,7 +215,7 @@ class TaskWarriorAdapter:
             if not tasks:
                 error_msg = "Failed to retrieve added task"
                 logger.error(error_msg)
-                raise RuntimeError(error_msg)
+                raise TaskWarriorError(error_msg)
             added_task = tasks[0]
 
         if task.annotations:
@@ -228,7 +235,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to modify task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskValidationError(error_msg)
+            raise TaskWarriorError(error_msg)
 
         updated_task = self.get_task(task_id_or_uuid)
         logger.info(f"Successfully modified task with UUID: {task_id_or_uuid}")
@@ -258,12 +265,12 @@ class TaskWarriorAdapter:
                     )
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
-                raise TaskValidationError(
+                raise TaskWarriorError(
                     f"Invalid response from TaskWarrior: {result.stdout}"
                 ) from e
         else:
-            raise TaskWarriorError(
-                f"Error while retrieving task ID/UUID {task_id_or_uuid} not found"
+            raise TaskNotFound(
+                f"Task ID/UUID {task_id_or_uuid} not found"
             )
 
     def get_tasks(
@@ -326,7 +333,7 @@ class TaskWarriorAdapter:
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise TaskValidationError(f"Invalid response from TaskWarrior: {result.stdout}") from e
+            raise TaskWarriorError(f"Invalid response from TaskWarrior: {result.stdout}") from e
 
     def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the parent recurring task template."""
@@ -338,7 +345,13 @@ class TaskWarriorAdapter:
         )
 
         if result.returncode == 0:
-            tasks_data = json.loads(result.stdout)
+            try:
+                tasks_data = json.loads(result.stdout)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {e}")
+                raise TaskWarriorError(
+                    f"Invalid response from TaskWarrior: {result.stdout}"
+                ) from e
             if tasks_data:
                 task = TaskOutputDTO.model_validate(tasks_data[0])
                 logger.debug(f"Successfully retrieved recurring task: {task.uuid}")
@@ -365,7 +378,7 @@ class TaskWarriorAdapter:
                 return []
             error_msg = f"Failed to get recurring instances: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskWarriorError(error_msg)
 
         if not result.stdout.strip():
             logger.debug("No recurring instances returned (empty response)")
@@ -378,7 +391,7 @@ class TaskWarriorAdapter:
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}") from e
+            raise TaskWarriorError(f"Invalid response from TaskWarrior: {result.stdout}") from e
 
     def delete_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Mark a task as deleted."""
@@ -390,7 +403,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to delete task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully deleted task: {task_ref}")
 
@@ -404,7 +417,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to purge task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully purged task: {task_ref}")
 
@@ -418,7 +431,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to mark task as done: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully completed task: {task_ref}")
 
@@ -432,7 +445,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to start task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully started task: {task_ref}")
 
@@ -446,7 +459,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to stop task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully stopped task: {task_ref}")
 
@@ -461,7 +474,7 @@ class TaskWarriorAdapter:
         if result.returncode != 0:
             error_msg = f"Failed to annotate task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully annotated task: {task_ref}")
 

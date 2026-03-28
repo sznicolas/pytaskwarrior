@@ -128,11 +128,11 @@ class TestTaskWarriorAdapterBasic:
         ):
             adapter.add_task(task)
 
-    def test_modify_task_validation_errors(self, adapter: TaskWarriorAdapter):
-        """Test modify_task validation errors."""
-        # Test invalid date format
+    def test_modify_task_errors(self, adapter: TaskWarriorAdapter):
+        """Test modify_task error conditions."""
+        # Modifying a non-existent task ID raises TaskWarriorError
         task = TaskInputDTO(description="Test task", due="invalid_date")
-        with pytest.raises(TaskValidationError, match="No tasks specified."):
+        with pytest.raises(TaskWarriorError, match="No tasks specified."):
             adapter.modify_task(task, 999)
 
     def test_get_task_errors(self, adapter: TaskWarriorAdapter):

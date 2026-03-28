@@ -16,7 +16,7 @@ import pytest
 
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from src.taskwarrior.dto.task_dto import TaskInputDTO
-from src.taskwarrior.exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
+from src.taskwarrior.exceptions import TaskNotFound, TaskValidationError, TaskWarriorError, TaskOperationError
 from src.taskwarrior.utils.conversions import parse_taskwarrior_date
 
 # ---------------------------------------------------------------------------
@@ -60,14 +60,14 @@ def adapter(tmp_path: Path) -> TaskWarriorAdapter:
 # ---------------------------------------------------------------------------
 
 class TestRunTaskCommand:
-    def test_oserror_is_reraised(self, adapter: TaskWarriorAdapter) -> None:
+    def test_oserror_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch("subprocess.run", side_effect=OSError("no such file")):
-            with pytest.raises(OSError):
+            with pytest.raises(TaskWarriorError, match="Command execution failed"):
                 adapter.run_task_command(["info"])
 
-    def test_timeout_is_reraised(self, adapter: TaskWarriorAdapter) -> None:
+    def test_timeout_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("task", 30)):
-            with pytest.raises(subprocess.SubprocessError):
+            with pytest.raises(TaskWarriorError, match="Command execution failed"):
                 adapter.run_task_command(["info"])
 
     def test_nonzero_returncode_does_not_raise(self, adapter: TaskWarriorAdapter) -> None:
@@ -95,12 +95,12 @@ class TestAddTask:
             task = adapter.add_task(TaskInputDTO(description="Test"))
         assert task.description == "Test task"
 
-    def test_fallback_empty_list_raises_runtime_error(self, adapter: TaskWarriorAdapter) -> None:
+    def test_fallback_empty_list_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         add_result = _completed(stdout="no id here", returncode=0)
         empty_result = _completed(stdout="[]", returncode=0)
 
         with patch.object(adapter, "run_task_command", side_effect=[add_result, empty_result]):
-            with pytest.raises(RuntimeError, match="Failed to retrieve added task"):
+            with pytest.raises(TaskWarriorError, match="Failed to retrieve added task"):
                 adapter.add_task(TaskInputDTO(description="Test"))
 
     def test_annotations_added_after_creation(self, adapter: TaskWarriorAdapter) -> None:
@@ -124,9 +124,9 @@ class TestGetTask:
             with pytest.raises(TaskWarriorError):
                 adapter.get_task(1)
 
-    def test_json_decode_error_raises_validation_error(self, adapter: TaskWarriorAdapter) -> None:
+    def test_json_decode_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch.object(adapter, "run_task_command", return_value=_completed(stdout="not json", returncode=0)):
-            with pytest.raises(TaskValidationError, match="Invalid response"):
+            with pytest.raises(TaskWarriorError, match="Invalid response"):
                 adapter.get_task(1)
 
     def test_multiple_tasks_returned_raises(self, adapter: TaskWarriorAdapter) -> None:
@@ -149,9 +149,9 @@ class TestGetTasks:
             with pytest.raises(TaskWarriorError, match="Failed to get tasks"):
                 adapter.get_tasks()
 
-    def test_json_decode_error_raises_validation_error(self, adapter: TaskWarriorAdapter) -> None:
+    def test_json_decode_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch.object(adapter, "run_task_command", return_value=_completed(stdout="bad", returncode=0)):
-            with pytest.raises(TaskValidationError, match="Invalid response"):
+            with pytest.raises(TaskWarriorError, match="Invalid response"):
                 adapter.get_tasks()
 
 
@@ -165,10 +165,10 @@ class TestGetRecurringInstances:
                           return_value=_completed(returncode=1, stderr="No matches.")):
             assert adapter.get_recurring_instances("abc") == []
 
-    def test_other_error_raises_task_not_found(self, adapter: TaskWarriorAdapter) -> None:
+    def test_other_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch.object(adapter, "run_task_command",
                           return_value=_completed(returncode=1, stderr="Something else failed")):
-            with pytest.raises(TaskNotFound):
+            with pytest.raises(TaskWarriorError):
                 adapter.get_recurring_instances("abc")
 
     def test_empty_stdout_returns_empty(self, adapter: TaskWarriorAdapter) -> None:
@@ -176,10 +176,10 @@ class TestGetRecurringInstances:
                           return_value=_completed(stdout="   ", returncode=0)):
             assert adapter.get_recurring_instances("abc") == []
 
-    def test_json_decode_error_raises_task_not_found(self, adapter: TaskWarriorAdapter) -> None:
+    def test_json_decode_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch.object(adapter, "run_task_command",
                           return_value=_completed(stdout="not json", returncode=0)):
-            with pytest.raises(TaskNotFound, match="Invalid response"):
+            with pytest.raises(TaskWarriorError, match="Invalid response"):
                 adapter.get_recurring_instances("abc")
 
 
@@ -196,12 +196,12 @@ class TestTaskStateErrors:
         ("stop_task", {"task_id_or_uuid": "123"}),
         ("annotate_task", {"task_id_or_uuid": "123", "annotation": "note"}),
     ])
-    def test_nonzero_returncode_raises_task_not_found(
+    def test_nonzero_returncode_raises_task_operation_error(
         self, adapter: TaskWarriorAdapter, method: str, kwargs: dict
     ) -> None:
         with patch.object(adapter, "run_task_command",
                           return_value=_completed(returncode=1, stderr="error")):
-            with pytest.raises(TaskNotFound):
+            with pytest.raises(TaskOperationError):
                 getattr(adapter, method)(**kwargs)
 
 

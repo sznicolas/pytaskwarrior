@@ -63,3 +63,41 @@ class TaskValidationError(TaskWarriorError):
     """
 
     pass
+
+
+class TaskConfigurationError(TaskWarriorError):
+    """Raised when a configuration or environment error is detected.
+
+    This exception is raised when:
+    - The TaskWarrior binary is not found in PATH
+    - The taskrc configuration file is missing or unreadable
+    - Required environment setup is invalid
+
+    Example:
+        >>> try:
+        ...     tw = TaskWarrior(task_cmd="nonexistent-binary")
+        ... except TaskConfigurationError as e:
+        ...     print(f"Configuration error: {e}")
+    """
+
+    pass
+
+
+class TaskOperationError(TaskWarriorError):
+    """Raised when a task operation fails on an existing task.
+
+    This exception is raised when a write operation (delete, complete, start,
+    stop, annotate, purge, modify) fails, for reasons other than the task not
+    being found. Examples:
+    - Marking an already-completed task as done
+    - Starting a task that is already active
+    - Annotating with an empty annotation text
+
+    Example:
+        >>> try:
+        ...     tw.done_task(uuid)
+        ... except TaskOperationError as e:
+        ...     print(f"Operation failed: {e}")
+    """
+
+    pass

@@ -75,7 +75,7 @@ class TaskWarrior:
                 TASKDATA environment variable or taskrc value will be used.
 
         Raises:
-            TaskValidationError: If the TaskWarrior binary is not found.
+            TaskConfigurationError: If the TaskWarrior binary is not found.
         """
         if taskrc_file is None:
             taskrc_file = os.environ.get("TASKRC", "$HOME/.taskrc")
@@ -229,7 +229,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to delete.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task already deleted).
         """
         self.adapter.delete_task(task_id_or_uuid)
 
@@ -242,7 +242,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to purge.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task was not deleted first).
         """
         self.adapter.purge_task(task_id_or_uuid)
 
@@ -253,7 +253,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to complete.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task is already completed).
 
         Example:
             >>> tw.done_task(1)
@@ -270,7 +270,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to start.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task is already started).
         """
         self.adapter.start_task(task_id_or_uuid)
 
@@ -283,7 +283,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to stop.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task was not started).
         """
         self.adapter.stop_task(task_id_or_uuid)
 
@@ -297,7 +297,7 @@ class TaskWarrior:
             annotation: The annotation text to add.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task not found).
 
         Example:
             >>> tw.annotate_task(1, "Discussed with team, need more info")

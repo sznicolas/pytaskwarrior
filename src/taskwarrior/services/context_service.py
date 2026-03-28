@@ -8,7 +8,7 @@ contexts (named filters).
 from typing import TYPE_CHECKING
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.context_dto import ContextDTO
-from ..exceptions import TaskWarriorError
+from ..exceptions import TaskValidationError, TaskWarriorError
 
 if TYPE_CHECKING:
     from ..config.config_store import ConfigStore
@@ -44,7 +44,7 @@ class ContextService:
 
     def _validate_name(self, name: str) -> None:
         if not name or not name.strip():
-            raise TaskWarriorError("Context name cannot be empty")
+            raise TaskValidationError("Context name cannot be empty")
 
     def define_context(
         self, name: str, read_filter: str, write_filter: str

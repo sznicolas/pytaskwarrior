@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
-from src.taskwarrior.exceptions import TaskValidationError, TaskWarriorError
+from src.taskwarrior.exceptions import TaskConfigurationError, TaskValidationError, TaskWarriorError
 from src.taskwarrior.services.context_service import ContextService
 
 
@@ -19,10 +19,10 @@ class TestBinaryPathNotFound:
     """Test 1: Exception when 'task' binary is not found."""
 
     def test_binary_not_in_path_raises_error(self):
-        """TaskWarriorAdapter should raise TaskValidationError if task command not found."""
+        """TaskWarriorAdapter should raise TaskConfigurationError if task command not found."""
         with patch("shutil.which", return_value=None):
             from src.taskwarrior.config.config_store import ConfigStore
-            with pytest.raises(TaskValidationError) as exc_info:
+            with pytest.raises(TaskConfigurationError) as exc_info:
                 TaskWarriorAdapter(
                     config_store=ConfigStore("/tmp/test_taskrc"),
                     task_cmd="nonexistent_task_cmd",

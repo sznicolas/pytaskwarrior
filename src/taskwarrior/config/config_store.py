@@ -3,6 +3,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ..exceptions import TaskConfigurationError
+
 if TYPE_CHECKING:
     from ..dto.context_dto import ContextDTO
 
@@ -48,8 +50,15 @@ rc.bulk=0
         config: dict[str, str] = {}
         parser = configparser.ConfigParser()
         # Accept .taskrc files without section headers by adding a dummy section
-        with open(path, encoding="utf-8") as f:
-            lines = f.readlines()
+        try:
+            with open(path, encoding="utf-8") as f:
+                lines = f.readlines()
+        except FileNotFoundError as e:
+            raise TaskConfigurationError(f"Taskrc file not found: {path}") from e
+        except PermissionError as e:
+            raise TaskConfigurationError(f"Cannot read taskrc file (permission denied): {path}") from e
+        except OSError as e:
+            raise TaskConfigurationError(f"Failed to read taskrc file: {path}: {e}") from e
         # Only keep blank lines, comments, or lines containing '=' (key-value)
         filtered = [line for line in lines if line.strip() == "" or line.strip().startswith("#") or "=" in line]
         content = "[taskrc]\n" + "".join(filtered)
