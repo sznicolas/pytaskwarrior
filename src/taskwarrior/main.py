@@ -167,6 +167,9 @@ class TaskWarrior:
         Deleted and completed tasks are excluded by default; use
         *include_completed* / *include_deleted* to override.
 
+        If a context is active, its read_filter is applied in addition to the
+        provided filter (combined with AND).
+
         Args:
             filter: TaskWarrior filter expression.  Examples::
 
@@ -184,8 +187,25 @@ class TaskWarrior:
         Raises:
             TaskWarriorError: If the query fails.
         """
+        # Combine the user-provided filter with the active context's read_filter
+        combined_filter = filter or ""
+        try:
+            current_context = self.get_current_context()
+            if current_context:
+                contexts = self.context_service.get_contexts()
+                active = next((c for c in contexts if c.active or c.name == current_context), None)
+                if active and active.read_filter:
+                    ctx_read = active.read_filter.strip()
+                    if combined_filter.strip():
+                        combined_filter = f"{ctx_read} and ({combined_filter})"
+                    else:
+                        combined_filter = ctx_read
+        except Exception as e:
+            # Do not fail listing due to context lookup issues — log and proceed
+            logger.debug("Failed to apply context read_filter to get_tasks(): %s", e)
+
         return self.adapter.get_tasks(
-            filter=filter,
+            filter=combined_filter,
             include_completed=include_completed,
             include_deleted=include_deleted,
         )
