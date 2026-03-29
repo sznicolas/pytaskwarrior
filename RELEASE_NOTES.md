@@ -68,6 +68,12 @@ from taskwarrior import (
 - `ConfigStore._extract_taskrc_config` now raises `TaskConfigurationError` on file I/O errors
 - `parse_taskwarrior_date` fallback now raises `ValueError` with descriptive message
 
+### Behavior Fixes
+
+- `get_tasks()` now respects the active context's `read_filter`. When a context is applied,
+  its `read_filter` is combined with the user-provided filter using AND so task listings are
+  correctly scoped to the context (e.g. `project:work and (priority:H)`).
+
 ---
 
 ## Installation
