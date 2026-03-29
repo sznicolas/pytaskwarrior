@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All JSON parse errors now use `TaskWarriorError` instead of domain-specific exceptions
 - `synchronize()` is **no longer a no-op**: the façade now calls `self.adapter.synchronize()`,
   which in turn runs `task sync`. Raises `TaskSyncError` if sync is not configured or fails.
+- `get_tasks()` now respects the active context's `read_filter` — when a context is applied,
+  its `read_filter` is combined with the user-provided filter using AND so listings are scoped
+  correctly (e.g. `project:work and (priority:H)`).
 - Enhanced error coverage: all file I/O, JSON parsing, and subprocess operations now properly
   protected with appropriate exception handling.
 
