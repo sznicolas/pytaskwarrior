@@ -443,7 +443,7 @@ class TaskWarrior:
             >>> print(info["version"])
         """
         # Compose info from TaskWarrior instance, not adapter
-        info = {
+        info: dict[str, Any] = {
             "task_cmd": str(self.adapter.task_cmd),
             "taskrc_file": str(self.config_store.taskrc_path),
             "options": self.adapter.cli_options,
@@ -452,7 +452,7 @@ class TaskWarrior:
 
         # Add current context information (name and details) if available.
         current_context: str | None = None
-        current_context_details: dict | None = None
+        current_context_details: dict[str, Any] | None = None
         try:
             current_context = self.get_current_context()
             if current_context:
