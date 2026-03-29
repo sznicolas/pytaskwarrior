@@ -5,37 +5,30 @@ This module provides the low-level interface to TaskWarrior CLI commands.
 
 import json
 import logging
-import os
 import re
 import shlex
 import shutil
 import subprocess
 from pathlib import Path
-from typing import TypedDict
 from uuid import UUID
 
+from ..config.config_store import ConfigStore
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 from ..enums import TaskStatus
-from ..exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
+from ..exceptions import (
+    TaskConfigurationError,
+    TaskNotFound,
+    TaskOperationError,
+    TaskSyncError,
+    TaskValidationError,
+    TaskWarriorError,
+)
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OPTIONS = [
-    "rc.confirmation=off",
-    "rc.bulk=0",
-]
-
-
-class TaskWarriorInfo(TypedDict, total=False):
-    """Type definition for TaskWarrior configuration information."""
-
-    task_cmd: Path
-    taskrc_file: Path
-    options: list[str]
-    version: str
-
 
 class TaskWarriorAdapter:
+
     """Low-level adapter for TaskWarrior CLI commands.
 
     This class handles direct communication with the TaskWarrior binary,
@@ -44,65 +37,42 @@ class TaskWarriorAdapter:
 
     Attributes:
         task_cmd: Path to the TaskWarrior binary.
-        taskrc_file: Path to the taskrc configuration file.
-        data_location: Path to the task data directory.
     """
 
     def __init__(
         self,
+        config_store: ConfigStore,
         task_cmd: str = "task",
-        taskrc_file: str = "~/.taskrc",
-        data_location: str | None = None
     ):
         """Initialize the adapter.
 
         Args:
             task_cmd: TaskWarrior binary name or path.
-            taskrc_file: Path to taskrc file.
-            data_location: Path to data directory (optional).
+            config_store: The configuration store instance (required).
 
         Raises:
-            TaskValidationError: If TaskWarrior binary not found.
+            TaskConfigurationError: If TaskWarrior binary not found.
         """
-        self.task_cmd: Path = self._check_binary_path(task_cmd)
-        self._options: list[str] = []
-        self.taskrc_file = Path(os.path.expandvars(taskrc_file)).expanduser()
-        self._options.extend([f"rc:{self.taskrc_file}"])
-        if data_location:
-            self.data_location: Path | None = Path(os.path.expandvars(data_location)).expanduser()
-            self._options.extend([f"rc.data.location={self.data_location}"])
-        else:
-            self.data_location = None
-        self._check_or_create_taskfiles()
 
-        self._options.extend(DEFAULT_OPTIONS)
+        self.task_cmd: Path = self._check_binary_path(task_cmd)
+        self._cli_options: list[str] = config_store.cli_options
+        self._sync_configured: bool = bool(config_store.get_sync_config())
+
+    @property
+    def cli_options(self) -> list[str]:
+        """Public accessor for CLI options."""
+        return self._cli_options
 
     def _check_binary_path(self, task_cmd: str) -> Path:
         """Verify TaskWarrior binary exists in PATH."""
         resolved_path = shutil.which(task_cmd)
         if not resolved_path:
-            raise TaskValidationError(
-                f"TaskWarrior command '{task_cmd}' not found in PATH"
-            )
+            raise TaskConfigurationError(f"TaskWarrior command '{task_cmd}' not found in PATH")
         return Path(resolved_path)
 
-    def _check_or_create_taskfiles(self) -> None:
-        """Create taskrc and data directory if they don't exist."""
-        if not self.taskrc_file.exists():
-            default_content = """# Taskwarrior configuration file
-# This file was automatically created by pytaskwarrior
-# Default data location
-rc.data.location={data_location}
-# Disable confirmation prompts
-rc.confirmation=off
-rc.bulk=0
-""".format(data_location=self.data_location or "~/.task")
-            self.taskrc_file.parent.mkdir(parents=True, exist_ok=True)
-            self.taskrc_file.write_text(default_content)
-            logger.info(f"Created Taskrc file '{self.taskrc_file}'")
-        if self.data_location and not self.data_location.exists():
-            self.data_location.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Created Task data direcory '{self.data_location}'")
+    def is_sync_configured(self) -> bool:
+        """Return True if sync settings are present in taskrc (any ``sync.*`` key)."""
+        return self._sync_configured
 
     def run_task_command(
         self, args: list[str], no_opt: bool = False
@@ -119,7 +89,7 @@ rc.bulk=0
         cmd = [str(self.task_cmd)]
         # Options (rc:...) must come before command and filter arguments so they are applied properly.
         if not no_opt:
-            cmd.extend(self._options)
+            cmd.extend(self._cli_options)
         cmd.extend(args)
         logger.debug(f"Running command: {' '.join(cmd)}")
 
@@ -144,7 +114,29 @@ rc.bulk=0
 
         except (OSError, subprocess.SubprocessError) as e:
             logger.error(f"Exception while running '{cmd}': {e}")
-            raise
+            raise TaskWarriorError(f"Command execution failed: {e}") from e
+
+    def synchronize(self) -> None:
+        """Synchronize tasks by running ``task sync``.
+
+        Delegates to the TaskWarrior CLI's built-in sync command, which handles
+        both local (``sync.local.server_dir``) and remote (``sync.server.origin``)
+        synchronization based on the taskrc configuration.
+
+        Raises:
+            TaskSyncError: If no sync settings are configured, or if the sync
+                command exits with a non-zero return code.
+        """
+        if not self._sync_configured:
+            raise TaskSyncError(
+                "No sync server is configured. "
+                "Add sync.* settings to your taskrc (e.g. sync.local.server_dir)."
+            )
+        result = self.run_task_command(["sync"])
+        if result.returncode != 0:
+            raise TaskSyncError(
+                f"Synchronization failed: {result.stderr or result.stdout}"
+            )
 
     @staticmethod
     def _wrap_filter(f: str) -> str:
@@ -225,7 +217,7 @@ rc.bulk=0
             if not tasks:
                 error_msg = "Failed to retrieve added task"
                 logger.error(error_msg)
-                raise RuntimeError(error_msg)
+                raise TaskWarriorError(error_msg)
             added_task = tasks[0]
 
         if task.annotations:
@@ -235,9 +227,7 @@ rc.bulk=0
         logger.info(f"Successfully added task with UUID: {added_task.uuid}")
         return added_task
 
-    def modify_task(
-        self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID
-    ) -> TaskOutputDTO:
+    def modify_task(self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Modify an existing task. Returns the updated task."""
         logger.info(f"Modifying task with UUID: {task_id_or_uuid}")
 
@@ -247,15 +237,13 @@ rc.bulk=0
         if result.returncode != 0:
             error_msg = f"Failed to modify task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskValidationError(error_msg)
+            raise TaskWarriorError(error_msg)
 
         updated_task = self.get_task(task_id_or_uuid)
         logger.info(f"Successfully modified task with UUID: {task_id_or_uuid}")
         return updated_task
 
-    def get_task(
-        self, task_id_or_uuid: str | int | UUID, filter_args: str = ""
-    ) -> TaskOutputDTO:
+    def get_task(self, task_id_or_uuid: str | int | UUID, filter_args: str = "") -> TaskOutputDTO:
         """Retrieve a single task by ID or UUID."""
         task_id_or_uuid = str(task_id_or_uuid)
         logger.debug(f"Retrieving task with ID/UUID: {task_id_or_uuid}")
@@ -279,12 +267,12 @@ rc.bulk=0
                     )
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
-                raise TaskValidationError(
+                raise TaskWarriorError(
                     f"Invalid response from TaskWarrior: {result.stdout}"
                 ) from e
         else:
-            raise TaskWarriorError(
-                f"Error while retrieving task ID/UUID {task_id_or_uuid} not found"
+            raise TaskNotFound(
+                f"Task ID/UUID {task_id_or_uuid} not found"
             )
 
     def get_tasks(
@@ -342,17 +330,12 @@ rc.bulk=0
 
         try:
             tasks_data = json.loads(result.stdout)
-            tasks = [
-                TaskOutputDTO.model_validate(task_data) for task_data in tasks_data
-            ]
+            tasks = [TaskOutputDTO.model_validate(task_data) for task_data in tasks_data]
             logger.debug(f"Retrieved {len(tasks)} tasks")
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise TaskValidationError(
-                f"Invalid response from TaskWarrior: {result.stdout}"
-            ) from e
-
+            raise TaskWarriorError(f"Invalid response from TaskWarrior: {result.stdout}") from e
 
     def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Get the parent recurring task template."""
@@ -364,7 +347,13 @@ rc.bulk=0
         )
 
         if result.returncode == 0:
-            tasks_data = json.loads(result.stdout)
+            try:
+                tasks_data = json.loads(result.stdout)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {e}")
+                raise TaskWarriorError(
+                    f"Invalid response from TaskWarrior: {result.stdout}"
+                ) from e
             if tasks_data:
                 task = TaskOutputDTO.model_validate(tasks_data[0])
                 logger.debug(f"Successfully retrieved recurring task: {task.uuid}")
@@ -375,9 +364,7 @@ rc.bulk=0
         )
         return self.get_task(task_id_or_uuid)
 
-    def get_recurring_instances(
-        self, task_id_or_uuid: str | int | UUID
-    ) -> list[TaskOutputDTO]:
+    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task."""
         task_id_or_uuid = str(task_id_or_uuid)
         logger.debug(f"Getting recurring instances for parent UUID: {task_id_or_uuid}")
@@ -393,7 +380,7 @@ rc.bulk=0
                 return []
             error_msg = f"Failed to get recurring instances: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskWarriorError(error_msg)
 
         if not result.stdout.strip():
             logger.debug("No recurring instances returned (empty response)")
@@ -401,14 +388,12 @@ rc.bulk=0
 
         try:
             tasks_data = json.loads(result.stdout)
-            tasks = [
-                TaskOutputDTO.model_validate(task_data) for task_data in tasks_data
-            ]
+            tasks = [TaskOutputDTO.model_validate(task_data) for task_data in tasks_data]
             logger.debug(f"Retrieved {len(tasks)} recurring instances")
             return tasks
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON response: {e}")
-            raise TaskNotFound(f"Invalid response from TaskWarrior: {result.stdout}") from e
+            raise TaskWarriorError(f"Invalid response from TaskWarrior: {result.stdout}") from e
 
     def delete_task(self, task_id_or_uuid: str | int | UUID) -> None:
         """Mark a task as deleted."""
@@ -420,7 +405,7 @@ rc.bulk=0
         if result.returncode != 0:
             error_msg = f"Failed to delete task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully deleted task: {task_ref}")
 
@@ -434,7 +419,7 @@ rc.bulk=0
         if result.returncode != 0:
             error_msg = f"Failed to purge task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully purged task: {task_ref}")
 
@@ -448,7 +433,7 @@ rc.bulk=0
         if result.returncode != 0:
             error_msg = f"Failed to mark task as done: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully completed task: {task_ref}")
 
@@ -462,7 +447,7 @@ rc.bulk=0
         if result.returncode != 0:
             error_msg = f"Failed to start task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully started task: {task_ref}")
 
@@ -476,7 +461,7 @@ rc.bulk=0
         if result.returncode != 0:
             error_msg = f"Failed to stop task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully stopped task: {task_ref}")
 
@@ -491,25 +476,9 @@ rc.bulk=0
         if result.returncode != 0:
             error_msg = f"Failed to annotate task: {result.stderr}"
             logger.error(error_msg)
-            raise TaskNotFound(error_msg)
+            raise TaskOperationError(error_msg)
 
         logger.info(f"Successfully annotated task: {task_ref}")
-
-    def get_info(self) -> TaskWarriorInfo:
-        """Get TaskWarrior configuration and version info."""
-        info: TaskWarriorInfo = {
-            "task_cmd": self.task_cmd,
-            "taskrc_file": self.taskrc_file,
-            "options": self._options,
-        }
-
-        try:
-            version_result = self.run_task_command(["--version"], no_opt=True)
-            if version_result.returncode == 0 and version_result.stdout:
-                info["version"] = version_result.stdout.strip()
-        except Exception:
-            info["version"] = "unknown"
-        return info
 
     def task_calc(self, date_str: str) -> str:
         """Calculate a TaskWarrior date expression."""
@@ -534,6 +503,13 @@ rc.bulk=0
             return bool(re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", result.stdout.strip()))
         except subprocess.SubprocessError:
             return False
+
+    def get_version(self) -> str:
+        """Return the TaskWarrior CLI version as a string."""
+        version_result = self.run_task_command(["--version"], no_opt=True)
+        if version_result.returncode == 0 and version_result.stdout:
+            return version_result.stdout.strip()
+        return "unknown"
 
     def get_projects(self) -> list[str]:
         """Get all projects defined in TaskWarrior.

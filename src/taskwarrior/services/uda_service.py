@@ -3,9 +3,14 @@
 This module provides the UdaService class for managing custom task attributes.
 """
 
+from typing import TYPE_CHECKING
+
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.uda_dto import UdaConfig
 from ..registry.uda_registry import UdaRegistry
+
+if TYPE_CHECKING:
+    from ..config.config_store import ConfigStore
 
 
 class UdaService:
@@ -27,13 +32,16 @@ class UdaService:
             tw.uda_service.define_uda(uda)
     """
 
-    def __init__(self, adapter: TaskWarriorAdapter):
+    def __init__(self, adapter: TaskWarriorAdapter, config_store: 'ConfigStore') -> None:
         """Initialize the UDA service.
 
         Args:
             adapter: The TaskWarriorAdapter to use for CLI commands.
+            config_store: The configuration store instance (required).
         """
+
         self.adapter = adapter
+        self.config_store = config_store
         self.registry = UdaRegistry()
 
     def load_udas_from_taskrc(self) -> None:
@@ -42,7 +50,7 @@ class UdaService:
         Parses the taskrc file to discover and register any UDAs
         that have been previously defined.
         """
-        self.registry.load_from_taskrc(self.adapter.taskrc_file)
+        self.registry.load_from_taskrc(self.config_store._taskrc_path)
 
     def define_uda(self, uda: UdaConfig) -> None:
         """Define a new UDA in TaskWarrior.

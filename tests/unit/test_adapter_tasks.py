@@ -10,7 +10,7 @@ from src.taskwarrior.dto.task_dto import TaskInputDTO
 from src.taskwarrior.enums import Priority, RecurrencePeriod
 from src.taskwarrior.exceptions import (
     TaskNotFound,
-    TaskValidationError,
+    TaskWarriorError,
 )
 
 
@@ -20,13 +20,14 @@ class TestTaskWarriorAdapterTasks:
     @pytest.fixture
     def adapter(self, taskwarrior_config: str, taskwarrior_data: str):
         """Create a TaskWarriorAdapter instance for testing."""
-        return TaskWarriorAdapter(task_cmd="task", taskrc_file=taskwarrior_config, data_location=taskwarrior_data)
+        from src.taskwarrior.config.config_store import ConfigStore
+        return TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config), task_cmd="task")
 
     def test_task_management_errors(self, adapter: TaskWarriorAdapter):
         """Test task management error conditions."""
-        # Test modify_task with non-existent task
+        # Test modify_task with non-existent task — raises TaskWarriorError (not a validation issue)
         task = TaskInputDTO(description="Test task")
-        with pytest.raises(TaskValidationError):
+        with pytest.raises(TaskWarriorError):
             adapter.modify_task(task, "nonexistent-uuid")
 
         # Test get_recurring_task with non-existent task

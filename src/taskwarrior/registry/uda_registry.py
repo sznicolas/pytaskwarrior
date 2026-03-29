@@ -10,7 +10,7 @@ from pathlib import Path
 
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.uda_dto import UdaConfig, UdaType
-from ..exceptions import TaskWarriorError
+from ..exceptions import TaskConfigurationError, TaskWarriorError
 
 
 class UdaRegistry:
@@ -92,7 +92,7 @@ class UdaRegistry:
                     raise TaskWarriorError(f"Error while parsing {name}: {str(e)}") from e
 
         except FileNotFoundError as e:
-            raise TaskWarriorError(f"Taskrc file not found: {taskrc_file}") from e
+            raise TaskConfigurationError(f"Taskrc file not found: {taskrc_file}") from e
         except Exception as e:
             raise TaskWarriorError(f"Error reading taskrc: {str(e)}") from e
 

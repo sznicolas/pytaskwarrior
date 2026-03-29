@@ -5,6 +5,47 @@ All notable changes to pytaskwarrior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-28
+
+### Added
+
+- **`Context in get_info`** — TaskWarrior.get_info() now includes `current_context` and `current_context_details` (name, read_filter, write_filter, active).
+
+- **`TaskConfigurationError`** — new exception for environment and configuration errors:
+  binary not found in PATH, taskrc file missing or unreadable.
+- **`TaskOperationError`** — new exception for write-operation failures on existing tasks
+  (delete, purge, done, start, stop, annotate).
+- All six exceptions now **exported from the top-level package**:
+  `TaskWarriorError`, `TaskNotFound`, `TaskValidationError`, `TaskSyncError`,
+  `TaskConfigurationError`, `TaskOperationError`.
+- **`TaskWarrior.synchronize()`** now runs `task sync` via the CLI.
+  Both local (`sync.local.server_dir`) and remote (`sync.server.origin`) sync backends are
+  supported through TaskWarrior's built-in sync command.
+- `TaskWarrior.is_sync_configured()` returns `True` when any `sync.*` key is present in taskrc.
+
+### Changed
+
+- Exception hierarchy unified: 13 semantic fixes throughout the codebase ensure the right
+  exception is raised in the right context.
+  - `TaskValidationError` → `TaskConfigurationError` for binary not found / taskrc errors
+  - `TaskNotFound` → `TaskOperationError` for operation failures on existing tasks
+  - `OSError` / `subprocess.SubprocessError` → wrapped in `TaskWarriorError` to preserve exception contract
+  - All JSON parse errors now use `TaskWarriorError` instead of domain-specific exceptions
+- `synchronize()` is **no longer a no-op**: the façade now calls `self.adapter.synchronize()`,
+  which in turn runs `task sync`. Raises `TaskSyncError` if sync is not configured or fails.
+- `get_tasks()` now respects the active context's `read_filter` — when a context is applied,
+  its `read_filter` is combined with the user-provided filter using AND so listings are scoped
+  correctly (e.g. `project:work and (priority:H)`).
+- Enhanced error coverage: all file I/O, JSON parsing, and subprocess operations now properly
+  protected with appropriate exception handling.
+
+### Tests
+
+- `uv run pytest -q` (164 passed, 0 failed)
+- New `test_adapter_sync.py` validates sync behavior via `task sync` CLI.
+- Updated sync tests to reflect new implementation (CLI-based, no external dependencies).
+- `test_task_warrior_error_inheritance` extended to verify exception hierarchy.
+
 ## [1.1.1] - 2026‑03‑07
 ### Added
 - Automated publishing to PyPI via GitHub Actions (trusted publishing with OIDC).

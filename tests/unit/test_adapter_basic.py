@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
 
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
+from src.taskwarrior.config.config_store import ConfigStore
 from src.taskwarrior.dto.task_dto import TaskInputDTO
 from src.taskwarrior.enums import Priority, RecurrencePeriod
 from src.taskwarrior.exceptions import (
@@ -21,7 +21,11 @@ class TestTaskWarriorAdapterBasic:
     @pytest.fixture
     def adapter(self, taskwarrior_config: str):
         """Create a TaskWarriorAdapter instance for testing."""
-        return TaskWarriorAdapter(task_cmd="task", taskrc_file=taskwarrior_config)
+
+        return TaskWarriorAdapter(
+            config_store=ConfigStore(taskwarrior_config),
+            task_cmd="task",
+        )
 
     @pytest.fixture
     def sample_task(self):
@@ -37,6 +41,7 @@ class TestTaskWarriorAdapterBasic:
             until="2024-12-31T23:59:59Z",
             recur=RecurrencePeriod.WEEKLY,
         )
+
 
     def test_task_date_validator_edge_cases(self, adapter: TaskWarriorAdapter):
         """Test task_date_validator with edge cases."""
@@ -56,8 +61,8 @@ class TestTaskWarriorAdapterBasic:
         # ISO 8601 calculations
         assert adapter.task_calc("P1Y1M1DT1H1M1S + P2W") == "P410DT1H1M1S"
         assert adapter.task_calc(" P1Y - P52W - PT23H59M30S ") == "PT30S"
-#        # Should work according to ISO8601 but fails for now
-#        assert adapter.task_calc(" P1Y - P52W - PT23H59M30.5S ") == "PT30.5S"
+        #        # Should work according to ISO8601 but fails for now
+        #        assert adapter.task_calc(" P1Y - P52W - PT23H59M30.5S ") == "PT30.5S"
         # Bisextil year:
         assert adapter.task_calc("2028-02-27 + P2D") == "2028-02-29T00:00:00"
         # Mixes
@@ -69,9 +74,7 @@ class TestTaskWarriorAdapterBasic:
             assert adapter.task_calc("not_a_date")
             assert adapter.task_calc("tomorrow + P1D + not_a_date")
 
-    def test_build_args_all_fields(
-        self, adapter: TaskWarriorAdapter, sample_task: TaskInputDTO
-    ):
+    def test_build_args_all_fields(self, adapter: TaskWarriorAdapter, sample_task: TaskInputDTO):
         """Test _build_args with all fields populated."""
         args = adapter._build_args(sample_task)
         assert len(args) == 9
@@ -112,9 +115,7 @@ class TestTaskWarriorAdapterBasic:
     def test_add_task_validation_errors(self, adapter: TaskWarriorAdapter):
         """Test add_task validation errors."""
         # Test empty description
-        with pytest.raises(
-            TaskValidationError, match="Task description cannot be empty"
-        ):
+        with pytest.raises(TaskValidationError, match="Task description cannot be empty"):
             TaskInputDTO(description="")
 
         # Test invalid date format
@@ -125,11 +126,11 @@ class TestTaskWarriorAdapterBasic:
         ):
             adapter.add_task(task)
 
-    def test_modify_task_validation_errors(self, adapter: TaskWarriorAdapter):
-        """Test modify_task validation errors."""
-        # Test invalid date format
+    def test_modify_task_errors(self, adapter: TaskWarriorAdapter):
+        """Test modify_task error conditions."""
+        # Modifying a non-existent task ID raises TaskWarriorError
         task = TaskInputDTO(description="Test task", due="invalid_date")
-        with pytest.raises(TaskValidationError, match="No tasks specified."):
+        with pytest.raises(TaskWarriorError, match="No tasks specified."):
             adapter.modify_task(task, 999)
 
     def test_get_task_errors(self, adapter: TaskWarriorAdapter):
@@ -138,32 +139,6 @@ class TestTaskWarriorAdapterBasic:
         with pytest.raises(TaskNotFound):
             adapter.get_task("nonexistent-uuid")
 
-    def test_get_info_comprehensive(self, adapter: TaskWarriorAdapter):
-        """Test get_info with comprehensive information retrieval."""
-        info = adapter.get_info()
-
-        assert "task_cmd" in info
-        assert "taskrc_file" in info
-        assert "options" in info
-        assert "version" in info
-
-        # Verify types
-        assert isinstance(info["task_cmd"], Path)
-        assert isinstance(info["taskrc_file"], Path)
-        assert isinstance(info["options"], list)
-        assert isinstance(info["version"], str)
-
-    def test_get_info_with_custom_params(self, taskwarrior_config: str):
-        """Test get_info with custom parameters."""
-        adapter = TaskWarriorAdapter(
-            task_cmd="task", taskrc_file=taskwarrior_config, data_location="/tmp/test"
-        )
-
-        info = adapter.get_info()
-
-        assert "task" in str(info["task_cmd"])
-        assert info["taskrc_file"] == Path(taskwarrior_config)
-        assert "rc.data.location=/tmp/test" in adapter._options
 
     def test_complex_datetime_fields(self, adapter: TaskWarriorAdapter):
         """Test with complex datetime fields."""
@@ -206,9 +181,7 @@ class TestTaskWarriorAdapterBasic:
     def test_add_task_with_various_date_formats(self, adapter: TaskWarriorAdapter):
         """Test add_task with various date formats."""
         # Test with different valid date formats
-        task1 = TaskInputDTO(
-            description="Task with ISO date", due="2026-12-31T23:59:59Z"
-        )
+        task1 = TaskInputDTO(description="Task with ISO date", due="2026-12-31T23:59:59Z")
         result1 = adapter.add_task(task1)
         assert result1.due is not None
 

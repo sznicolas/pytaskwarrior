@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
-from src.taskwarrior.exceptions import TaskValidationError, TaskWarriorError
+from src.taskwarrior.exceptions import TaskConfigurationError, TaskValidationError, TaskWarriorError
 from src.taskwarrior.services.context_service import ContextService
 
 
@@ -19,12 +19,13 @@ class TestBinaryPathNotFound:
     """Test 1: Exception when 'task' binary is not found."""
 
     def test_binary_not_in_path_raises_error(self):
-        """TaskWarriorAdapter should raise TaskValidationError if task command not found."""
+        """TaskWarriorAdapter should raise TaskConfigurationError if task command not found."""
         with patch("shutil.which", return_value=None):
-            with pytest.raises(TaskValidationError) as exc_info:
+            from src.taskwarrior.config.config_store import ConfigStore
+            with pytest.raises(TaskConfigurationError) as exc_info:
                 TaskWarriorAdapter(
+                    config_store=ConfigStore("/tmp/test_taskrc"),
                     task_cmd="nonexistent_task_cmd",
-                    taskrc_file="/tmp/test_taskrc",
                 )
             assert "not found in PATH" in str(exc_info.value)
             assert "nonexistent_task_cmd" in str(exc_info.value)
@@ -33,7 +34,8 @@ class TestBinaryPathNotFound:
         """TaskWarriorAdapter should work when task command is found."""
         # This uses the real 'task' command if available
         try:
-            adapter = TaskWarriorAdapter(taskrc_file=taskwarrior_config)
+            from src.taskwarrior.config.config_store import ConfigStore
+            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
             assert adapter.task_cmd is not None
         except TaskValidationError:
             pytest.skip("TaskWarrior not installed")
@@ -45,11 +47,13 @@ class TestApplyContextCommandFailure:
     def test_apply_context_nonexistent_raises_error(self, taskwarrior_config: str):
         """apply_context should raise error for non-existent context."""
         try:
-            adapter = TaskWarriorAdapter(taskrc_file=taskwarrior_config)
+            from src.taskwarrior.config.config_store import ConfigStore
+            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
         except TaskValidationError:
             pytest.skip("TaskWarrior not installed")
 
-        service = ContextService(adapter)
+        from src.taskwarrior.config.config_store import ConfigStore
+        service = ContextService(adapter, ConfigStore(taskwarrior_config))
 
         # Trying to apply a context that doesn't exist should fail
         with pytest.raises(TaskWarriorError) as exc_info:
@@ -59,11 +63,13 @@ class TestApplyContextCommandFailure:
     def test_apply_context_empty_name_raises_error(self, taskwarrior_config: str):
         """apply_context should raise error for empty context name."""
         try:
-            adapter = TaskWarriorAdapter(taskrc_file=taskwarrior_config)
+            from src.taskwarrior.config.config_store import ConfigStore
+            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
         except TaskValidationError:
             pytest.skip("TaskWarrior not installed")
 
-        service = ContextService(adapter)
+        from src.taskwarrior.config.config_store import ConfigStore
+        service = ContextService(adapter, ConfigStore(taskwarrior_config))
 
         with pytest.raises(TaskWarriorError) as exc_info:
             service.apply_context("")
@@ -72,11 +78,13 @@ class TestApplyContextCommandFailure:
     def test_apply_context_whitespace_name_raises_error(self, taskwarrior_config: str):
         """apply_context should raise error for whitespace-only context name."""
         try:
-            adapter = TaskWarriorAdapter(taskrc_file=taskwarrior_config)
+            from src.taskwarrior.config.config_store import ConfigStore
+            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
         except TaskValidationError:
             pytest.skip("TaskWarrior not installed")
 
-        service = ContextService(adapter)
+        from src.taskwarrior.config.config_store import ConfigStore
+        service = ContextService(adapter, ConfigStore(taskwarrior_config))
 
         with pytest.raises(TaskWarriorError) as exc_info:
             service.apply_context("   ")
@@ -89,11 +97,13 @@ class TestHasContextReturnValue:
     def test_has_context_returns_false_for_nonexistent(self, taskwarrior_config: str):
         """has_context should return False for non-existent context."""
         try:
-            adapter = TaskWarriorAdapter(taskrc_file=taskwarrior_config)
+            from src.taskwarrior.config.config_store import ConfigStore
+            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
         except TaskValidationError:
             pytest.skip("TaskWarrior not installed")
 
-        service = ContextService(adapter)
+        from src.taskwarrior.config.config_store import ConfigStore
+        service = ContextService(adapter, ConfigStore(taskwarrior_config))
         result = service.has_context("definitely_not_a_real_context")
 
         assert result is False
@@ -102,11 +112,13 @@ class TestHasContextReturnValue:
     def test_has_context_returns_true_for_existing(self, taskwarrior_config: str):
         """has_context should return True for existing context."""
         try:
-            adapter = TaskWarriorAdapter(taskrc_file=taskwarrior_config)
+            from src.taskwarrior.config.config_store import ConfigStore
+            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
         except TaskValidationError:
             pytest.skip("TaskWarrior not installed")
 
-        service = ContextService(adapter)
+        from src.taskwarrior.config.config_store import ConfigStore
+        service = ContextService(adapter, ConfigStore(taskwarrior_config))
 
         # Define a context first
         service.define_context("test_ctx", read_filter="+test", write_filter="+test")
@@ -118,12 +130,13 @@ class TestHasContextReturnValue:
         # Cleanup
         service.delete_context("test_ctx")
 
-    def test_has_context_handles_exception_gracefully(self):
+    def test_has_context_handles_exception_gracefully(self, taskwarrior_config: str):
         """has_context should return False when get_contexts fails."""
         mock_adapter = MagicMock()
         mock_adapter.run_task_command.side_effect = Exception("Simulated failure")
 
-        service = ContextService(mock_adapter)
+        from src.taskwarrior.config.config_store import ConfigStore
+        service = ContextService(mock_adapter, ConfigStore(taskwarrior_config))
         result = service.has_context("any_context")
 
         assert result is False
@@ -146,10 +159,9 @@ class TestTaskrcFileCreation:
         ):
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
-            TaskWarriorAdapter(
-                taskrc_file=str(taskrc_path),
-                data_location=str(data_path),
-            )
+            from src.taskwarrior.config.config_store import ConfigStore
+            config_store = ConfigStore(str(taskrc_path), data_location=str(data_path))
+            TaskWarriorAdapter(config_store=config_store, task_cmd="task")
 
             # Verify taskrc was created
             assert taskrc_path.exists()
@@ -170,10 +182,9 @@ class TestTaskrcFileCreation:
         ):
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
-            TaskWarriorAdapter(
-                taskrc_file=str(taskrc_path),
-                data_location=str(data_path),
-            )
+            from src.taskwarrior.config.config_store import ConfigStore
+            config_store = ConfigStore(str(taskrc_path), data_location=str(data_path))
+            TaskWarriorAdapter(config_store=config_store, task_cmd="task")
 
             # Verify data directory was created
             assert data_path.exists()
@@ -191,7 +202,8 @@ class TestTaskrcFileCreation:
         ):
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
-            TaskWarriorAdapter(taskrc_file=str(taskrc_path))
+            from src.taskwarrior.config.config_store import ConfigStore
+            TaskWarriorAdapter(config_store=ConfigStore(str(taskrc_path)), task_cmd="task")
 
             # Verify original content preserved
             assert taskrc_path.read_text() == original_content

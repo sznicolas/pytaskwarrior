@@ -41,6 +41,9 @@ def parse_taskwarrior_date(value: str) -> datetime:
             # Try standard parsing
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
-        # If parsing fails, try to parse as ISO format
-        return datetime.fromisoformat(value)
+        # If parsing fails, try without timezone suffix
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError as e:
+            raise ValueError(f"Cannot parse TaskWarrior date: {value!r}") from e
 

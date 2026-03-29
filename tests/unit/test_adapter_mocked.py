@@ -16,7 +16,11 @@ import pytest
 
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from src.taskwarrior.dto.task_dto import TaskInputDTO
-from src.taskwarrior.exceptions import TaskNotFound, TaskValidationError, TaskWarriorError
+from src.taskwarrior.exceptions import (
+    TaskOperationError,
+    TaskValidationError,
+    TaskWarriorError,
+)
 from src.taskwarrior.utils.conversions import parse_taskwarrior_date
 
 # ---------------------------------------------------------------------------
@@ -49,9 +53,10 @@ def adapter(tmp_path: Path) -> TaskWarriorAdapter:
     """Adapter instance with mocked binary check and file creation."""
     config = tmp_path / ".taskrc"
     config.write_text(f"data.location={tmp_path / 'task'}\n")
+    from src.taskwarrior.config.config_store import ConfigStore
     with patch("shutil.which", return_value="/usr/bin/task"), \
-         patch.object(TaskWarriorAdapter, "_check_or_create_taskfiles"):
-        return TaskWarriorAdapter(task_cmd="task", taskrc_file=str(config))
+         patch.object(ConfigStore, "_check_or_create_taskfiles"):
+        return TaskWarriorAdapter(config_store=ConfigStore(str(config)), task_cmd="task")
 
 
 # ---------------------------------------------------------------------------
@@ -59,14 +64,14 @@ def adapter(tmp_path: Path) -> TaskWarriorAdapter:
 # ---------------------------------------------------------------------------
 
 class TestRunTaskCommand:
-    def test_oserror_is_reraised(self, adapter: TaskWarriorAdapter) -> None:
+    def test_oserror_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch("subprocess.run", side_effect=OSError("no such file")):
-            with pytest.raises(OSError):
+            with pytest.raises(TaskWarriorError, match="Command execution failed"):
                 adapter.run_task_command(["info"])
 
-    def test_timeout_is_reraised(self, adapter: TaskWarriorAdapter) -> None:
+    def test_timeout_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("task", 30)):
-            with pytest.raises(subprocess.SubprocessError):
+            with pytest.raises(TaskWarriorError, match="Command execution failed"):
                 adapter.run_task_command(["info"])
 
     def test_nonzero_returncode_does_not_raise(self, adapter: TaskWarriorAdapter) -> None:
@@ -94,12 +99,12 @@ class TestAddTask:
             task = adapter.add_task(TaskInputDTO(description="Test"))
         assert task.description == "Test task"
 
-    def test_fallback_empty_list_raises_runtime_error(self, adapter: TaskWarriorAdapter) -> None:
+    def test_fallback_empty_list_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         add_result = _completed(stdout="no id here", returncode=0)
         empty_result = _completed(stdout="[]", returncode=0)
 
         with patch.object(adapter, "run_task_command", side_effect=[add_result, empty_result]):
-            with pytest.raises(RuntimeError, match="Failed to retrieve added task"):
+            with pytest.raises(TaskWarriorError, match="Failed to retrieve added task"):
                 adapter.add_task(TaskInputDTO(description="Test"))
 
     def test_annotations_added_after_creation(self, adapter: TaskWarriorAdapter) -> None:
@@ -123,9 +128,9 @@ class TestGetTask:
             with pytest.raises(TaskWarriorError):
                 adapter.get_task(1)
 
-    def test_json_decode_error_raises_validation_error(self, adapter: TaskWarriorAdapter) -> None:
+    def test_json_decode_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch.object(adapter, "run_task_command", return_value=_completed(stdout="not json", returncode=0)):
-            with pytest.raises(TaskValidationError, match="Invalid response"):
+            with pytest.raises(TaskWarriorError, match="Invalid response"):
                 adapter.get_task(1)
 
     def test_multiple_tasks_returned_raises(self, adapter: TaskWarriorAdapter) -> None:
@@ -148,9 +153,9 @@ class TestGetTasks:
             with pytest.raises(TaskWarriorError, match="Failed to get tasks"):
                 adapter.get_tasks()
 
-    def test_json_decode_error_raises_validation_error(self, adapter: TaskWarriorAdapter) -> None:
+    def test_json_decode_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch.object(adapter, "run_task_command", return_value=_completed(stdout="bad", returncode=0)):
-            with pytest.raises(TaskValidationError, match="Invalid response"):
+            with pytest.raises(TaskWarriorError, match="Invalid response"):
                 adapter.get_tasks()
 
 
@@ -164,10 +169,10 @@ class TestGetRecurringInstances:
                           return_value=_completed(returncode=1, stderr="No matches.")):
             assert adapter.get_recurring_instances("abc") == []
 
-    def test_other_error_raises_task_not_found(self, adapter: TaskWarriorAdapter) -> None:
+    def test_other_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch.object(adapter, "run_task_command",
                           return_value=_completed(returncode=1, stderr="Something else failed")):
-            with pytest.raises(TaskNotFound):
+            with pytest.raises(TaskWarriorError):
                 adapter.get_recurring_instances("abc")
 
     def test_empty_stdout_returns_empty(self, adapter: TaskWarriorAdapter) -> None:
@@ -175,10 +180,10 @@ class TestGetRecurringInstances:
                           return_value=_completed(stdout="   ", returncode=0)):
             assert adapter.get_recurring_instances("abc") == []
 
-    def test_json_decode_error_raises_task_not_found(self, adapter: TaskWarriorAdapter) -> None:
+    def test_json_decode_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
         with patch.object(adapter, "run_task_command",
                           return_value=_completed(stdout="not json", returncode=0)):
-            with pytest.raises(TaskNotFound, match="Invalid response"):
+            with pytest.raises(TaskWarriorError, match="Invalid response"):
                 adapter.get_recurring_instances("abc")
 
 
@@ -195,12 +200,12 @@ class TestTaskStateErrors:
         ("stop_task", {"task_id_or_uuid": "123"}),
         ("annotate_task", {"task_id_or_uuid": "123", "annotation": "note"}),
     ])
-    def test_nonzero_returncode_raises_task_not_found(
+    def test_nonzero_returncode_raises_task_operation_error(
         self, adapter: TaskWarriorAdapter, method: str, kwargs: dict
     ) -> None:
         with patch.object(adapter, "run_task_command",
                           return_value=_completed(returncode=1, stderr="error")):
-            with pytest.raises(TaskNotFound):
+            with pytest.raises(TaskOperationError):
                 getattr(adapter, method)(**kwargs)
 
 
@@ -210,14 +215,18 @@ class TestTaskStateErrors:
 
 class TestGetInfo:
     def test_version_unknown_when_command_raises(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command", side_effect=OSError("fail")):
-            info = adapter.get_info()
-        assert info["version"] == "unknown"
+        from src.taskwarrior.main import TaskWarrior
+        tw = TaskWarrior(task_cmd="task")
+        with patch.object(tw.adapter, "run_task_command", side_effect=OSError("fail")):
+            with pytest.raises(OSError, match="fail"):
+                tw.get_info()
 
     def test_version_populated_when_command_succeeds(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
+        from src.taskwarrior.main import TaskWarrior
+        tw = TaskWarrior(task_cmd="task")
+        with patch.object(tw.adapter, "run_task_command",
                           return_value=_completed(stdout="3.4.0\n", returncode=0)):
-            info = adapter.get_info()
+            info = tw.get_info()
         assert info["version"] == "3.4.0"
 
 
@@ -281,6 +290,52 @@ class TestGetProjects:
                           return_value=_completed(stdout="work\npersonal\n", returncode=0)):
             assert adapter.get_projects() == ["work", "personal"]
 
+
+# ---------------------------------------------------------------------------
+# synchronize / is_sync_configured — sync logic
+# ---------------------------------------------------------------------------
+
+# class TestSync:
+#     def test_is_sync_configured_false_when_no_taskrc(self, tmp_path):
+#         config = tmp_path / ".taskrc"
+#         # Do not create the file (simulate empty taskrc)
+#         from src.taskwarrior.config.config_store import ConfigStore
+#         config.write_text("")
+#         with patch("shutil.which", return_value="/usr/bin/task"):
+#             adapter = TaskWarriorAdapter(config_store=ConfigStore(str(config)), task_cmd="task")
+#             # Adapter doesn't set _sync automatically due to refactor; ensure attribute exists
+#             adapter._sync = None
+#             assert adapter.is_sync_configured() is False
+#
+#     def test_is_sync_configured_true_with_sync_vars(self, tmp_path):
+#         config = tmp_path / ".taskrc"
+#         config.write_text("sync.local.server_dir=/tmp/syncdir\n")
+#         from src.taskwarrior.config.config_store import ConfigStore
+#         with patch("shutil.which", return_value="/usr/bin/task"):
+#             adapter = TaskWarriorAdapter(config_store=ConfigStore(str(config)), task_cmd="task")
+#             # Adapter doesn't set _sync automatically due to refactor; simulate configured sync
+#             adapter._sync = object()
+#             assert adapter.is_sync_configured() is True
+#
+#     def test_synchronize_success(self, adapter):
+#         from src.taskwarrior.sync_backends.sync_protocol import SyncProtocol
+# # Pass a mock SyncProtocol to the adapter
+#         class MockSync:
+#             def synchronize(self):
+#                 self.called = True
+#         mock_sync = MockSync()
+#         adapter._sync = mock_sync
+#         adapter.synchronize()
+#         assert hasattr(mock_sync, 'called')
+#
+#     def test_synchronize_raises_on_error(self, adapter):
+#         from src.taskwarrior.exceptions import TaskSyncError
+#         class MockSync:
+#             def synchronize(self):
+#                 raise Exception("sync error")
+#         adapter._sync = MockSync()
+#         with pytest.raises(TaskSyncError, match="SyncProtocol synchronization failed: sync error"):
+#             adapter.synchronize()
 
 # ---------------------------------------------------------------------------
 # conversions.py — fallback date parsing (lines 43-45)

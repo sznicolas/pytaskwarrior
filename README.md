@@ -9,17 +9,17 @@
 
 A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the command-line task management tool.
 
-**v1.1.1**: Production-ready with 132 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, and PEP 561 type hints for IDE support.
+**v1.2.0**: Production-ready with 164 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, PEP 561 type hints for IDE support, and a consistent exception hierarchy.
 
 ## Features
 
-- ✅ **Full CRUD operations** - Create, read, update, delete tasks
-- ✅ **Type-safe** - Pydantic models with full type hints
-- ✅ **Context management** - Define, apply, and switch contexts
-- ✅ **UDA support** - User Defined Attributes
-- ✅ **Recurring tasks** - Full recurrence support
-- ✅ **Annotations** - Add notes to tasks
-- ✅ **Date calculations** - Use TaskWarrior's date expressions
+- **Full CRUD operations** - Create, read, update, delete tasks
+- **Type-safe** - Pydantic models with full type hints
+- **Context management** - Define, apply, and switch contexts
+- **UDA support** - User Defined Attributes
+- **Recurring tasks** - Full recurrence support
+- **Annotations** - Add notes to tasks
+- **Date calculations** - Use TaskWarrior's date expressions
 
 ## Requirements
 
@@ -31,7 +31,7 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the co
 ## Installation
 
 ```bash
-pip install pytaskwarrior==1.0.0
+pip install pytaskwarrior==1.2.0
 ```
 
 Or install from source:
@@ -139,6 +139,37 @@ tw = TaskWarrior(
 | `get_current_context()` | Get active context name |
 | `delete_context(name)` | Remove a context |
 | `has_context(name)` | Check if context exists |
+
+#### Synchronization Operations
+
+| Method | Description |
+|--------|-------------|
+| `is_sync_configured()` | Return `True` if any `sync.*` key is present in taskrc. |
+| `synchronize()` | Run `task sync`; raises `TaskSyncError` if not configured or sync fails. |
+
+### Exceptions
+
+All exceptions inherit from `TaskWarriorError` and are importable from the top-level package:
+
+```python
+from taskwarrior import (
+    TaskWarriorError,        # Base class — catch all library errors
+    TaskNotFound,            # Task does not exist
+    TaskValidationError,     # Invalid input data (empty description, etc.)
+    TaskOperationError,      # Operation failed on an existing task
+    TaskConfigurationError,  # Environment issue (binary not found, taskrc missing)
+    TaskSyncError,           # Synchronization failure
+)
+```
+
+| Exception | Raised when |
+|-----------|-------------|
+| `TaskWarriorError` | Base class; catch-all for any library error |
+| `TaskNotFound` | The requested task does not exist |
+| `TaskValidationError` | Input data is invalid (e.g., empty description) |
+| `TaskOperationError` | A write operation failed on an existing task (delete, done, start…) |
+| `TaskConfigurationError` | Environment error (binary not in PATH, taskrc missing/unreadable) |
+| `TaskSyncError` | Sync backend not configured or synchronization failed |
 
 ### Data Models
 
@@ -340,4 +371,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [TaskWarrior](https://taskwarrior.org/) - The underlying task management tool
 - [GitHub Repository](https://github.com/sznicolas/pytaskwarrior/)
 - [PyPI Package](https://pypi.org/project/pytaskwarrior/)
-

@@ -306,7 +306,10 @@ def test_task_output_dto_validation_edge_cases():
 def test_task_warrior_error_inheritance():
     """Test TaskWarriorError inheritance."""
     from src.taskwarrior.exceptions import (
+        TaskConfigurationError,
         TaskNotFound,
+        TaskOperationError,
+        TaskSyncError,
         TaskValidationError,
         TaskWarriorError,
     )
@@ -314,6 +317,9 @@ def test_task_warrior_error_inheritance():
     # Test that all exceptions inherit from TaskWarriorError
     assert issubclass(TaskNotFound, TaskWarriorError)
     assert issubclass(TaskValidationError, TaskWarriorError)
+    assert issubclass(TaskSyncError, TaskWarriorError)
+    assert issubclass(TaskConfigurationError, TaskWarriorError)
+    assert issubclass(TaskOperationError, TaskWarriorError)
 
 
 def test_exception_messages():

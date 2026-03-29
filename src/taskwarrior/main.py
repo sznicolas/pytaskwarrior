@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 from uuid import UUID
 
-from .adapters.taskwarrior_adapter import TaskWarriorAdapter, TaskWarriorInfo
+from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.uda_dto import UdaConfig
@@ -69,22 +70,26 @@ class TaskWarrior:
             task_cmd: Path or name of the TaskWarrior binary. Defaults to "task".
             taskrc_file: Path to the taskrc configuration file. If None, uses
                 the TASKRC environment variable or defaults to ~/.taskrc.
-            data_location: Path to the task data directory. If None, uses
-                the TASKDATA environment variable or the value in taskrc.
+            data_location: Optional path to TaskWarrior data directory. If None,
+                TASKDATA environment variable or taskrc value will be used.
 
         Raises:
-            TaskValidationError: If the TaskWarrior binary is not found.
+            TaskConfigurationError: If the TaskWarrior binary is not found.
         """
         if taskrc_file is None:
             taskrc_file = os.environ.get("TASKRC", "$HOME/.taskrc")
-        if data_location is None:
-            data_location = os.environ.get("TASKDATA")
 
+        if data_location is None:
+            data_location = os.environ.get("TASKDATA", None)
+
+        from .config.config_store import ConfigStore
+
+        self.config_store = ConfigStore(taskrc_file, data_location)
         self.adapter: TaskWarriorAdapter = TaskWarriorAdapter(
-            task_cmd=task_cmd, taskrc_file=taskrc_file, data_location=data_location
+            task_cmd=task_cmd, config_store=self.config_store
         )
-        self.context_service: ContextService = ContextService(self.adapter)
-        self.uda_service: UdaService = UdaService(self.adapter)
+        self.context_service: ContextService = ContextService(self.adapter, self.config_store)
+        self.uda_service: UdaService = UdaService(self.adapter, self.config_store)
 
         # Auto-load UDA definitions from taskrc
         self.uda_service.load_udas_from_taskrc()
@@ -108,9 +113,7 @@ class TaskWarrior:
         """
         return self.adapter.add_task(task)
 
-    def modify_task(
-        self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID
-    ) -> TaskOutputDTO:
+    def modify_task(self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
         """Modify an existing task.
 
         Args:
@@ -163,6 +166,9 @@ class TaskWarrior:
         Deleted and completed tasks are excluded by default; use
         *include_completed* / *include_deleted* to override.
 
+        If a context is active, its read_filter is applied in addition to the
+        provided filter (combined with AND).
+
         Args:
             filter: TaskWarrior filter expression.  Examples::
 
@@ -180,8 +186,25 @@ class TaskWarrior:
         Raises:
             TaskWarriorError: If the query fails.
         """
+        # Combine the user-provided filter with the active context's read_filter
+        combined_filter = filter or ""
+        try:
+            current_context = self.get_current_context()
+            if current_context:
+                contexts = self.context_service.get_contexts()
+                active = next((c for c in contexts if c.active or c.name == current_context), None)
+                if active and active.read_filter:
+                    ctx_read = active.read_filter.strip()
+                    if combined_filter.strip():
+                        combined_filter = f"{ctx_read} and ({combined_filter})"
+                    else:
+                        combined_filter = ctx_read
+        except Exception as e:
+            # Do not fail listing due to context lookup issues — log and proceed
+            logger.debug("Failed to apply context read_filter to get_tasks(): %s", e)
+
         return self.adapter.get_tasks(
-            filter=filter,
+            filter=combined_filter,
             include_completed=include_completed,
             include_deleted=include_deleted,
         )
@@ -200,9 +223,7 @@ class TaskWarrior:
         """
         return self.adapter.get_recurring_task(task_id_or_uuid)
 
-    def get_recurring_instances(
-        self, task_id_or_uuid: str | int | UUID
-    ) -> list[TaskOutputDTO]:
+    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task.
 
         Args:
@@ -225,7 +246,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to delete.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task already deleted).
         """
         self.adapter.delete_task(task_id_or_uuid)
 
@@ -238,7 +259,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to purge.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task was not deleted first).
         """
         self.adapter.purge_task(task_id_or_uuid)
 
@@ -249,7 +270,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to complete.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task is already completed).
 
         Example:
             >>> tw.done_task(1)
@@ -266,7 +287,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to start.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task is already started).
         """
         self.adapter.start_task(task_id_or_uuid)
 
@@ -279,7 +300,7 @@ class TaskWarrior:
             task_id_or_uuid: The task ID or UUID to stop.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task was not started).
         """
         self.adapter.stop_task(task_id_or_uuid)
 
@@ -293,7 +314,7 @@ class TaskWarrior:
             annotation: The annotation text to add.
 
         Raises:
-            TaskNotFound: If the task doesn't exist.
+            TaskOperationError: If the operation fails (e.g., task not found).
 
         Example:
             >>> tw.annotate_task(1, "Discussed with team, need more info")
@@ -390,18 +411,72 @@ class TaskWarrior:
         """
         return self.context_service.has_context(context)
 
-    def get_info(self) -> TaskWarriorInfo:
+    def is_sync_configured(self) -> bool:
+        """Return True if synchronization is configured for this TaskWarrior instance."""
+        return self.adapter.is_sync_configured()
+
+    def synchronize(self) -> None:
+        """Run TaskWarrior synchronization via ``task sync``.
+
+        Delegates to the TaskWarrior CLI's built-in sync command. Synchronization
+        settings (server address, credentials, or local path) must be configured
+        in the taskrc file before calling this method.
+
+        Raises:
+            TaskSyncError: If no sync backend is configured or synchronization fails.
+
+        Example:
+            >>> tw = TaskWarrior(taskrc_file="/path/to/.taskrc")
+            >>> tw.synchronize()  # requires sync.* settings in taskrc
+        """
+        self.adapter.synchronize()
+
+    def get_info(self) -> dict[str, Any]:
         """Get comprehensive TaskWarrior configuration information.
 
         Returns:
             Dictionary containing task_cmd path, taskrc_file path,
-            options, and TaskWarrior version.
+            options, TaskWarrior version, and active context information.
 
         Example:
             >>> info = tw.get_info()
             >>> print(info["version"])
         """
-        return self.adapter.get_info()
+        # Compose info from TaskWarrior instance, not adapter
+        info: dict[str, Any] = {
+            "task_cmd": str(self.adapter.task_cmd),
+            "taskrc_file": str(self.config_store.taskrc_path),
+            "options": self.adapter.cli_options,
+            "version": self.adapter.get_version(),
+        }
+
+        # Add current context information (name and details) if available.
+        current_context: str | None = None
+        current_context_details: dict[str, Any] | None = None
+        try:
+            current_context = self.get_current_context()
+            if current_context:
+                contexts = self.context_service.get_contexts()
+                active = next((c for c in contexts if c.active or c.name == current_context), None)
+                if active:
+                    current_context_details = {
+                        "name": active.name,
+                        "read_filter": active.read_filter,
+                        "write_filter": active.write_filter,
+                        "active": active.active,
+                    }
+        except Exception as e:
+            # Do not fail get_info() for context lookup issues — log and return None fields
+            logger.debug("Failed to retrieve current context for get_info(): %s", e)
+            current_context = None
+            current_context_details = None
+
+        info.update({
+            "current_context": current_context,
+            "current_context_details": current_context_details,
+        })
+
+        return info
 
     def task_calc(self, date_str: str) -> str:
         """Calculate a TaskWarrior date expression.
