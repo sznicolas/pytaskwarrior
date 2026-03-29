@@ -13,13 +13,13 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the co
 
 ## Features
 
-- ✅ **Full CRUD operations** - Create, read, update, delete tasks
-- ✅ **Type-safe** - Pydantic models with full type hints
-- ✅ **Context management** - Define, apply, and switch contexts
-- ✅ **UDA support** - User Defined Attributes
-- ✅ **Recurring tasks** - Full recurrence support
-- ✅ **Annotations** - Add notes to tasks
-- ✅ **Date calculations** - Use TaskWarrior's date expressions
+- **Full CRUD operations** - Create, read, update, delete tasks
+- **Type-safe** - Pydantic models with full type hints
+- **Context management** - Define, apply, and switch contexts
+- **UDA support** - User Defined Attributes
+- **Recurring tasks** - Full recurrence support
+- **Annotations** - Add notes to tasks
+- **Date calculations** - Use TaskWarrior's date expressions
 
 ## Requirements
 

@@ -13,12 +13,12 @@ Production-ready with 164 tests (96% coverage), strict type checking, and profes
 
 ## Features
 
-- ✅ Full CRUD operations for tasks
-- ✅ Type-safe with Pydantic models
-- ✅ Context management
-- ✅ UDA (User Defined Attributes) support
-- ✅ Recurring tasks and annotations
-- ✅ Consistent exception hierarchy (`TaskNotFound`, `TaskValidationError`, `TaskOperationError`, `TaskConfigurationError`, …)
+-  Full CRUD operations for tasks
+-  Type-safe with Pydantic models
+-  Context management
+-  UDA (User Defined Attributes) support
+-  Recurring tasks and annotations
+-  Consistent exception hierarchy (`TaskNotFound`, `TaskValidationError`, `TaskOperationError`, `TaskConfigurationError`, …)
 
 ## Requirements
 
