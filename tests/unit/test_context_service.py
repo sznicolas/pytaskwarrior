@@ -1,8 +1,8 @@
 import pytest
 
+from src.taskwarrior.dto.context_dto import ContextDTO
 from taskwarrior.exceptions import TaskValidationError, TaskWarriorError
 from taskwarrior.services.context_service import ContextService
-from src.taskwarrior.dto.context_dto import ContextDTO
 
 
 class DummyResult:

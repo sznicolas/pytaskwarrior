@@ -6,7 +6,7 @@ This example is isolated from the user's TaskWarrior configuration. It uses the 
 
 import os
 
-from taskwarrior import Priority, TaskInputDTO, TaskWarrior
+from taskwarrior import ContextDTO, Priority, TaskInputDTO, TaskWarrior
 
 # Initialize TaskWarrior with local config using example-local files
 base_dir = os.path.dirname(__file__)

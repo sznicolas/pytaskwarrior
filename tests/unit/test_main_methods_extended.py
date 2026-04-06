@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-from taskwarrior.main import TaskWarrior
 from src.taskwarrior.dto.context_dto import ContextDTO
+from taskwarrior.main import TaskWarrior
 
 
 def test_context_delegation_methods_invoked():

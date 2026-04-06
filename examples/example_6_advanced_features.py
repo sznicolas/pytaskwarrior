@@ -148,7 +148,7 @@ if uda_names:
         uda_config = tw.get_uda_config(uda_name)
         if uda_config:
             print(f"\nUDA '{uda_name}':")
-            print(f"  Type: {uda_config.type}")
+            print(f"  Type: {uda_config.uda_type}")
             print(f"  Label: {uda_config.label}")
             if hasattr(uda_config, 'values') and uda_config.values:
                 print(f"  Values: {uda_config.values}")

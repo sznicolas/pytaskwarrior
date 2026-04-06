@@ -11,9 +11,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
+from src.taskwarrior.dto.context_dto import ContextDTO
 from src.taskwarrior.exceptions import TaskConfigurationError, TaskValidationError, TaskWarriorError
 from src.taskwarrior.services.context_service import ContextService
-from src.taskwarrior.dto.context_dto import ContextDTO
 
 
 class TestBinaryPathNotFound:
