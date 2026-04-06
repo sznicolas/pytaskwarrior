@@ -322,7 +322,7 @@ class TaskWarrior:
         """
         self.adapter.annotate_task(task_id_or_uuid, annotation)
 
-    def define_context(self, context) -> None:
+    def define_context(self, context: ContextDTO) -> None:
         """Define a new context from a ContextDTO.
 
         The context argument must be a ContextDTO instance containing
