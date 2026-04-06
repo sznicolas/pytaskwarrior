@@ -20,8 +20,8 @@ options = " ".join(info["options"])
 print(f"Use the task CLI with the same resources: {task_cmd} {options} <command>")
 
 # Define contexts
-tw.define_context("work", read_filter="project:work", write_filter="project:work")
-tw.define_context("personal", read_filter="project:personal", write_filter="project:personal")
+tw.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
+tw.define_context(ContextDTO(name="personal", read_filter="project:personal", write_filter="project:personal"))
 
 # Apply work context
 tw.apply_context("work")

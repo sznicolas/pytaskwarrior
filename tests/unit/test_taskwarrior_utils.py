@@ -53,7 +53,7 @@ class TestTaskWarriorUdaMethods:
         # Define a UDA
         uda = UdaConfig(
             name="test_severity",
-            type=UdaType.STRING,
+            uda_type=UdaType.STRING,
             label="Severity Level",
             values=["low", "medium", "high"],
         )
@@ -66,7 +66,7 @@ class TestTaskWarriorUdaMethods:
 
         config = tw.get_uda_config("test_severity")
         assert config is not None
-        assert config.type == UdaType.STRING
+        assert config.uda_type == UdaType.STRING
         assert config.label == "Severity Level"
 
         # Cleanup
@@ -87,5 +87,5 @@ class TestTaskWarriorUdaMethods:
 
         config = tw.get_uda_config("auto_test")
         assert config is not None
-        assert config.type == UdaType.STRING
+        assert config.uda_type == UdaType.STRING
         assert config.label == "Auto Test"

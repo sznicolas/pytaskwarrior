@@ -7,11 +7,13 @@ from ..exceptions import TaskConfigurationError
 
 if TYPE_CHECKING:
     from ..dto.context_dto import ContextDTO
+    from ..dto.uda_dto import UdaConfig
 
 DEFAULT_OPTIONS = [
     "rc.confirmation=off",
     "rc.bulk=0",
 ]
+
 
 class ConfigStore:
     """
@@ -20,7 +22,9 @@ class ConfigStore:
 
     def __init__(self, taskrc_path: str, data_location: str | None = None) -> None:
         self._taskrc_path: Path = Path(os.path.expandvars(taskrc_path)).expanduser()
-        self._data_location: Path | None = Path(os.path.expandvars(data_location)).expanduser() if data_location else None
+        self._data_location: Path | None = (
+            Path(os.path.expandvars(data_location)).expanduser() if data_location else None
+        )
         self._check_or_create_taskfiles()
         self._config: dict[str, str] | None = None
         self._load_config()
@@ -34,7 +38,7 @@ class ConfigStore:
             default_content = f"""# Taskwarrior configuration file
 # This file was automatically created by pytaskwarrior
 # Default data location
-rc.data.location={self._data_location or '~/.task'}
+rc.data.location={self._data_location or "~/.task"}
 # Disable confirmation prompts
 rc.confirmation=off
 rc.bulk=0
@@ -56,11 +60,17 @@ rc.bulk=0
         except FileNotFoundError as e:
             raise TaskConfigurationError(f"Taskrc file not found: {path}") from e
         except PermissionError as e:
-            raise TaskConfigurationError(f"Cannot read taskrc file (permission denied): {path}") from e
+            raise TaskConfigurationError(
+                f"Cannot read taskrc file (permission denied): {path}"
+            ) from e
         except OSError as e:
             raise TaskConfigurationError(f"Failed to read taskrc file: {path}: {e}") from e
         # Only keep blank lines, comments, or lines containing '=' (key-value)
-        filtered = [line for line in lines if line.strip() == "" or line.strip().startswith("#") or "=" in line]
+        filtered = [
+            line
+            for line in lines
+            if line.strip() == "" or line.strip().startswith("#") or "=" in line
+        ]
         content = "[taskrc]\n" + "".join(filtered)
         parser.read_string(content)
         for section in parser.sections():
@@ -128,3 +138,15 @@ rc.bulk=0
             )
             for n, filters in names.items()
         ]
+
+    def get_udas(self) -> list["UdaConfig"]:
+        """
+        Parse and return UDAs from the cached config mapping.
+
+        Returns a list of UdaConfig objects representing UDAs defined in the
+        TaskWarrior configuration. Uses the shared uda_parser to perform parsing.
+        """
+        # Local import to avoid module import cycles
+        from .uda_parser import parse_udas_from_mapping
+
+        return parse_udas_from_mapping(self.config)

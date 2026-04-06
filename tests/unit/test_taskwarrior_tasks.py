@@ -144,7 +144,9 @@ class TestTaskWarriorTasks:
     def test_get_recurring_task_success(self, tw: TaskWarrior):
         """Test get_recurring_task method."""
         # Add a recurring task
-        task = TaskInputDTO(description="Recurring task", recur=RecurrencePeriod.WEEKLY, due="today")
+        task = TaskInputDTO(
+            description="Recurring task", recur=RecurrencePeriod.WEEKLY, due="today"
+        )
         added_task = tw.add_task(task)
 
         # Get the recurring task

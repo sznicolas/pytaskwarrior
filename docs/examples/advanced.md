@@ -62,7 +62,7 @@ from taskwarrior import UdaConfig, UdaType
 # String UDA with allowed values
 severity = UdaConfig(
     name="severity",
-    type=UdaType.STRING,
+    uda_type=UdaType.STRING,
     label="Severity",
     values=["low", "medium", "high", "critical"],
     default="medium",
@@ -72,7 +72,7 @@ tw.uda_service.define_uda(severity)
 # Numeric UDA for time estimates
 estimate = UdaConfig(
     name="estimate",
-    type=UdaType.NUMERIC,
+    uda_type=UdaType.NUMERIC,
     label="Hours",
     coefficient=1.0,  # Affects urgency
 )
@@ -106,7 +106,7 @@ print(names)  # {"severity", "estimate"}
 # Get configuration for a specific UDA
 config = tw.get_uda_config("severity")
 if config:
-    print(config.type)    # UdaType.STRING
+    print(config.uda_type)    # UdaType.STRING
     print(config.values)  # ["low", "medium", "high", "critical"]
 ```
 

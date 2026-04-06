@@ -15,7 +15,7 @@ def taskwarrior_data(tmp_path: Path) -> str:
     """Set up a temporary Taskwarrior data directory."""
     data_dir = tmp_path / "taskdata"
     data_dir.mkdir()
-    os.environ['TASKDATA'] = str(data_dir)
+    os.environ["TASKDATA"] = str(data_dir)
     return str(data_dir)
 
 
@@ -29,7 +29,7 @@ confirmation=off
 json.array=TRUE
 """
     config_path.write_text(config_content)
-    os.environ['TASKRC'] = str(config_path)
+    os.environ["TASKRC"] = str(config_path)
     return str(config_path)
 
 
@@ -48,8 +48,5 @@ def tw(taskwarrior_config: str, taskwarrior_data: str) -> TaskWarrior:
 def sample_task() -> TaskInputDTO:
     """Create a sample Task object."""
     return TaskInputDTO(
-        description="Test Task",
-        priority=Priority.HIGH,
-        project="Test",
-        tags=["test", "urgent"]
+        description="Test Task", priority=Priority.HIGH, project="Test", tags=["test", "urgent"]
     )

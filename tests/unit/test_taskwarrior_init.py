@@ -11,10 +11,7 @@ class TestTaskWarriorInit:
 
     def test_taskwarrior_init_with_params(self, taskwarrior_config: str):
         """Test TaskWarrior initialization with custom parameters."""
-        tw = TaskWarrior(
-            task_cmd="task",
-            taskrc_file=taskwarrior_config
-        )
+        tw = TaskWarrior(task_cmd="task", taskrc_file=taskwarrior_config)
 
         assert "task" in str(tw.adapter.task_cmd)
         assert str(tw.config_store._taskrc_path) == taskwarrior_config
@@ -47,10 +44,7 @@ class TestTaskWarriorInit:
 
     def test_get_info_with_custom_params(self, taskwarrior_config: str):
         """Test get_info with custom parameters."""
-        tw = TaskWarrior(
-            task_cmd="task",
-            taskrc_file=taskwarrior_config
-        )
+        tw = TaskWarrior(task_cmd="task", taskrc_file=taskwarrior_config)
 
         info = tw.get_info()
 
@@ -76,7 +70,7 @@ class TestTaskWarriorInit:
         assert info["taskrc_file"] is not None and info["taskrc_file"] != ""
         # Default should expand to real home directory
         expected_taskrc = Path.home() / ".taskrc"
-        assert Path(os.path.expandvars(info['taskrc_file'])).expanduser() == expected_taskrc
+        assert Path(os.path.expandvars(info["taskrc_file"])).expanduser() == expected_taskrc
         assert "rc.confirmation=off" in tw.adapter.cli_options
 
     def test_get_projects(self, taskwarrior_config: str):

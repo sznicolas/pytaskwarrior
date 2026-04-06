@@ -104,9 +104,7 @@ def test_task_output_dto_compact_datetime_parsing():
 
 def test_task_input_dto_model_dump():
     """Test model_dump functionality."""
-    task = TaskInputDTO(
-        description="Test task", priority=Priority.HIGH, project="TestProject"
-    )
+    task = TaskInputDTO(description="Test task", priority=Priority.HIGH, project="TestProject")
 
     dumped = task.model_dump()
     assert dumped["description"] == "Test task"
@@ -293,9 +291,7 @@ def test_task_output_dto_validation_edge_cases():
     """Test TaskOutputDTO validation edge cases."""
     # Test with minimal required fields
     task_uuid = uuid4()
-    task = TaskOutputDTO(
-        description="Test", index=1, uuid=task_uuid, status=TaskStatus.PENDING
-    )
+    task = TaskOutputDTO(description="Test", index=1, uuid=task_uuid, status=TaskStatus.PENDING)
 
     assert task.description == "Test"
     assert task.index == 1
@@ -463,6 +459,7 @@ class TestPublicAPIContract:
 
     def test_annotation_dto_fields(self) -> None:
         from datetime import datetime
+
         annotation = AnnotationDTO(entry=datetime(2024, 1, 1), description="note")
         assert annotation.description == "note"
 

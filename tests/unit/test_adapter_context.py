@@ -27,7 +27,7 @@ class TestTaskWarriorAdapterContext:
 
     def test_define_context_sets_read_and_write(self, context_service: ContextService):
         """Both read and write filters are stored and retrievable."""
-        context_service.define_context("work", "project:work", "project:work")
+        context_service.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
         contexts = context_service.get_contexts()
         ctx = next((c for c in contexts if c.name == "work"), None)
         assert ctx is not None
@@ -36,7 +36,7 @@ class TestTaskWarriorAdapterContext:
 
     def test_define_context_distinct_filters(self, context_service: ContextService):
         """Read and write filters can differ."""
-        context_service.define_context("review", "+urgent", "")
+        context_service.define_context(ContextDTO(name="review", read_filter="+urgent", write_filter=""))
         contexts = context_service.get_contexts()
         ctx = next((c for c in contexts if c.name == "review"), None)
         assert ctx is not None
@@ -45,16 +45,16 @@ class TestTaskWarriorAdapterContext:
 
     def test_define_context_empty_name_raises(self, context_service: ContextService):
         with pytest.raises(TaskWarriorError):
-            context_service.define_context("", "project:work", "project:work")
+            context_service.define_context(ContextDTO(name="", read_filter="project:work", write_filter="project:work"))
 
     def test_define_context_whitespace_name_raises(self, context_service: ContextService):
         with pytest.raises(TaskWarriorError):
-            context_service.define_context("   ", "project:work", "project:work")
+            context_service.define_context(ContextDTO(name="   ", read_filter="project:work", write_filter="project:work"))
 
     def test_define_context_is_idempotent(self, context_service: ContextService):
         """Redefining an existing context updates it without error."""
-        context_service.define_context("work", "project:work", "project:work")
-        context_service.define_context("work", "project:work or +urgent", "project:work")
+        context_service.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
+        context_service.define_context(ContextDTO(name="work", read_filter="project:work or +urgent", write_filter="project:work"))
         contexts = context_service.get_contexts()
         ctx = next((c for c in contexts if c.name == "work"), None)
         assert ctx is not None
@@ -65,20 +65,20 @@ class TestTaskWarriorAdapterContext:
     # ------------------------------------------------------------------
 
     def test_get_contexts_returns_context_dto_instances(self, context_service: ContextService):
-        context_service.define_context("ctx1", "status:pending", "status:pending")
+        context_service.define_context(ContextDTO(name="ctx1", read_filter="status:pending", write_filter="status:pending"))
         contexts = context_service.get_contexts()
         assert all(isinstance(c, ContextDTO) for c in contexts)
 
     def test_get_contexts_returns_both_defined(self, context_service: ContextService):
-        context_service.define_context("ctx1", "status:pending", "status:pending")
-        context_service.define_context("ctx2", "project:perso", "project:perso")
+        context_service.define_context(ContextDTO(name="ctx1", read_filter="status:pending", write_filter="status:pending"))
+        context_service.define_context(ContextDTO(name="ctx2", read_filter="project:perso", write_filter="project:perso"))
         names = [c.name for c in context_service.get_contexts()]
         assert "ctx1" in names
         assert "ctx2" in names
 
     def test_get_contexts_dto_has_no_filter_attribute(self, context_service: ContextService):
         """Legacy 'filter' field must not exist — breaking change confirmed."""
-        context_service.define_context("work", "project:work", "project:work")
+        context_service.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
         ctx = context_service.get_contexts()[0]
         assert not hasattr(ctx, "filter")
 
@@ -87,12 +87,12 @@ class TestTaskWarriorAdapterContext:
     # ------------------------------------------------------------------
 
     def test_apply_context(self, context_service: ContextService):
-        context_service.define_context("work", "project:work", "project:work")
+        context_service.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
         context_service.apply_context("work")
         assert context_service.get_current_context() == "work"
 
     def test_unset_context(self, context_service: ContextService):
-        context_service.define_context("work", "project:work", "project:work")
+        context_service.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
         context_service.apply_context("work")
         context_service.unset_context()
         assert context_service.get_current_context() is None
@@ -101,7 +101,7 @@ class TestTaskWarriorAdapterContext:
         assert context_service.get_current_context() is None
 
     def test_active_flag_reflects_current_context(self, context_service: ContextService):
-        context_service.define_context("work", "project:work", "project:work")
+        context_service.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
         context_service.apply_context("work")
         contexts = context_service.get_contexts()
         active = [c for c in contexts if c.active]
@@ -113,7 +113,7 @@ class TestTaskWarriorAdapterContext:
     # ------------------------------------------------------------------
 
     def test_delete_context(self, context_service: ContextService):
-        context_service.define_context("work", "project:work", "project:work")
+        context_service.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
         context_service.delete_context("work")
         names = [c.name for c in context_service.get_contexts()]
         assert "work" not in names
@@ -127,7 +127,7 @@ class TestTaskWarriorAdapterContext:
             context_service.delete_context("")
 
     def test_has_context_true(self, context_service: ContextService):
-        context_service.define_context("work", "project:work", "project:work")
+        context_service.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
         assert context_service.has_context("work") is True
 
     def test_has_context_false(self, context_service: ContextService):

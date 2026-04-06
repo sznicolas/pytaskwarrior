@@ -1,4 +1,3 @@
-
 from taskwarrior import TaskWarrior
 from taskwarrior.dto.context_dto import ContextDTO
 
@@ -20,7 +19,9 @@ def test_get_info_with_active_context(tmp_path, monkeypatch):
     monkeypatch.setattr(tw.adapter, "get_version", lambda: "1.2.0")
     monkeypatch.setattr(tw, "get_current_context", lambda: "work")
 
-    ctx = ContextDTO(name="work", read_filter="project:work", write_filter="project:work", active=True)
+    ctx = ContextDTO(
+        name="work", read_filter="project:work", write_filter="project:work", active=True
+    )
     monkeypatch.setattr(tw.context_service, "get_contexts", lambda *a, **k: [ctx])
 
     info = tw.get_info()

@@ -26,6 +26,7 @@ class TaskSyncError(TaskWarriorError):
 
     This exception is used to signal errors encountered during sync operations.
     """
+
     pass
 
 

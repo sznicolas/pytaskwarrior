@@ -30,9 +30,7 @@ class AnnotationDTO(BaseModel):
                 print(f"{annotation.entry}: {annotation.description}")
     """
 
-    entry: datetime = Field(
-        description="Annotation creation date and time (ISO format)"
-    )
+    entry: datetime = Field(description="Annotation creation date and time (ISO format)")
     description: str = Field(description="Annotation description")
 
     model_config = {"populate_by_name": True, "extra": "forbid"}

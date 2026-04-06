@@ -43,7 +43,7 @@ print(f"Low priority: {len(low_priority)}")
 
 ```python
 # Define project context
-tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
+tw.define_context(ContextDTO(name="work", read_filter="project:work or +urgent", write_filter="project:work or +urgent"))
 
 # Switch to work context
 tw.apply_context("work")

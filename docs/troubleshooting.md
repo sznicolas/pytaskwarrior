@@ -61,7 +61,7 @@ task --version
     from taskwarrior import TaskWarrior, UdaConfig, UdaType
 
     tw = TaskWarrior()
-    cfg = UdaConfig(name="severity", type=UdaType.STRING, label="Severity")
+    cfg = UdaConfig(name="severity", uda_type=UdaType.STRING, label="Severity")
     tw.define_uda(cfg)
     ```
 

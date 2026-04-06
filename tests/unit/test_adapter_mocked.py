@@ -27,6 +27,7 @@ from src.taskwarrior.utils.conversions import parse_taskwarrior_date
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _completed(stdout: str = "", stderr: str = "", returncode: int = 0) -> MagicMock:
     """Return a mock CompletedProcess."""
     m = MagicMock(spec=subprocess.CompletedProcess)
@@ -36,16 +37,18 @@ def _completed(stdout: str = "", stderr: str = "", returncode: int = 0) -> Magic
     return m
 
 
-SAMPLE_TASK_JSON = json.dumps([
-    {
-        "uuid": str(uuid4()),
-        "description": "Test task",
-        "status": "pending",
-        "entry": "20260101T000000Z",
-        "modified": "20260101T000000Z",
-        "id": 1,
-    }
-])
+SAMPLE_TASK_JSON = json.dumps(
+    [
+        {
+            "uuid": str(uuid4()),
+            "description": "Test task",
+            "status": "pending",
+            "entry": "20260101T000000Z",
+            "modified": "20260101T000000Z",
+            "id": 1,
+        }
+    ]
+)
 
 
 @pytest.fixture
@@ -54,14 +57,18 @@ def adapter(tmp_path: Path) -> TaskWarriorAdapter:
     config = tmp_path / ".taskrc"
     config.write_text(f"data.location={tmp_path / 'task'}\n")
     from src.taskwarrior.config.config_store import ConfigStore
-    with patch("shutil.which", return_value="/usr/bin/task"), \
-         patch.object(ConfigStore, "_check_or_create_taskfiles"):
+
+    with (
+        patch("shutil.which", return_value="/usr/bin/task"),
+        patch.object(ConfigStore, "_check_or_create_taskfiles"),
+    ):
         return TaskWarriorAdapter(config_store=ConfigStore(str(config)), task_cmd="task")
 
 
 # ---------------------------------------------------------------------------
 # run_task_command — error paths
 # ---------------------------------------------------------------------------
+
 
 class TestRunTaskCommand:
     def test_oserror_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
@@ -84,13 +91,18 @@ class TestRunTaskCommand:
 # add_task — error paths
 # ---------------------------------------------------------------------------
 
+
 class TestAddTask:
     def test_returncode_nonzero_raises_validation_error(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command", return_value=_completed(returncode=1, stderr="fail")):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(returncode=1, stderr="fail")
+        ):
             with pytest.raises(TaskValidationError, match="Failed to add task"):
                 adapter.add_task(TaskInputDTO(description="bad"))
 
-    def test_fallback_to_latest_when_no_created_task_in_stdout(self, adapter: TaskWarriorAdapter) -> None:
+    def test_fallback_to_latest_when_no_created_task_in_stdout(
+        self, adapter: TaskWarriorAdapter
+    ) -> None:
         """If stdout doesn't contain 'Created task N.', falls back to +LATEST."""
         add_result = _completed(stdout="Some other output", returncode=0)
         task_result = _completed(stdout=SAMPLE_TASK_JSON, returncode=0)
@@ -99,7 +111,9 @@ class TestAddTask:
             task = adapter.add_task(TaskInputDTO(description="Test"))
         assert task.description == "Test task"
 
-    def test_fallback_empty_list_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
+    def test_fallback_empty_list_raises_taskwarrior_error(
+        self, adapter: TaskWarriorAdapter
+    ) -> None:
         add_result = _completed(stdout="no id here", returncode=0)
         empty_result = _completed(stdout="[]", returncode=0)
 
@@ -114,7 +128,9 @@ class TestAddTask:
 
         calls = [add_result, get_result, annotate_result]
         with patch.object(adapter, "run_task_command", side_effect=calls):
-            task = adapter.add_task(TaskInputDTO(description="Task with note", annotations=["note"]))
+            task = adapter.add_task(
+                TaskInputDTO(description="Task with note", annotations=["note"])
+            )
         assert task.description == "Test task"
 
 
@@ -122,23 +138,46 @@ class TestAddTask:
 # get_task — error paths
 # ---------------------------------------------------------------------------
 
+
 class TestGetTask:
     def test_returncode_nonzero_raises(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command", return_value=_completed(returncode=1, stderr="nope")):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(returncode=1, stderr="nope")
+        ):
             with pytest.raises(TaskWarriorError):
                 adapter.get_task(1)
 
     def test_json_decode_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command", return_value=_completed(stdout="not json", returncode=0)):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(stdout="not json", returncode=0)
+        ):
             with pytest.raises(TaskWarriorError, match="Invalid response"):
                 adapter.get_task(1)
 
     def test_multiple_tasks_returned_raises(self, adapter: TaskWarriorAdapter) -> None:
-        two_tasks = json.dumps([
-            {"uuid": str(uuid4()), "description": "A", "status": "pending", "entry": "20260101T000000Z", "modified": "20260101T000000Z", "id": 1},
-            {"uuid": str(uuid4()), "description": "B", "status": "pending", "entry": "20260101T000000Z", "modified": "20260101T000000Z", "id": 2},
-        ])
-        with patch.object(adapter, "run_task_command", return_value=_completed(stdout=two_tasks, returncode=0)):
+        two_tasks = json.dumps(
+            [
+                {
+                    "uuid": str(uuid4()),
+                    "description": "A",
+                    "status": "pending",
+                    "entry": "20260101T000000Z",
+                    "modified": "20260101T000000Z",
+                    "id": 1,
+                },
+                {
+                    "uuid": str(uuid4()),
+                    "description": "B",
+                    "status": "pending",
+                    "entry": "20260101T000000Z",
+                    "modified": "20260101T000000Z",
+                    "id": 2,
+                },
+            ]
+        )
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(stdout=two_tasks, returncode=0)
+        ):
             with pytest.raises(TaskWarriorError, match="More than one task"):
                 adapter.get_task(1)
 
@@ -147,14 +186,19 @@ class TestGetTask:
 # get_tasks — error paths
 # ---------------------------------------------------------------------------
 
+
 class TestGetTasks:
     def test_returncode_nonzero_raises(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command", return_value=_completed(returncode=1, stderr="fail")):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(returncode=1, stderr="fail")
+        ):
             with pytest.raises(TaskWarriorError, match="Failed to get tasks"):
                 adapter.get_tasks()
 
     def test_json_decode_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command", return_value=_completed(stdout="bad", returncode=0)):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(stdout="bad", returncode=0)
+        ):
             with pytest.raises(TaskWarriorError, match="Invalid response"):
                 adapter.get_tasks()
 
@@ -163,26 +207,33 @@ class TestGetTasks:
 # get_recurring_instances — error paths
 # ---------------------------------------------------------------------------
 
+
 class TestGetRecurringInstances:
     def test_no_matches_returns_empty(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(returncode=1, stderr="No matches.")):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(returncode=1, stderr="No matches.")
+        ):
             assert adapter.get_recurring_instances("abc") == []
 
     def test_other_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(returncode=1, stderr="Something else failed")):
+        with patch.object(
+            adapter,
+            "run_task_command",
+            return_value=_completed(returncode=1, stderr="Something else failed"),
+        ):
             with pytest.raises(TaskWarriorError):
                 adapter.get_recurring_instances("abc")
 
     def test_empty_stdout_returns_empty(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(stdout="   ", returncode=0)):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(stdout="   ", returncode=0)
+        ):
             assert adapter.get_recurring_instances("abc") == []
 
     def test_json_decode_error_raises_taskwarrior_error(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(stdout="not json", returncode=0)):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(stdout="not json", returncode=0)
+        ):
             with pytest.raises(TaskWarriorError, match="Invalid response"):
                 adapter.get_recurring_instances("abc")
 
@@ -191,20 +242,25 @@ class TestGetRecurringInstances:
 # delete / purge / done / start / stop / annotate — error paths
 # ---------------------------------------------------------------------------
 
+
 class TestTaskStateErrors:
-    @pytest.mark.parametrize("method,kwargs", [
-        ("delete_task", {"task_id_or_uuid": "123"}),
-        ("purge_task", {"task_id_or_uuid": "123"}),
-        ("done_task", {"task_id_or_uuid": "123"}),
-        ("start_task", {"task_id_or_uuid": "123"}),
-        ("stop_task", {"task_id_or_uuid": "123"}),
-        ("annotate_task", {"task_id_or_uuid": "123", "annotation": "note"}),
-    ])
+    @pytest.mark.parametrize(
+        "method,kwargs",
+        [
+            ("delete_task", {"task_id_or_uuid": "123"}),
+            ("purge_task", {"task_id_or_uuid": "123"}),
+            ("done_task", {"task_id_or_uuid": "123"}),
+            ("start_task", {"task_id_or_uuid": "123"}),
+            ("stop_task", {"task_id_or_uuid": "123"}),
+            ("annotate_task", {"task_id_or_uuid": "123", "annotation": "note"}),
+        ],
+    )
     def test_nonzero_returncode_raises_task_operation_error(
         self, adapter: TaskWarriorAdapter, method: str, kwargs: dict
     ) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(returncode=1, stderr="error")):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(returncode=1, stderr="error")
+        ):
             with pytest.raises(TaskOperationError):
                 getattr(adapter, method)(**kwargs)
 
@@ -213,9 +269,11 @@ class TestTaskStateErrors:
 # get_info — version fallback
 # ---------------------------------------------------------------------------
 
+
 class TestGetInfo:
     def test_version_unknown_when_command_raises(self, adapter: TaskWarriorAdapter) -> None:
         from src.taskwarrior.main import TaskWarrior
+
         tw = TaskWarrior(task_cmd="task")
         with patch.object(tw.adapter, "run_task_command", side_effect=OSError("fail")):
             with pytest.raises(OSError, match="fail"):
@@ -223,9 +281,11 @@ class TestGetInfo:
 
     def test_version_populated_when_command_succeeds(self, adapter: TaskWarriorAdapter) -> None:
         from src.taskwarrior.main import TaskWarrior
+
         tw = TaskWarrior(task_cmd="task")
-        with patch.object(tw.adapter, "run_task_command",
-                          return_value=_completed(stdout="3.4.0\n", returncode=0)):
+        with patch.object(
+            tw.adapter, "run_task_command", return_value=_completed(stdout="3.4.0\n", returncode=0)
+        ):
             info = tw.get_info()
         assert info["version"] == "3.4.0"
 
@@ -234,16 +294,19 @@ class TestGetInfo:
 # task_calc — error paths
 # ---------------------------------------------------------------------------
 
+
 class TestTaskCalc:
     def test_returncode_nonzero_raises(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(returncode=1, stderr="bad")):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(returncode=1, stderr="bad")
+        ):
             with pytest.raises(TaskWarriorError, match="Failed to calculate"):
                 adapter.task_calc("bad_date")
 
     def test_subprocess_error_raises_task_warrior_error(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          side_effect=subprocess.SubprocessError("timeout")):
+        with patch.object(
+            adapter, "run_task_command", side_effect=subprocess.SubprocessError("timeout")
+        ):
             with pytest.raises(TaskWarriorError, match="Failed to calculate"):
                 adapter.task_calc("bad_date")
 
@@ -252,25 +315,30 @@ class TestTaskCalc:
 # task_date_validator — all branches
 # ---------------------------------------------------------------------------
 
+
 class TestTaskDateValidator:
     def test_returncode_nonzero_returns_false(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(returncode=1)):
+        with patch.object(adapter, "run_task_command", return_value=_completed(returncode=1)):
             assert adapter.task_date_validator("bad") is False
 
     def test_valid_iso_output_returns_true(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(stdout="2026-02-26T00:00:00", returncode=0)):
+        with patch.object(
+            adapter,
+            "run_task_command",
+            return_value=_completed(stdout="2026-02-26T00:00:00", returncode=0),
+        ):
             assert adapter.task_date_validator("today") is True
 
     def test_non_iso_output_returns_false(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(stdout="not_a_date", returncode=0)):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(stdout="not_a_date", returncode=0)
+        ):
             assert adapter.task_date_validator("not_a_date") is False
 
     def test_subprocess_error_returns_false(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          side_effect=subprocess.SubprocessError("timeout")):
+        with patch.object(
+            adapter, "run_task_command", side_effect=subprocess.SubprocessError("timeout")
+        ):
             assert adapter.task_date_validator("today") is False
 
 
@@ -278,16 +346,21 @@ class TestTaskDateValidator:
 # get_projects — error path
 # ---------------------------------------------------------------------------
 
+
 class TestGetProjects:
     def test_returncode_nonzero_raises(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(returncode=1, stderr="fail")):
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(returncode=1, stderr="fail")
+        ):
             with pytest.raises(TaskWarriorError, match="Failed to get projects"):
                 adapter.get_projects()
 
     def test_returns_project_list(self, adapter: TaskWarriorAdapter) -> None:
-        with patch.object(adapter, "run_task_command",
-                          return_value=_completed(stdout="work\npersonal\n", returncode=0)):
+        with patch.object(
+            adapter,
+            "run_task_command",
+            return_value=_completed(stdout="work\npersonal\n", returncode=0),
+        ):
             assert adapter.get_projects() == ["work", "personal"]
 
 
@@ -340,6 +413,7 @@ class TestGetProjects:
 # ---------------------------------------------------------------------------
 # conversions.py — fallback date parsing (lines 43-45)
 # ---------------------------------------------------------------------------
+
 
 class TestParseTaskwarriorDate:
     def test_compact_format(self) -> None:

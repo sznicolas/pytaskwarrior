@@ -42,7 +42,6 @@ class TestTaskWarriorAdapterBasic:
             recur=RecurrencePeriod.WEEKLY,
         )
 
-
     def test_task_date_validator_edge_cases(self, adapter: TaskWarriorAdapter):
         """Test task_date_validator with edge cases."""
         # Test valid dates
@@ -138,7 +137,6 @@ class TestTaskWarriorAdapterBasic:
         # Test non-existent task
         with pytest.raises(TaskNotFound):
             adapter.get_task("nonexistent-uuid")
-
 
     def test_complex_datetime_fields(self, adapter: TaskWarriorAdapter):
         """Test with complex datetime fields."""

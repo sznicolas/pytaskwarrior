@@ -9,7 +9,7 @@
 
 A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the command-line task management tool.
 
-**v1.2.0**: Production-ready with 164 tests (96% coverage), strict type checking, and professional-grade code quality. Zero linting errors, full async-safe subprocess handling, PEP 561 type hints for IDE support, and a consistent exception hierarchy.
+**v2.0.0**: Major release with breaking API changes (Context.define now accepts ContextDTO; UdaConfig.type → UdaConfig.uda_type). All tests passing and documentation updated.
 
 ## Features
 
@@ -31,7 +31,7 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the co
 ## Installation
 
 ```bash
-pip install pytaskwarrior==1.2.0
+pip install pytaskwarrior==2.0.0
 ```
 
 Or install from source:
@@ -132,7 +132,7 @@ tw = TaskWarrior(
 
 | Method | Description |
 |--------|-------------|
-| `define_context(name, read_filter, write_filter)` | Create a context with read and write filters |
+| `define_context(ctx: ContextDTO)` | Create a context from a ContextDTO (name, read_filter, write_filter) |
 | `apply_context(name)` | Activate a context |
 | `unset_context()` | Deactivate current context |
 | `get_contexts()` | List all contexts |
@@ -144,7 +144,7 @@ tw = TaskWarrior(
 
 | Method | Description |
 |--------|-------------|
-| `is_sync_configured()` | Return `True` if any `sync.*` key is present in taskrc. |
+| `is_sync_configured()` | Return `True` if any `sync.*` key is present in configuration (ConfigStore). |
 | `synchronize()` | Run `task sync`; raises `TaskSyncError` if not configured or sync fails. |
 
 ### Exceptions
@@ -244,9 +244,10 @@ RecurrencePeriod.YEARLY
 ### Working with Contexts
 
 ```python
+from taskwarrior import ContextDTO
 # Define contexts for different workflows
-tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
-tw.define_context("home", read_filter="project:home or project:personal", write_filter="project:home or project:personal")
+tw.define_context(ContextDTO(name="work", read_filter="project:work or +urgent", write_filter="project:work or +urgent"))
+tw.define_context(ContextDTO(name="home", read_filter="project:home or project:personal", write_filter="project:home or project:personal"))
 
 # Switch to work context
 tw.apply_context("work")

@@ -69,15 +69,11 @@ class TaskInputDTO(BaseModel):
             )
     """
 
-    description: str | None = Field(
-        default=None, description="Task description (optional)."
-    )
+    description: str | None = Field(default=None, description="Task description (optional).")
     priority: Priority | None = Field(
         default=None, description="Priority of the task (H, M, L, or empty)"
     )
-    due: str | None = Field(
-        default=None, description="Due date and time for the task (ISO format)"
-    )
+    due: str | None = Field(default=None, description="Due date and time for the task (ISO format)")
     project: str | None = Field(default=None, description="Project the task belongs to")
     tags: list[str] = Field(
         default_factory=list, description="List of tags associated with the task"

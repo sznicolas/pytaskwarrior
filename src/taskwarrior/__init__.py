@@ -76,4 +76,3 @@ __all__ = [
     "UdaRegistry",
     "UdaType",
 ]
-

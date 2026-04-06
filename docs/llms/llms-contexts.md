@@ -12,9 +12,9 @@ from taskwarrior import TaskWarrior
 tw = TaskWarrior()
 
 # Create contexts for different workflows
-tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
-tw.define_context("home", read_filter="project:home or project:personal", write_filter="project:home or project:personal")
-tw.define_context("errands", read_filter="+errand or +shopping", write_filter="+errand or +shopping")
+tw.define_context(ContextDTO(name="work", read_filter="project:work or +urgent", write_filter="project:work or +urgent"))
+tw.define_context(ContextDTO(name="home", read_filter="project:home or project:personal", write_filter="project:home or project:personal"))
+tw.define_context(ContextDTO(name="errands", read_filter="+errand or +shopping", write_filter="+errand or +shopping"))
 ```
 
 ### Applying Contexts
@@ -54,13 +54,13 @@ for ctx in contexts:
 def switch_to_work_context(tw):
     """Switch to work context if not already active"""
     if not tw.has_context("work"):
-        tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
+        tw.define_context(ContextDTO(name="work", read_filter="project:work or +urgent", write_filter="project:work or +urgent"))
     tw.apply_context("work")
 
 def switch_to_home_context(tw):
     """Switch to home context if not already active"""
     if not tw.has_context("home"):
-        tw.define_context("home", read_filter="project:home or project:personal", write_filter="project:home or project:personal")
+        tw.define_context(ContextDTO(name="home", read_filter="project:home or project:personal", write_filter="project:home or project:personal"))
     tw.apply_context("home")
 ```
 
@@ -87,7 +87,7 @@ for task in home_tasks:
 ```python
 # Create a focus context for high-priority items
 if not tw.has_context("focus"):
-    tw.define_context("focus", read_filter="priority:H or +urgent", write_filter="priority:H or +urgent")
+    tw.define_context(ContextDTO(name="focus", read_filter="priority:H or +urgent", write_filter="priority:H or +urgent"))
 
 # Morning routine: check high-priority items
 tw.apply_context("focus")
@@ -99,10 +99,10 @@ print(f"🔥 {len(urgent_tasks)} urgent tasks today")
 
 ```python
 # Morning context (tasks due today)
-tw.define_context("morning", read_filter="due.today or status:pending", write_filter="due.today or status:pending")
+tw.define_context(ContextDTO(name="morning", read_filter="due.today or status:pending", write_filter="due.today or status:pending"))
 
 # Evening context (tasks due tomorrow)
-tw.define_context("evening", read_filter="due.tomorrow or status:pending", write_filter="due.tomorrow or status:pending")
+tw.define_context(ContextDTO(name="evening", read_filter="due.tomorrow or status:pending", write_filter="due.tomorrow or status:pending"))
 ```
 
 ## Context Best Practices
@@ -111,30 +111,30 @@ tw.define_context("evening", read_filter="due.tomorrow or status:pending", write
 
 ```python
 # Good - simple and fast
-tw.define_context("work", read_filter="project:work", write_filter="project:work")
+tw.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
 
 # Avoid - complex filters that slow down queries
-tw.define_context("work", read_filter="project:work and (priority:H or +urgent) and not +done", write_filter="project:work and (priority:H or +urgent) and not +done")
+tw.define_context(ContextDTO(name="work", read_filter="project:work and (priority:H or +urgent) and not +done", write_filter="project:work and (priority:H or +urgent) and not +done"))
 ```
 
 ### Use Meaningful Names
 
 ```python
 # Clear context names
-tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
-tw.define_context("home", read_filter="project:home or project:personal", write_filter="project:home or project:personal")
+tw.define_context(ContextDTO(name="work", read_filter="project:work or +urgent", write_filter="project:work or +urgent"))
+tw.define_context(ContextDTO(name="home", read_filter="project:home or project:personal", write_filter="project:home or project:personal"))
 
 # Less clear context names
-tw.define_context("ctx1", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
-tw.define_context("ctx2", read_filter="project:home or project:personal", write_filter="project:home or project:personal")
+tw.define_context(ContextDTO(name="ctx1", read_filter="project:work or +urgent", write_filter="project:work or +urgent"))
+tw.define_context(ContextDTO(name="ctx2", read_filter="project:home or project:personal", write_filter="project:home or project:personal"))
 ```
 
 ### Combine with Projects
 
 ```python
 # Project-specific contexts work well
-tw.define_context("work.meetings", read_filter="project:work.meetings", write_filter="project:work.meetings")
-tw.define_context("work.research", read_filter="project:work.research", write_filter="project:work.research")
+tw.define_context(ContextDTO(name="work.meetings", read_filter="project:work.meetings", write_filter="project:work.meetings"))
+tw.define_context(ContextDTO(name="work.research", read_filter="project:work.research", write_filter="project:work.research"))
 ```
 
 ### Test Before Applying
@@ -145,7 +145,7 @@ test_tasks = tw.get_tasks("project:work or +urgent")
 print(f"Test found {len(test_tasks)} tasks")
 
 # Then apply context
-tw.define_context("work", read_filter="project:work or +urgent", write_filter="project:work or +urgent")
+tw.define_context(ContextDTO(name="work", read_filter="project:work or +urgent", write_filter="project:work or +urgent"))
 tw.apply_context("work")
 ```
 
@@ -155,8 +155,8 @@ tw.apply_context("work")
 
 ```python
 # Create a nested context for specific projects within work
-tw.define_context("work.project1", read_filter="project:work.project1", write_filter="project:work.project1")
-tw.define_context("work.project2", read_filter="project:work.project2", write_filter="project:work.project2")
+tw.define_context(ContextDTO(name="work.project1", read_filter="project:work.project1", write_filter="project:work.project1"))
+tw.define_context(ContextDTO(name="work.project2", read_filter="project:work.project2", write_filter="project:work.project2"))
 
 # Switch between specific project contexts
 tw.apply_context("work.project1")
@@ -167,8 +167,8 @@ project1_tasks = tw.get_tasks()
 
 ```python
 # Create a context that combines multiple filters
-tw.define_context("urgent-work", read_filter="project:work and priority:H", write_filter="project:work and priority:H")
-tw.define_context("pending-urgent", read_filter="status:pending and +urgent", write_filter="status:pending and +urgent")
+tw.define_context(ContextDTO(name="urgent-work", read_filter="project:work and priority:H", write_filter="project:work and priority:H"))
+tw.define_context(ContextDTO(name="pending-urgent", read_filter="status:pending and +urgent", write_filter="status:pending and +urgent"))
 
 # Use composition for complex workflows
 tw.apply_context("urgent-work")

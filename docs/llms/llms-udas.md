@@ -14,7 +14,7 @@ tw = TaskWarrior()
 # Define a severity UDA
 severity = UdaConfig(
     name="severity",
-    type=UdaType.STRING,
+    uda_type=UdaType.STRING,
     label="Severity",
     values=["low", "medium", "high", "critical"],
     default="medium",
@@ -28,7 +28,7 @@ tw.uda_service.define_uda(severity)
 # Define an estimate UDA
 estimate = UdaConfig(
     name="estimate",
-    type=UdaType.NUMERIC,
+    uda_type=UdaType.NUMERIC,
     label="Hours",
     coefficient=1.0,  # Affects urgency
 )
@@ -41,7 +41,7 @@ tw.uda_service.define_uda(estimate)
 # Define a milestone UDA
 milestone = UdaConfig(
     name="milestone",
-    type=UdaType.DATE,
+    uda_type=UdaType.DATE,
     label="Milestone Date",
 )
 tw.uda_service.define_uda(milestone)
@@ -89,7 +89,7 @@ print(names)  # {"severity", "estimate", "milestone"}
 # Get configuration for a specific UDA
 config = tw.get_uda_config("severity")
 if config:
-    print(config.type)    # UdaType.STRING
+    print(config.uda_type)    # UdaType.STRING
     print(config.values)  # ["low", "medium", "high", "critical"]
 ```
 
@@ -111,7 +111,7 @@ def setup_udas(tw):
     # Severity UDA
     severity = UdaConfig(
         name="severity",
-        type=UdaType.STRING,
+        uda_type=UdaType.STRING,
         label="Severity",
         values=["low", "medium", "high", "critical"],
         default="medium",
@@ -120,7 +120,7 @@ def setup_udas(tw):
     # Estimate UDA
     estimate = UdaConfig(
         name="estimate",
-        type=UdaType.NUMERIC,
+        uda_type=UdaType.NUMERIC,
         label="Hours",
         coefficient=1.0,
     )
@@ -133,12 +133,12 @@ def setup_udas(tw):
 
 ```python
 # Good descriptive names
-tw.uda_service.define_uda(UdaConfig(name="priority", type=UdaType.STRING, label="Priority"))
-tw.uda_service.define_uda(UdaConfig(name="risk", type=UdaType.STRING, label="Risk Level"))
+tw.uda_service.define_uda(UdaConfig(name="priority", uda_type=UdaType.STRING, label="Priority"))
+tw.uda_service.define_uda(UdaConfig(name="risk", uda_type=UdaType.STRING, label="Risk Level"))
 
 # Less descriptive names
-tw.uda_service.define_uda(UdaConfig(name="p", type=UdaType.STRING, label="Priority"))
-tw.uda_service.define_uda(UdaConfig(name="r", type=UdaType.STRING, label="Risk"))
+tw.uda_service.define_uda(UdaConfig(name="p", uda_type=UdaType.STRING, label="Priority"))
+tw.uda_service.define_uda(UdaConfig(name="r", uda_type=UdaType.STRING, label="Risk"))
 ```
 
 ### Set Appropriate Defaults
@@ -147,7 +147,7 @@ tw.uda_service.define_uda(UdaConfig(name="r", type=UdaType.STRING, label="Risk")
 # Set sensible defaults for your UDAs
 severity = UdaConfig(
     name="severity",
-    type=UdaType.STRING,
+    uda_type=UdaType.STRING,
     label="Severity",
     values=["low", "medium", "high", "critical"],
     default="medium",  # Good default
@@ -155,7 +155,7 @@ severity = UdaConfig(
 
 estimate = UdaConfig(
     name="estimate",
-    type=UdaType.NUMERIC,
+    uda_type=UdaType.NUMERIC,
     label="Hours",
     coefficient=1.0,
     default=0,  # Good default for time estimates
@@ -170,7 +170,7 @@ estimate = UdaConfig(
 # Create a status tracking UDA for project management
 status_tracking = UdaConfig(
     name="status",
-    type=UdaType.STRING,
+    uda_type=UdaType.STRING,
     label="Status",
     values=["planning", "in-progress", "review", "completed"],
     default="planning",
@@ -190,7 +190,7 @@ task = TaskInputDTO(
 # Create a resource allocation UDA
 resource = UdaConfig(
     name="resource",
-    type=UdaType.STRING,
+    uda_type=UdaType.STRING,
     label="Resource",
     values=["developer", "designer", "manager", "qa"],
     default="developer",
@@ -210,7 +210,7 @@ task = TaskInputDTO(
 # Create a budget tracking UDA
 budget = UdaConfig(
     name="budget",
-    type=UdaType.NUMERIC,
+    uda_type=UdaType.NUMERIC,
     label="Budget (USD)",
     coefficient=1.0,
 )

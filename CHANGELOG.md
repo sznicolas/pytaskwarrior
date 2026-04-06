@@ -5,6 +5,23 @@ All notable changes to pytaskwarrior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-04-06
+
+### Breaking Changes
+
+- **`UdaConfig.type` renamed to `UdaConfig.uda_type`**: The `type` field in `UdaConfig` has been renamed to avoid conflicts with Python's built-in `type` function. This is a **major breaking change** requiring code updates.
+- **`define_context` signature changed**: `define_context` now accepts a single ContextDTO instance (`ContextDTO(name, read_filter, write_filter)`) instead of positional name/read/write parameters. This is a breaking API change in 2.0.0.
+  - **Example:** `UdaConfig(name="severity", type=UdaType.STRING)` → `UdaConfig(name="severity", uda_type=UdaType.STRING)`
+  - The `.taskrc` configuration format remains unchanged (parser automatically maps config `type` to DTO `uda_type`).
+- **Centralize UDA discovery via ConfigStore.get_udas()**: UdaRegistry and UdaService no longer parse the `.taskrc` file directly. Use `ConfigStore.get_udas()` (returns `list[UdaConfig]`) and `registry.register_udas()` to populate the in-memory registry. This is a breaking change that may require updates to registry initialization in consumer code.
+
+### Changed
+
+- All documentation, tests, and examples updated to use `uda_type` instead of `type`.
+- `UdaService.define_uda()` and `UdaService.update_uda()` now use the `uda_type` field.
+- UDA discovery removed legacy file parsing paths; parsing moved to `src/taskwarrior/config/uda_parser.py`.
+
+
 ## [1.2.0] - 2026-03-28
 
 ### Added
@@ -65,10 +82,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   ```python
   # Before (1.0.0)
-  tw.define_context("work", "project:work")
+  tw.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
 
   # After
-  tw.define_context("work", read_filter="project:work", write_filter="project:work")
+  tw.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
   ```
 
   **Migration**: set `write_filter` to the same value as the old single filter, or to `""` for a

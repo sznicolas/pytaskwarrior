@@ -29,7 +29,18 @@ def task_output_to_input(task_output: TaskOutputDTO) -> TaskInputDTO:
         >>> tw.modify_task(input_dto, uuid)
     """
     data = task_output.model_dump(
-        exclude={"uuid", "entry", "start", "end", "modified", "index", "status", "urgency", "imask", "rtype"}
+        exclude={
+            "uuid",
+            "entry",
+            "start",
+            "end",
+            "modified",
+            "index",
+            "status",
+            "urgency",
+            "imask",
+            "rtype",
+        }
     )
     # Convert datetime fields to strings as required by TaskInputDTO
     datetime_fields = ["due", "scheduled", "wait", "until"]

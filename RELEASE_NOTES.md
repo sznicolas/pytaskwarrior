@@ -1,100 +1,95 @@
-# PyTaskWarrior 1.2.0 Release Notes
+# PyTaskWarrior 2.0.0 Release Notes
 
 ## Overview
 
-**PyTaskWarrior 1.2.0** delivers a fully consistent exception hierarchy, new public exception
-classes, and better error coverage throughout the library. Synchronization now works out of the box.
+**PyTaskWarrior 2.0.0** is a major release that introduces breaking API changes: the `UdaConfig.type` field has been renamed to `UdaConfig.uda_type`, and `define_context` now accepts a `ContextDTO` instance instead of separate name/read/write parameters. These changes improve API consistency and avoid naming conflicts.
 
 ### Key Highlights
 
-- **Coherent exceptions**: two new exception classes, all six exceptions now publicly exported
-- **No more stdlib exceptions leaking**: `OSError`/`SubprocessError` are now wrapped
-- **Sync now works**: `TaskWarrior.synchronize()` runs `task sync` via the CLI
-- **164 tests** passing, 0 failures
+- **Breaking Change**: `UdaConfig.type` → `UdaConfig.uda_type`
+- **Why**: `type` is a reserved Python keyword and built-in function, causing confusion and potential issues
+- **Migration**: Simple find-and-replace: update all instances of `.type=UdaType` to `.uda_type=UdaType` and `.type` to `.uda_type`
+- **All 183 tests passing**, 0 failures
 
 ---
 
-## What's New in 1.2.0
+## What's New in 2.0.0
 
-### New Exceptions
+### Breaking Changes
 
-Two new exception classes complete the hierarchy:
+#### UdaConfig Field Rename
 
-| Class | Inherits from | Use case |
-|-------|--------------|----------|
-| `TaskConfigurationError` | `TaskWarriorError` | Binary not found in PATH, taskrc missing or unreadable |
-| `TaskOperationError` | `TaskWarriorError` | Write operation failure on an existing task (delete, done, start, stop, annotate, purge) |
+The `type` field in `UdaConfig` has been renamed to `uda_type` to avoid conflicts with Python's built-in `type` function.
 
-All six exceptions are now importable from the top-level package:
-
+**Before (1.x):**
 ```python
-from taskwarrior import (
-    TaskWarriorError,
-    TaskNotFound,
-    TaskValidationError,
-    TaskOperationError,
-    TaskConfigurationError,
-    TaskSyncError,
+from taskwarrior import UdaConfig, UdaType
+
+uda = UdaConfig(
+    name="severity",
+    type=UdaType.STRING,  # ❌ Problematic: 'type' is a Python built-in
+    label="Severity Level"
 )
 ```
 
-### Exception Semantic Fixes
+**After (2.0):**
+```python
+from taskwarrior import UdaConfig, UdaType
 
-13 fixes throughout the codebase ensure exceptions match their usage context:
+uda = UdaConfig(
+    name="severity",
+    uda_type=UdaType.STRING,  # ✅ Clear and avoids conflicts
+    label="Severity Level"
+)
+```
 
-| Before | After | Location |
-|--------|-------|----------|
-| `TaskValidationError` | `TaskConfigurationError` | Binary not found in PATH |
-| `TaskValidationError` | `TaskWarriorError` | JSON parse errors on CLI responses |
-| `TaskNotFound` | `TaskOperationError` | delete / purge / done / start / stop / annotate failures |
-| `TaskNotFound` | `TaskWarriorError` | JSON errors in `get_recurring_instances` |
-| `TaskWarriorError` | `TaskNotFound` | `get_task` with non-zero return code |
-| `TaskValidationError` | `TaskWarriorError` | `modify_task` generic CLI failure |
-| `TaskWarriorError` | `TaskValidationError` | Empty context name in `ContextService` |
-| `TaskWarriorError` | `TaskConfigurationError` | Missing taskrc in `UdaRegistry` |
-| `RuntimeError` | `TaskWarriorError` | `add_task` fallback path |
+### Migration Guide
 
-### Synchronization Now Works
+To upgrade from 1.x to 2.0.0:
 
-- `TaskWarrior.synchronize()` calls `task sync` via the CLI (native TaskWarrior command)
-- Both local (`sync.local.server_dir`) and remote (`sync.server.origin`) backends supported
-- No external dependencies — works with any TaskWarrior 3.4+ installation
-- `TaskWarrior.is_sync_configured()` returns `True` when any `sync.*` key exists in taskrc
+1. **Update all UdaConfig instantiations:**
+   - Replace `type=UdaType.*` with `uda_type=UdaType.*`
+   - Example: `UdaConfig(name="x", type=UdaType.STRING)` → `UdaConfig(name="x", uda_type=UdaType.STRING)`
 
-### Error Coverage Improvements
+2. **Update all UdaConfig attribute access:**
+   - Replace `config.type` with `config.uda_type`
+   - Example: `if uda.type == UdaType.STRING:` → `if uda.uda_type == UdaType.STRING:`
 
-- `OSError` / `SubprocessError` in `run_task_command` now wrapped in `TaskWarriorError`
-- `get_recurring_task` now protects `json.loads` (was missing guard)
-- `ConfigStore._extract_taskrc_config` now raises `TaskConfigurationError` on file I/O errors
-- `parse_taskwarrior_date` fallback now raises `ValueError` with descriptive message
+3. **No changes needed:**
+   - TaskWarrior `.taskrc` config files remain unchanged
+   - `UdaType` enum is unchanged
+   - All other APIs are unchanged
 
-### Behavior Fixes
+### Configuration Format Unchanged
 
-- `get_tasks()` now respects the active context's `read_filter`. When a context is applied,
-  its `read_filter` is combined with the user-provided filter using AND so task listings are
-  correctly scoped to the context (e.g. `project:work and (priority:H)`).
+The `.taskrc` configuration file format remains the same:
+```taskrc
+uda.severity.type=string
+uda.severity.label=Severity
+uda.severity.values=low,medium,high,critical
+```
+
+The parser automatically maps the `type` key to the `uda_type` field in `UdaConfig`.
 
 ---
 
 ## Installation
 
 ```bash
-pip install pytaskwarrior==1.2.0
+pip install pytaskwarrior==2.0.0
 ```
 
 ## Links
 
-- **[CHANGELOG.md](CHANGELOG.md)** – Full release history and migration guides
+- **[CHANGELOG.md](CHANGELOG.md)** – Full release history
 - **[README.md](README.md)** – Quick start, API reference, examples
 - **[GitHub Issues](https://github.com/sznicolas/pytaskwarrior/issues)** – Bug reports
 
 ## Contributors
 
 - Nicolas Schmeltz ([@sznicolas](https://github.com/sznicolas))
-- GitHub Copilot (exception audit, refactoring, test updates)
+- GitHub Copilot (breaking change implementation, test updates, documentation)
 
 ---
 
-**v1.2.0** | March 28, 2026
-
-
+**v2.0.0** | April 5, 2026

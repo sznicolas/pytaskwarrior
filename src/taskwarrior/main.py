@@ -91,8 +91,9 @@ class TaskWarrior:
         self.context_service: ContextService = ContextService(self.adapter, self.config_store)
         self.uda_service: UdaService = UdaService(self.adapter, self.config_store)
 
-        # Auto-load UDA definitions from taskrc
-        self.uda_service.load_udas_from_taskrc()
+        # Auto-load UDA definitions from the configured store
+        # Use the service to orchestrate loading and registry population
+        self.uda_service.load_udas_from_store()
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Add a new task to TaskWarrior.
@@ -321,25 +322,19 @@ class TaskWarrior:
         """
         self.adapter.annotate_task(task_id_or_uuid, annotation)
 
-    def define_context(self, context: str, read_filter: str, write_filter: str) -> None:
-        """Define a new context with explicit read and write filters.
+    def define_context(self, context) -> None:
+        """Define a new context from a ContextDTO.
 
-        Both filters are required. Use an empty string for write_filter
-        if you want a read-only context (new tasks won't inherit a project).
+        The context argument must be a ContextDTO instance containing
+        name, read_filter and write_filter.
 
         Args:
-            context:      Name of the context to create.
-            read_filter:  Filter applied when listing/querying tasks.
-            write_filter: Filter applied when creating or modifying tasks.
+            context: ContextDTO instance with the context definition.
 
         Raises:
             TaskWarriorError: If context creation fails.
-
-        Example:
-            >>> tw.define_context("work", read_filter="project:work", write_filter="project:work")
-            >>> tw.define_context("review", read_filter="+urgent or priority:H", write_filter="")
         """
-        self.context_service.define_context(context, read_filter, write_filter)
+        self.context_service.define_context(context)
 
     def apply_context(self, context: str) -> None:
         """Activate a context.
@@ -471,10 +466,12 @@ class TaskWarrior:
             current_context = None
             current_context_details = None
 
-        info.update({
-            "current_context": current_context,
-            "current_context_details": current_context_details,
-        })
+        info.update(
+            {
+                "current_context": current_context,
+                "current_context_details": current_context_details,
+            }
+        )
 
         return info
 
@@ -526,7 +523,7 @@ class TaskWarrior:
             >>> tw.reload_udas()
             >>> names = tw.get_uda_names()
         """
-        self.uda_service.load_udas_from_taskrc()
+        self.uda_service.load_udas_from_store()
 
     def get_uda_names(self) -> set[str]:
         """Get all defined UDA names.

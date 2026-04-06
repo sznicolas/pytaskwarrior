@@ -4,7 +4,6 @@ This module provides the ContextService class for managing TaskWarrior
 contexts (named filters).
 """
 
-
 from typing import TYPE_CHECKING
 
 from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
@@ -29,11 +28,11 @@ class ContextService:
         This service is typically accessed via TaskWarrior::
 
             tw = TaskWarrior()
-            tw.define_context("work", read_filter="project:work", write_filter="project:work")
+            tw.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
             tw.apply_context("work")
     """
 
-    def __init__(self, adapter: TaskWarriorAdapter, config_store: 'ConfigStore') -> None:
+    def __init__(self, adapter: TaskWarriorAdapter, config_store: "ConfigStore") -> None:
         """Initialize the context service.
 
         Args:
@@ -47,37 +46,38 @@ class ContextService:
         if not name or not name.strip():
             raise TaskValidationError("Context name cannot be empty")
 
-    def define_context(
-        self, name: str, read_filter: str, write_filter: str
-    ) -> None:
-        """Create or update a context with explicit read and write filters.
+    def define_context(self, ctx: ContextDTO) -> None:
+        """Create or update a context from a ContextDTO.
 
         TaskWarrior stores read and write filters separately in .taskrc.
-        Both must be provided — there is no implicit default.
+        The ContextDTO supplies both read_filter and write_filter explicitly.
 
         Args:
-            name:         Unique context name.
-            read_filter:  Filter applied when listing/querying tasks.
-            write_filter: Filter applied when creating or modifying tasks.
+            ctx: ContextDTO containing name, read_filter, and write_filter.
 
         Raises:
             TaskWarriorError: If the name is empty or creation fails.
 
         Example:
-            >>> service.define_context("work", read_filter="project:work", write_filter="project:work")
-            >>> service.define_context("urgent", read_filter="+urgent", write_filter="")  # read-only filter
+            >>> svc.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
         """
-        self._validate_name(name)
-        result = self.adapter.run_task_command(["context", "define", name, read_filter])
-        if result.returncode != 0:
-            raise TaskWarriorError(f"Failed to define context '{name}': {result.stderr}")
-        result = self.adapter.run_task_command(
-            ["config", f"context.{name}.write", write_filter]
-        )
-        if result.returncode != 0:
-            raise TaskWarriorError(
-                f"Failed to set write filter for context '{name}': {result.stderr}"
-            )
+        self._validate_name(ctx.name)
+        # Collect commands to be executed
+        commands = [
+            ["context", "define", ctx.name, ctx.read_filter],
+            ["config", f"context.{ctx.name}.write", ctx.write_filter],
+        ]
+
+        # Execute all commands through the adapter
+        for cmd in commands:
+            result = self.adapter.run_task_command(cmd)
+            if result.returncode != 0:
+                if cmd[0] == "context" and cmd[1] == "define":
+                    raise TaskWarriorError(f"Failed to define context '{ctx.name}': {result.stderr}")
+                elif cmd[0] == "config":
+                    raise TaskWarriorError(
+                        f"Failed to set write filter for context '{ctx.name}': {result.stderr}"
+                    )
         self.config_store.refresh()
 
     def apply_context(self, name: str) -> None:
@@ -153,11 +153,10 @@ class ContextService:
             TaskWarriorError: If the name is empty or deletion fails.
         """
         self._validate_name(name)
+        # Execute command through the adapter
         result = self.adapter.run_task_command(["context", "delete", name])
         if result.returncode != 0:
-            raise TaskWarriorError(
-                f"Failed to delete context '{name}': {result.stderr}"
-            )
+            raise TaskWarriorError(f"Failed to delete context '{name}': {result.stderr}")
         self.config_store.refresh()
 
     def has_context(self, name: str) -> bool:

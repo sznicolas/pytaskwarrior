@@ -1,5 +1,3 @@
-
-
 from taskwarrior import TaskWarrior
 from taskwarrior.dto.context_dto import ContextDTO
 
@@ -18,12 +16,16 @@ def test_get_tasks_applies_context_read_filter(monkeypatch):
 
     # Simulate an active context with a read_filter
     monkeypatch.setattr(tw, "get_current_context", lambda: "work")
-    ctx = ContextDTO(name="work", read_filter="project:work", write_filter="project:work", active=True)
+    ctx = ContextDTO(
+        name="work", read_filter="project:work", write_filter="project:work", active=True
+    )
     monkeypatch.setattr(tw.context_service, "get_contexts", lambda: [ctx])
 
     captured = {}
 
-    def fake_get_tasks(filter: str = "", include_completed: bool = False, include_deleted: bool = False):
+    def fake_get_tasks(
+        filter: str = "", include_completed: bool = False, include_deleted: bool = False
+    ):
         captured["filter"] = filter
         captured["include_completed"] = include_completed
         captured["include_deleted"] = include_deleted
@@ -40,12 +42,16 @@ def test_get_tasks_with_only_context_read_filter(monkeypatch):
     tw = _make_tw(monkeypatch)
 
     monkeypatch.setattr(tw, "get_current_context", lambda: "work")
-    ctx = ContextDTO(name="work", read_filter="project:work", write_filter="project:work", active=True)
+    ctx = ContextDTO(
+        name="work", read_filter="project:work", write_filter="project:work", active=True
+    )
     monkeypatch.setattr(tw.context_service, "get_contexts", lambda: [ctx])
 
     captured = {}
 
-    def fake_get_tasks(filter: str = "", include_completed: bool = False, include_deleted: bool = False):
+    def fake_get_tasks(
+        filter: str = "", include_completed: bool = False, include_deleted: bool = False
+    ):
         captured["filter"] = filter
         return []
 

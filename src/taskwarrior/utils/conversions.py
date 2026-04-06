@@ -46,4 +46,3 @@ def parse_taskwarrior_date(value: str) -> datetime:
             return datetime.fromisoformat(value)
         except ValueError as e:
             raise ValueError(f"Cannot parse TaskWarrior date: {value!r}") from e
-

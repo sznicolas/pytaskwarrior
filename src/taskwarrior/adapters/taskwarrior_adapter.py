@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 
 
 class TaskWarriorAdapter:
-
     """Low-level adapter for TaskWarrior CLI commands.
 
     This class handles direct communication with the TaskWarrior binary,
@@ -134,9 +133,7 @@ class TaskWarriorAdapter:
             )
         result = self.run_task_command(["sync"])
         if result.returncode != 0:
-            raise TaskSyncError(
-                f"Synchronization failed: {result.stderr or result.stdout}"
-            )
+            raise TaskSyncError(f"Synchronization failed: {result.stderr or result.stdout}")
 
     @staticmethod
     def _wrap_filter(f: str) -> str:
@@ -267,13 +264,9 @@ class TaskWarriorAdapter:
                     )
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
-                raise TaskWarriorError(
-                    f"Invalid response from TaskWarrior: {result.stdout}"
-                ) from e
+                raise TaskWarriorError(f"Invalid response from TaskWarrior: {result.stdout}") from e
         else:
-            raise TaskNotFound(
-                f"Task ID/UUID {task_id_or_uuid} not found"
-            )
+            raise TaskNotFound(f"Task ID/UUID {task_id_or_uuid} not found")
 
     def get_tasks(
         self,
@@ -351,9 +344,7 @@ class TaskWarriorAdapter:
                 tasks_data = json.loads(result.stdout)
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
-                raise TaskWarriorError(
-                    f"Invalid response from TaskWarrior: {result.stdout}"
-                ) from e
+                raise TaskWarriorError(f"Invalid response from TaskWarrior: {result.stdout}") from e
             if tasks_data:
                 task = TaskOutputDTO.model_validate(tasks_data[0])
                 logger.debug(f"Successfully retrieved recurring task: {task.uuid}")

@@ -26,7 +26,7 @@ class UdaType(str, Enum):
 
     Example:
         >>> from taskwarrior.dto.uda_dto import UdaConfig, UdaType
-        >>> uda = UdaConfig(name="severity", type=UdaType.STRING)
+        >>> uda = UdaConfig(name="severity", uda_type=UdaType.STRING)
     """
 
     STRING = "string"
@@ -40,11 +40,11 @@ class UdaConfig(BaseModel):
     """Data Transfer Object for User Defined Attributes (UDAs).
 
     UDAs extend TaskWarrior with custom fields. Each UDA has a name,
-    type, and optional configuration like allowed values or defaults.
+    uda_type, and optional configuration like allowed values or defaults.
 
     Attributes:
         name: Unique name for the UDA (used as the field name).
-        type: Data type of the UDA value.
+        uda_type: Data type of the UDA value.
         label: Human-readable label for display in reports.
         values: List of allowed values (for string type with enumeration).
         default: Default value when not specified.
@@ -56,7 +56,7 @@ class UdaConfig(BaseModel):
 
             uda = UdaConfig(
                 name="severity",
-                type=UdaType.STRING,
+                uda_type=UdaType.STRING,
                 label="Severity",
                 values=["low", "medium", "high", "critical"],
                 default="medium",
@@ -66,7 +66,7 @@ class UdaConfig(BaseModel):
     """
 
     name: str = Field(..., description="Name of the UDA")
-    type: UdaType = Field(..., description="Data type of the UDA")
+    uda_type: UdaType = Field(..., description="Data type of the UDA")
     label: str | None = Field(default=None, description="Display label for the UDA")
     values: list[str] | None = Field(
         default=None, description="Allowed values for the UDA (for string types)"

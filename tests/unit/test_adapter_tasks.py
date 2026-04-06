@@ -21,6 +21,7 @@ class TestTaskWarriorAdapterTasks:
     def adapter(self, taskwarrior_config: str, taskwarrior_data: str):
         """Create a TaskWarriorAdapter instance for testing."""
         from src.taskwarrior.config.config_store import ConfigStore
+
         return TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config), task_cmd="task")
 
     def test_task_management_errors(self, adapter: TaskWarriorAdapter):
@@ -108,9 +109,7 @@ class TestTaskWarriorAdapterTasks:
         """Test _build_args with multiple dependencies."""
         dep_uuid1 = uuid4()
         dep_uuid2 = uuid4()
-        task = TaskInputDTO(
-            description="Task with multiple deps", depends=[dep_uuid1, dep_uuid2]
-        )
+        task = TaskInputDTO(description="Task with multiple deps", depends=[dep_uuid1, dep_uuid2])
         args = adapter._build_args(task)
 
         assert f"depends:{str(dep_uuid1)}" in args

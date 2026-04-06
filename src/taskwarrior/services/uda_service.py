@@ -5,12 +5,13 @@ This module provides the UdaService class for managing custom task attributes.
 
 from typing import TYPE_CHECKING
 
-from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
-from ..dto.uda_dto import UdaConfig
-from ..registry.uda_registry import UdaRegistry
-
 if TYPE_CHECKING:
     from ..config.config_store import ConfigStore
+
+from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
+from ..dto.uda_dto import UdaConfig
+from ..exceptions import TaskOperationError
+from ..registry.uda_registry import UdaRegistry
 
 
 class UdaService:
@@ -28,11 +29,11 @@ class UdaService:
         This service is typically accessed via TaskWarrior::
 
             tw = TaskWarrior()
-            uda = UdaConfig(name="severity", type=UdaType.STRING)
+            uda = UdaConfig(name="severity", uda_type=UdaType.STRING)
             tw.uda_service.define_uda(uda)
     """
 
-    def __init__(self, adapter: TaskWarriorAdapter, config_store: 'ConfigStore') -> None:
+    def __init__(self, adapter: TaskWarriorAdapter, config_store: "ConfigStore") -> None:
         """Initialize the UDA service.
 
         Args:
@@ -44,49 +45,65 @@ class UdaService:
         self.config_store = config_store
         self.registry = UdaRegistry()
 
-    def load_udas_from_taskrc(self) -> None:
-        """Load existing UDA definitions from the taskrc file.
+    def load_udas_from_store(self) -> None:
+        """Load existing UDA definitions from the configured ConfigStore.
 
-        Parses the taskrc file to discover and register any UDAs
-        that have been previously defined.
+        This method delegates parsing to ConfigStore.get_udas() and registers
+        the resulting UdaConfig objects in the registry (in-memory only).
         """
-        self.registry.load_from_taskrc(self.config_store._taskrc_path)
+        udas = self.config_store.get_udas()
+        self.registry.register_udas(udas)
 
     def define_uda(self, uda: UdaConfig) -> None:
-        """Define a new UDA in TaskWarrior.
+        """Define a new UDA in TaskWarrior and register it locally.
 
-        Creates the UDA configuration in TaskWarrior and registers
-        it in the local registry.
-
-        Args:
-            uda: The UDA definition to create.
-
-        Example:
-            >>> uda = UdaConfig(
-            ...     name="severity",
-            ...     type=UdaType.STRING,
-            ...     values=["low", "medium", "high"]
-            ... )
-            >>> service.define_uda(uda)
+        The service executes the required `task config` commands via the adapter
+        and only updates the registry if all commands succeed.
         """
-        self.registry.define_update_uda(uda, self.adapter)
+        # Build commands to define the UDA
+        field_names = uda.__class__.model_fields.keys() - {"name"}
+        # uda_type is handled first
+        commands: list[list[str]] = [["config", f"uda.{uda.name}.type", uda.uda_type.value]]
+        field_names -= {"uda_type"}
+
+        for field_name in field_names:
+            value = getattr(uda, field_name)
+            if value is not None and value != "":
+                commands.append(["config", f"uda.{uda.name}.{field_name}", str(value)])
+
+        # Execute commands via adapter; if any fail, raise and do not modify registry
+        for cmd in commands:
+            result = self.adapter.run_task_command(cmd)
+            if getattr(result, "returncode", 0) != 0:
+                stderr = str(getattr(result, "stderr", ""))
+                raise TaskOperationError(f"Failed to run task command: {cmd} -> {stderr}")
+
+        # On success, update registry
+        self.registry.add_uda(uda)
 
     def update_uda(self, uda: UdaConfig) -> None:
-        """Update an existing UDA definition.
+        """Update an existing UDA in TaskWarrior and in the registry.
 
-        Modifies the UDA configuration in TaskWarrior.
-
-        Args:
-            uda: The updated UDA definition.
+        Executes commands via adapter and updates the registry on success.
         """
-        self.registry.define_update_uda(uda, self.adapter)
+        # For now, same as define_uda
+        self.define_uda(uda)
 
     def delete_uda(self, uda: UdaConfig) -> None:
-        """Delete a UDA from TaskWarrior.
+        """Delete a UDA from TaskWarrior and remove it from the registry.
 
-        Removes the UDA configuration and unregisters it.
-
-        Args:
-            uda: The UDA to delete.
+        Executes `task config <key>` without a value to remove each UDA key.
         """
-        self.registry.delete_uda(uda, self.adapter)
+        field_names = uda.__class__.model_fields.keys()
+        for key in field_names:
+            cmd = ["config", f"uda.{uda.name}.{key}"]
+            result = self.adapter.run_task_command(cmd)
+            if getattr(result, "returncode", 0) != 0:
+                stderr = str(getattr(result, "stderr", ""))
+                # tolerate missing keys (idempotent deletion)
+                if "no entry named" in stderr.lower():
+                    continue
+                raise TaskOperationError(f"Failed to run task command: {cmd} -> {stderr}")
+
+        # On success, remove from registry
+        self.registry.remove_uda(uda.name)
