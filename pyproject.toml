@@ -1,6 +1,6 @@
 [project]
 name = "pytaskwarrior"
-version = "2.0.0"
+version = "2.0.1"
 description = "Taskwarrior wrapper python module"
 readme = "PYPI_README.md"
 requires-python = ">=3.12"
@@ -37,7 +37,7 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sznicolas/pytaskwarrior/"
+Homepage = "https://pytaskwarrior.readthedocs.io/en/latest/"
 Repository = "https://github.com/sznicolas/pytaskwarrior/"
 Issues = "https://github.com/sznicolas/pytaskwarrior/issues"
 Changelog = "https://github.com/sznicolas/pytaskwarrior/blob/main/CHANGELOG.md"
