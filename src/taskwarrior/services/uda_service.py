@@ -69,7 +69,8 @@ class UdaService:
         for field_name in field_names:
             value = getattr(uda, field_name)
             if value is not None and value != "":
-                commands.append(["config", f"uda.{uda.name}.{field_name}", str(value)])
+                value_str = ",".join(map(str, value)) if field_name == "values" else str(value)
+                commands.append(["config", f"uda.{uda.name}.{field_name}", value_str])
 
         # Execute commands via adapter; if any fail, raise and do not modify registry
         for cmd in commands:
