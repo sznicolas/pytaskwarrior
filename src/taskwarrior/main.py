@@ -566,3 +566,22 @@ class TaskWarrior:
             ['dmc.fil.aretordre', 'dmc.fil.adérouler', 'perso', 'perso.orl', 'pro']
         """
         return self.adapter.get_projects()
+
+    def get_tags(self, include_virtual_tags: bool = False) -> list[str]:
+        """Get all tags defined in TaskWarrior.
+
+        Args:
+            include_virtual_tags: If ``True``, include TaskWarrior virtual tags
+                such as ``TODAY`` and ``READY``.
+
+        Returns:
+            List of tag names.
+        """
+        return self.adapter.get_tags(include_virtual_tags=include_virtual_tags)
+
+    def get_context_tags(self) -> list[str]:
+        """Return tags that follow the ``@`` context convention.
+
+        This is a convenience filter for user-defined tags such as ``@work``.
+        """
+        return [tag for tag in self.get_tags() if tag.startswith("@")]

@@ -204,6 +204,32 @@ class TestGetTasks:
 
 
 # ---------------------------------------------------------------------------
+# get_tags — virtual tag filtering
+# ---------------------------------------------------------------------------
+
+
+class TestGetTags:
+    def test_filters_virtual_tags_by_default(self, adapter: TaskWarriorAdapter) -> None:
+        stdout = "work\nurgent\nTODAY\n@home\nREADY\n"
+        with patch.object(adapter, "run_task_command", return_value=_completed(stdout=stdout)):
+            assert adapter.get_tags() == ["work", "urgent", "@home"]
+
+    def test_can_include_virtual_tags(self, adapter: TaskWarriorAdapter) -> None:
+        stdout = "work\nurgent\nTODAY\n@home\nREADY\n"
+        with patch.object(adapter, "run_task_command", return_value=_completed(stdout=stdout)):
+            tags = adapter.get_tags(include_virtual_tags=True)
+
+        assert {"work", "urgent", "@home", "TODAY", "READY"}.issubset(set(tags))
+
+    def test_returncode_nonzero_raises(self, adapter: TaskWarriorAdapter) -> None:
+        with patch.object(
+            adapter, "run_task_command", return_value=_completed(returncode=1, stderr="fail")
+        ):
+            with pytest.raises(TaskWarriorError, match="Failed to get tags"):
+                adapter.get_tags()
+
+
+# ---------------------------------------------------------------------------
 # get_recurring_instances — error paths
 # ---------------------------------------------------------------------------
 

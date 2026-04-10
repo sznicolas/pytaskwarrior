@@ -85,3 +85,17 @@ class TestTaskWarriorInit:
         for project in projects:
             assert isinstance(project, str)
             assert project.strip() != ""
+
+    def test_get_tags(self, taskwarrior_config: str):
+        """Test getting tags from TaskWarrior."""
+        tw = TaskWarrior(taskrc_file=taskwarrior_config)
+
+        tags = tw.get_tags()
+        assert isinstance(tags, list)
+        assert "TODAY" not in tags
+        assert "READY" not in tags
+
+        tags_with_virtual = tw.get_tags(include_virtual_tags=True)
+        assert "TODAY" in tags_with_virtual
+        assert "READY" in tags_with_virtual
+        assert tw.get_context_tags() == []
