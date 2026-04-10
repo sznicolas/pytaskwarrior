@@ -17,6 +17,7 @@ Production-ready with 164 tests (96% coverage), strict type checking, and profes
 -  Type-safe with Pydantic models
 -  Context management
 -  UDA (User Defined Attributes) support
+-  Tag discovery and `@` context tags
 -  Recurring tasks and annotations
 -  Consistent exception hierarchy (`TaskNotFound`, `TaskValidationError`, `TaskOperationError`, `TaskConfigurationError`, …)
 
@@ -53,6 +54,14 @@ for t in tw.get_tasks():
 
 # Complete a task
 tw.done_task(added.uuid)
+```
+
+## Tags
+
+```python
+tags = tw.get_tags()  # virtual tags excluded
+all_tags = tw.get_tags(include_virtual_tags=True)
+context_tags = tw.get_context_tags()  # tags starting with "@"
 ```
 
 ## Documentation

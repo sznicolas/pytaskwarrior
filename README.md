@@ -17,6 +17,7 @@ A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/) v3.4, the co
 - **Type-safe** - Pydantic models with full type hints
 - **Context management** - Define, apply, and switch contexts
 - **UDA support** - User Defined Attributes
+- **Tag discovery** - List real tags, virtual tags, and `@` context tags
 - **Recurring tasks** - Full recurrence support
 - **Annotations** - Add notes to tasks
 - **Date calculations** - Use TaskWarrior's date expressions
@@ -127,6 +128,13 @@ tw = TaskWarrior(
 | `start_task(uuid)` | Start working on task |
 | `stop_task(uuid)` | Stop working on task |
 | `annotate_task(uuid, annotation)` | Add annotation to task |
+
+#### Tags Operations
+
+| Method | Description |
+|--------|-------------|
+| `get_tags(include_virtual_tags=False)` | List tags, excluding virtual tags by default |
+| `get_context_tags()` | List tags that start with `@` |
 
 #### Context Operations
 

@@ -26,6 +26,40 @@ from ..exceptions import (
 
 logger = logging.getLogger(__name__)
 
+TASKWARRIOR_VIRTUAL_TAGS: tuple[str, ...] = (
+    "BLOCKED",
+    "UNBLOCKED",
+    "BLOCKING",
+    "DUE",
+    "DUETODAY",
+    "TODAY",
+    "OVERDUE",
+    "WEEK",
+    "MONTH",
+    "QUARTER",
+    "YEAR",
+    "ACTIVE",
+    "SCHEDULED",
+    "PARENT",
+    "CHILD",
+    "UNTIL",
+    "WAITING",
+    "ANNOTATED",
+    "READY",
+    "YESTERDAY",
+    "TOMORROW",
+    "TAGGED",
+    "PENDING",
+    "COMPLETED",
+    "DELETED",
+    "UDA",
+    "ORPHAN",
+    "PRIORITY",
+    "PROJECT",
+    "LATEST",
+)
+TASKWARRIOR_VIRTUAL_TAG_SET = frozenset(TASKWARRIOR_VIRTUAL_TAGS)
+
 
 class TaskWarriorAdapter:
     """Low-level adapter for TaskWarrior CLI commands.
@@ -515,3 +549,23 @@ class TaskWarriorAdapter:
 
         projects = [line.strip() for line in result.stdout.split("\n") if line.strip()]
         return projects
+
+    def get_tags(self, include_virtual_tags: bool = False) -> list[str]:
+        """Get all tags defined in TaskWarrior.
+
+        Args:
+            include_virtual_tags: If ``True``, include TaskWarrior virtual tags
+                such as ``TODAY`` and ``READY``.
+
+        Returns:
+            List of tag names.
+        """
+        result = self.run_task_command(["_tags"])
+
+        if result.returncode != 0:
+            raise TaskWarriorError(f"Failed to get tags: {result.stderr}")
+
+        tags = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        if include_virtual_tags:
+            return list(dict.fromkeys(tags + list(TASKWARRIOR_VIRTUAL_TAGS)))
+        return [tag for tag in tags if tag not in TASKWARRIOR_VIRTUAL_TAG_SET]

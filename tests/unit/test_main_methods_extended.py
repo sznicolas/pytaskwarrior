@@ -148,3 +148,22 @@ def test_get_tasks_combines_filter_with_active_context():
     # When no filter provided, should use just the context read_filter
     tw.get_tasks()
     assert adapter.last_filter == "project:work"
+
+
+def test_get_tags_and_context_tags_delegate_and_filter():
+    tw = TaskWarrior.__new__(TaskWarrior)
+
+    class DummyAdapter:
+        def __init__(self):
+            self.calls = []
+
+        def get_tags(self, include_virtual_tags=False):
+            self.calls.append(include_virtual_tags)
+            return ["work", "TODAY", "@home", "READY", "urgent"]
+
+    adapter = DummyAdapter()
+    tw.adapter = adapter
+
+    assert tw.get_tags(include_virtual_tags=True) == ["work", "TODAY", "@home", "READY", "urgent"]
+    assert tw.get_context_tags() == ["@home"]
+    assert adapter.calls == [True, False]
