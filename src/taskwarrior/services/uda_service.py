@@ -59,6 +59,16 @@ class UdaService:
 
         The service executes the required `task config` commands via the adapter
         and only updates the registry if all commands succeed.
+
+        Args:
+            uda: The UdaConfig describing the UDA to create.
+
+        Raises:
+            TaskOperationError: If any underlying TaskWarrior config command fails.
+
+        Example:
+            >>> uda = UdaConfig(name="sev", uda_type=UdaType.STRING, label="Severity")
+            >>> service.define_uda(uda)
         """
         # Build commands to define the UDA
         field_names = uda.__class__.model_fields.keys() - {"name"}
@@ -86,6 +96,12 @@ class UdaService:
         """Update an existing UDA in TaskWarrior and in the registry.
 
         Executes commands via adapter and updates the registry on success.
+
+        Args:
+            uda: The UdaConfig with updated settings to apply.
+
+        Raises:
+            TaskOperationError: If applying the updated configuration fails.
         """
         # For now, same as define_uda
         self.define_uda(uda)
@@ -94,9 +110,26 @@ class UdaService:
         """Delete a UDA from TaskWarrior and remove it from the registry.
 
         Executes `task config <key>` without a value to remove each UDA key.
+
+        Args:
+            uda: The UdaConfig identifying the UDA to remove.
+
+        Raises:
+            TaskOperationError: If an unexpected TaskWarrior error occurs while
+                attempting to remove configuration keys (missing keys are tolerated).
         """
-        field_names = uda.__class__.model_fields.keys()
-        for key in field_names:
+        # Mirror define_uda: skip 'name' and map internal 'uda_type' -> TaskWarrior 'type'
+        field_names = set(uda.__class__.model_fields.keys()) - {"name"}
+        keys_to_delete: list[str] = []
+
+        if "uda_type" in field_names:
+            keys_to_delete.append("type")
+            field_names.remove("uda_type")
+
+        # delete remaining fields deterministically
+        keys_to_delete.extend(sorted(field_names))
+
+        for key in keys_to_delete:
             cmd = ["config", f"uda.{uda.name}.{key}"]
             result = self.adapter.run_task_command(cmd)
             if getattr(result, "returncode", 0) != 0:

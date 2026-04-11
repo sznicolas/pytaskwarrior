@@ -66,6 +66,12 @@ work_tasks = tw.get_tasks("project:work")
 # By tag
 urgent = tw.get_tasks("+urgent")
 
+# Tags - helpers
+# Get all tags in the system
+all_tags = tw.get_tags()  # e.g. ['work', 'urgent']
+# Get tags following the context convention (start with '@')
+context_tags = tw.get_context_tags()  # e.g. ['@home', '@work']
+
 # Complex filter
 overdue = tw.get_tasks("due.before:today status:pending")
 ```

@@ -1,6 +1,8 @@
 # UDA Implementation
 
-User Defined Attributes (UDAs) extend TaskWarrior with custom fields to meet specific project needs.
+User Defined Attributes (UDAs) extend TaskWarrior with custom fields.
+
+Note: In this library the DTO uses the field name `uda_type` (to avoid using the Python reserved word `type`). In TaskWarrior configuration files the corresponding key is written as `uda.<name>.type`. Examples in this document use the public TaskWarrior facade (for example `tw.define_uda`, `tw.update_uda`, and `tw.delete_uda`).
 
 ## UDA Definition Examples
 
@@ -19,7 +21,7 @@ severity = UdaConfig(
     values=["low", "medium", "high", "critical"],
     default="medium",
 )
-tw.uda_service.define_uda(severity)
+tw.define_uda(severity)
 ```
 
 ### Numeric UDA for Time Estimates
@@ -32,7 +34,7 @@ estimate = UdaConfig(
     label="Hours",
     coefficient=1.0,  # Affects urgency
 )
-tw.uda_service.define_uda(estimate)
+tw.define_uda(estimate)
 ```
 
 ### Date UDA for Milestones
@@ -44,7 +46,7 @@ milestone = UdaConfig(
     uda_type=UdaType.DATE,
     label="Milestone Date",
 )
-tw.uda_service.define_uda(milestone)
+tw.define_uda(milestone)
 ```
 
 ## Using UDAs in Tasks
@@ -71,6 +73,17 @@ task = tw.get_task(uuid)
 severity = task.get_uda("severity")  # "critical"
 estimate = task.get_uda("estimate", default=0)  # 4
 milestone = task.get_uda("milestone")  # None if not set
+```
+
+### Update and Delete UDAs
+
+```python
+# Update UDA
+severity_updated = UdaConfig(name="severity", uda_type=UdaType.STRING, label="Severity", default="low")
+tw.update_uda(severity_updated)
+
+# Delete UDA
+tw.delete_uda(severity)
 ```
 
 ## Listing and Managing UDAs
@@ -125,20 +138,20 @@ def setup_udas(tw):
         coefficient=1.0,
     )
     
-    tw.uda_service.define_uda(severity)
-    tw.uda_service.define_uda(estimate)
+    tw.define_uda(severity)
+    tw.define_uda(estimate)
 ```
 
 ### Use Descriptive Names
 
 ```python
 # Good descriptive names
-tw.uda_service.define_uda(UdaConfig(name="priority", uda_type=UdaType.STRING, label="Priority"))
-tw.uda_service.define_uda(UdaConfig(name="risk", uda_type=UdaType.STRING, label="Risk Level"))
+tw.define_uda(UdaConfig(name="priority", uda_type=UdaType.STRING, label="Priority"))
+tw.define_uda(UdaConfig(name="risk", uda_type=UdaType.STRING, label="Risk Level"))
 
 # Less descriptive names
-tw.uda_service.define_uda(UdaConfig(name="p", uda_type=UdaType.STRING, label="Priority"))
-tw.uda_service.define_uda(UdaConfig(name="r", uda_type=UdaType.STRING, label="Risk"))
+tw.define_uda(UdaConfig(name="p", uda_type=UdaType.STRING, label="Priority"))
+tw.define_uda(UdaConfig(name="r", uda_type=UdaType.STRING, label="Risk"))
 ```
 
 ### Set Appropriate Defaults
@@ -175,7 +188,7 @@ status_tracking = UdaConfig(
     values=["planning", "in-progress", "review", "completed"],
     default="planning",
 )
-tw.uda_service.define_uda(status_tracking)
+tw.define_uda(status_tracking)
 
 # Use in tasks
 task = TaskInputDTO(
@@ -195,7 +208,7 @@ resource = UdaConfig(
     values=["developer", "designer", "manager", "qa"],
     default="developer",
 )
-tw.uda_service.define_uda(resource)
+tw.define_uda(resource)
 
 # Use in tasks
 task = TaskInputDTO(
@@ -214,7 +227,7 @@ budget = UdaConfig(
     label="Budget (USD)",
     coefficient=1.0,
 )
-tw.uda_service.define_uda(budget)
+tw.define_uda(budget)
 
 # Use in tasks
 task = TaskInputDTO(

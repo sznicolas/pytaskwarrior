@@ -67,7 +67,7 @@ severity = UdaConfig(
     values=["low", "medium", "high", "critical"],
     default="medium",
 )
-tw.uda_service.define_uda(severity)
+tw.define_uda(severity)
 
 # Numeric UDA for time estimates
 estimate = UdaConfig(
@@ -76,7 +76,7 @@ estimate = UdaConfig(
     label="Hours",
     coefficient=1.0,  # Affects urgency
 )
-tw.uda_service.define_uda(estimate)
+tw.define_uda(estimate)
 ```
 
 ### Using UDAs in Tasks
