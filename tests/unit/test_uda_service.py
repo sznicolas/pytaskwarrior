@@ -117,8 +117,7 @@ def test_uda_service_delete_uda():
 
     service.delete_uda(uda)
 
-    mock_adapter.run_task_command.assert_any_call(["config", "uda.test_uda.name"])
-    mock_adapter.run_task_command.assert_any_call(["config", "uda.test_uda.uda_type"])
+    mock_adapter.run_task_command.assert_any_call(["config", "uda.test_uda.type"])
     mock_adapter.run_task_command.assert_any_call(["config", "uda.test_uda.label"])
     mock_adapter.run_task_command.assert_any_call(["config", "uda.test_uda.values"])
     mock_adapter.run_task_command.assert_any_call(["config", "uda.test_uda.default"])

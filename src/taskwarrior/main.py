@@ -554,6 +554,47 @@ class TaskWarrior:
         """
         return self.uda_service.registry.get_uda(name)
 
+    def define_uda(self, uda: UdaConfig) -> None:
+        """Define a new UDA via the TaskWarrior facade.
+
+        Delegates to UdaService.define_uda which performs the necessary
+        TaskWarrior config writes and registers the UDA in the local registry.
+
+        Args:
+            uda: The UdaConfig describing the UDA to create.
+
+        Raises:
+            TaskOperationError: If creating the UDA via the underlying adapter fails.
+        """
+        self.uda_service.define_uda(uda)
+
+    def update_uda(self, uda: UdaConfig) -> None:
+        """Update an existing UDA via the TaskWarrior facade.
+
+        Delegates to UdaService.update_uda.
+
+        Args:
+            uda: The UdaConfig with updated fields.
+
+        Raises:
+            TaskOperationError: If applying the update fails.
+        """
+        self.uda_service.update_uda(uda)
+
+    def delete_uda(self, uda: UdaConfig) -> None:
+        """Delete a UDA via the TaskWarrior facade.
+
+        Delegates to UdaService.delete_uda which removes TaskWarrior config
+        keys and the UDA from the local registry.
+
+        Args:
+            uda: The UdaConfig identifying the UDA to remove.
+
+        Raises:
+            TaskOperationError: If deletion fails for reasons other than missing keys.
+        """
+        self.uda_service.delete_uda(uda)
+
     def get_projects(self) -> list[str]:
         """Get all projects defined in TaskWarrior.
 
