@@ -11,10 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Harmonized UDA deletion and facade methods: UdaService.delete_uda now maps the library's internal `uda_type` field to TaskWarrior's `uda.<name>.type` key and removes the correct configuration keys; public facade methods `tw.define_uda`, `tw.update_uda` and `tw.delete_uda` were added to simplify UDA management.
 - Documentation review and improvements: updated examples to use the public TaskWarrior façade, added guidance on UDA `uda_type` vs TaskWarrior `type`, and added tag helper examples (`tw.get_tags`, `tw.get_context_tags`) for clarity and consistency.
+- Added TaskID utility class and TaskRef type alias to unify task references (`int` id, `UUID`, or `TaskID`). Exported `TaskID` from the public API and added unit tests.
+- Updated TaskWarrior and adapter method signatures to accept `TaskRef` (int, UUID, or TaskID) for task references.
 
 ### Changed
 
 - Documentation: swept and updated examples and how-tos to use the public API and clarified terminology around UDAs and tags.
+- API: parameter name changed in several methods from `task_id_or_uuid` to `task_id`/`task_ref`. Positional calls are unaffected; callers using the old keyword name may need to update (see migration notes below).
+
+### Tests
+
+- Added unit tests for `TaskID` (tests/unit/test_task_id.py). Full test suite passes locally.
+
+### Notes / Migration
+
+- Backwards compatibility: `TaskID` constructor accepts `str`, `int`, and `UUID` to remain compatible with existing call-sites. However, some tests and user code that relied on the `task_id_or_uuid` keyword argument may need to update to the new `task_id`/`task_ref` keyword or use positional arguments.
 
 
 ## [2.0.3] - 2026-04-10
