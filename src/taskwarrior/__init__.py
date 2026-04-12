@@ -37,6 +37,7 @@ import importlib.metadata
 from .dto.annotation_dto import AnnotationDTO
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
+from .dto.task_id import TaskID
 from .dto.uda_dto import UdaConfig, UdaType
 from .enums import Priority, RecurrencePeriod, TaskStatus
 from .exceptions import (
@@ -61,6 +62,7 @@ __all__ = [
     "version",
     "Priority",
     "RecurrencePeriod",
+    "TaskID",
     "TaskStatus",
     "TaskConfigurationError",
     "TaskInputDTO",

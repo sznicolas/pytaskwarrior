@@ -8,11 +8,11 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any
-from uuid import UUID
 
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
+from .dto.task_id import TaskRef
 from .dto.uda_dto import UdaConfig
 from .enums import TaskStatus  # noqa: F401 — re-exported for public API
 from .services.context_service import ContextService
@@ -114,12 +114,12 @@ class TaskWarrior:
         """
         return self.adapter.add_task(task)
 
-    def modify_task(self, task: TaskInputDTO, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
+    def modify_task(self, task: TaskInputDTO, task_id: TaskRef) -> TaskOutputDTO:
         """Modify an existing task.
 
         Args:
             task: The new task data to apply.
-            task_id_or_uuid: The task ID (integer) or UUID to modify.
+            task_id: The task ID (integer) or UUID to modify.
 
         Returns:
             The updated task.
@@ -132,13 +132,13 @@ class TaskWarrior:
             >>> task = TaskInputDTO(description="Updated description")
             >>> updated = tw.modify_task(task, "abc-123-uuid")
         """
-        return self.adapter.modify_task(task, task_id_or_uuid)
+        return self.adapter.modify_task(task, task_id)
 
-    def get_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
+    def get_task(self, task_id: TaskRef) -> TaskOutputDTO:
         """Retrieve a single task by ID or UUID.
 
         Args:
-            task_id_or_uuid: The task ID (integer) or UUID to retrieve.
+            task_id: The task ID (integer) or UUID to retrieve.
 
         Returns:
             The requested task.
@@ -149,8 +149,9 @@ class TaskWarrior:
         Example:
             >>> task = tw.get_task(1)  # By ID
             >>> task = tw.get_task("abc-123-uuid")  # By UUID
+            >>> task = tw.get_task(TaskID(1))  # Using TaskID
         """
-        return self.adapter.get_task(task_id_or_uuid)
+        return self.adapter.get_task(task_id)
 
     def get_tasks(
         self,
@@ -210,11 +211,11 @@ class TaskWarrior:
             include_deleted=include_deleted,
         )
 
-    def get_recurring_task(self, task_id_or_uuid: str | int | UUID) -> TaskOutputDTO:
+    def get_recurring_task(self, task_id: TaskRef) -> TaskOutputDTO:
         """Get the parent recurring task template.
 
         Args:
-            task_id_or_uuid: The UUID of a recurring task or one of its instances.
+            task_id: The UUID of a recurring task or one of its instances.
 
         Returns:
             The parent recurring task template.
@@ -222,13 +223,13 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the task doesn't exist.
         """
-        return self.adapter.get_recurring_task(task_id_or_uuid)
+        return self.adapter.get_recurring_task(task_id)
 
-    def get_recurring_instances(self, task_id_or_uuid: str | int | UUID) -> list[TaskOutputDTO]:
+    def get_recurring_instances(self, task_id: TaskRef) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task.
 
         Args:
-            task_id_or_uuid: The UUID of the parent recurring task.
+            task_id: The UUID of the parent recurring task.
 
         Returns:
             List of task instances created from the recurring template.
@@ -236,39 +237,39 @@ class TaskWarrior:
         Raises:
             TaskNotFound: If the parent task doesn't exist.
         """
-        return self.adapter.get_recurring_instances(task_id_or_uuid)
+        return self.adapter.get_recurring_instances(task_id)
 
-    def delete_task(self, task_id_or_uuid: str | int | UUID) -> None:
+    def delete_task(self, task_id: TaskRef) -> None:
         """Mark a task as deleted.
 
         The task is not permanently removed; use `purge_task` for that.
 
         Args:
-            task_id_or_uuid: The task ID or UUID to delete.
+            task_id: The task ID or UUID to delete.
 
         Raises:
             TaskOperationError: If the operation fails (e.g., task already deleted).
         """
-        self.adapter.delete_task(task_id_or_uuid)
+        self.adapter.delete_task(task_id)
 
-    def purge_task(self, task_id_or_uuid: str | int | UUID) -> None:
+    def purge_task(self, task_id: TaskRef) -> None:
         """Permanently remove a task from the database.
 
         Unlike `delete_task`, this cannot be undone.
 
         Args:
-            task_id_or_uuid: The task ID or UUID to purge.
+            task_id: The task ID or UUID to purge.
 
         Raises:
             TaskOperationError: If the operation fails (e.g., task was not deleted first).
         """
-        self.adapter.purge_task(task_id_or_uuid)
+        self.adapter.purge_task(task_id)
 
-    def done_task(self, task_id_or_uuid: str | int | UUID) -> None:
+    def done_task(self, task_id: TaskRef) -> None:
         """Mark a task as completed.
 
         Args:
-            task_id_or_uuid: The task ID or UUID to complete.
+            task_id: The task ID or UUID to complete.
 
         Raises:
             TaskOperationError: If the operation fails (e.g., task is already completed).
@@ -276,42 +277,43 @@ class TaskWarrior:
         Example:
             >>> tw.done_task(1)
             >>> tw.done_task("abc-123-uuid")
+            >>> tw.done_task(TaskID(1))
         """
-        self.adapter.done_task(task_id_or_uuid)
+        self.adapter.done_task(task_id)
 
-    def start_task(self, task_id_or_uuid: str | int | UUID) -> None:
+    def start_task(self, task_id: TaskRef) -> None:
         """Start working on a task.
 
         Sets the task's start time to now, indicating active work.
 
         Args:
-            task_id_or_uuid: The task ID or UUID to start.
+            task_id: The task ID or UUID to start.
 
         Raises:
             TaskOperationError: If the operation fails (e.g., task is already started).
         """
-        self.adapter.start_task(task_id_or_uuid)
+        self.adapter.start_task(task_id)
 
-    def stop_task(self, task_id_or_uuid: str | int | UUID) -> None:
+    def stop_task(self, task_id: TaskRef) -> None:
         """Stop working on a task.
 
         Clears the task's start time.
 
         Args:
-            task_id_or_uuid: The task ID or UUID to stop.
+            task_id: The task ID or UUID to stop.
 
         Raises:
             TaskOperationError: If the operation fails (e.g., task was not started).
         """
-        self.adapter.stop_task(task_id_or_uuid)
+        self.adapter.stop_task(task_id)
 
-    def annotate_task(self, task_id_or_uuid: str | int | UUID, annotation: str) -> None:
+    def annotate_task(self, task_id: TaskRef, annotation: str) -> None:
         """Add an annotation (note) to a task.
 
         Annotations are timestamped notes attached to tasks.
 
         Args:
-            task_id_or_uuid: The task ID or UUID to annotate.
+            task_id: The task ID or UUID to annotate.
             annotation: The annotation text to add.
 
         Raises:
@@ -320,7 +322,7 @@ class TaskWarrior:
         Example:
             >>> tw.annotate_task(1, "Discussed with team, need more info")
         """
-        self.adapter.annotate_task(task_id_or_uuid, annotation)
+        self.adapter.annotate_task(task_id, annotation)
 
     def define_context(self, context: ContextDTO) -> None:
         """Define a new context from a ContextDTO.
