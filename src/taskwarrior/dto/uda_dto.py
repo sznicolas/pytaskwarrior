@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class UdaType(str, Enum):
@@ -34,6 +34,8 @@ class UdaType(str, Enum):
     DATE = "date"
     DURATION = "duration"
     UUID = "uuid"
+
+
 
 
 class UdaConfig(BaseModel):
@@ -78,3 +80,18 @@ class UdaConfig(BaseModel):
     )
 
     model_config = {"populate_by_name": True, "extra": "forbid"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def alias_type_to_uda_type(cls, values: object) -> object:
+        # Accept 'type' as an alias for 'uda_type', unless 'uda_type' is already present
+        if isinstance(values, dict):
+            # Accept 'type' as an alias for 'uda_type', unless 'uda_type' is already present
+            if "type" in values and "uda_type" not in values:
+                values = dict(values)  # copy to avoid mutating input
+                values["uda_type"] = values.pop("type")
+            # Remove 'type' if both are present, to avoid extra field error
+            elif "type" in values and "uda_type" in values:
+                values = dict(values)
+                values.pop("type")
+        return values

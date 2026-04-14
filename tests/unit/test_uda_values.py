@@ -46,3 +46,14 @@ def test_define_uda_with_int_values():
 
     assert ["config", "uda.score.type", uda.uda_type.value] in calls
     assert ["config", "uda.score.values", "1,2,3"] in calls
+
+def test_uda_config_accepts_type_alias():
+    # Should accept 'type' as an alias for 'uda_type'
+    uda = UdaConfig(name="alias_test", type="string", label="Alias Test")
+    assert uda.uda_type == UdaType.STRING
+    assert uda.name == "alias_test"
+    assert uda.label == "Alias Test"
+
+    # If both 'uda_type' and 'type' are present, 'uda_type' wins
+    uda2 = UdaConfig(name="alias_test2", uda_type=UdaType.NUMERIC, type="string")
+    assert uda2.uda_type == UdaType.NUMERIC
