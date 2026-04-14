@@ -119,15 +119,18 @@ tw = TaskWarrior(
 | Method | Description |
 |--------|-------------|
 | `add_task(task: TaskInputDTO)` | Create a new task |
-| `get_task(uuid)` | Get a single task by UUID or ID |
+| `get_task(task_ref)` | Get a single task by UUID, ID, or TaskID |
 | `get_tasks(filter="", include_completed=False, include_deleted=False)` | Get tasks matching filter |
-| `modify_task(task: TaskInputDTO, uuid)` | Modify an existing task |
-| `delete_task(uuid)` | Mark task as deleted |
-| `purge_task(uuid)` | Permanently remove task |
-| `done_task(uuid)` | Mark task as completed |
-| `start_task(uuid)` | Start working on task |
-| `stop_task(uuid)` | Stop working on task |
-| `annotate_task(uuid, annotation)` | Add annotation to task |
+| `modify_task(task: TaskInputDTO, task_ref)` | Modify an existing task |
+| `delete_task(task_ref)` | Mark task as deleted |
+| `purge_task(task_ref)` | Permanently remove task |
+| `done_task(task_ref)` | Mark task as completed |
+| `start_task(task_ref)` | Start working on task |
+| `stop_task(task_ref)` | Stop working on task |
+| `annotate_task(task_ref, annotation)` | Add annotation to task |
+
+
+Note: "task_ref" accepts an integer working-set index, a UUID string/object, or a `TaskID` instance for clarity. `TaskID` is exported from the top-level package and can be used to create explicit references (e.g., `TaskID(1)`, `TaskID(uuid_obj)`).
 
 #### Tags Operations
 

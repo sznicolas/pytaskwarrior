@@ -273,12 +273,12 @@ class TestTaskStateErrors:
     @pytest.mark.parametrize(
         "method,kwargs",
         [
-            ("delete_task", {"task_id_or_uuid": "123"}),
-            ("purge_task", {"task_id_or_uuid": "123"}),
-            ("done_task", {"task_id_or_uuid": "123"}),
-            ("start_task", {"task_id_or_uuid": "123"}),
-            ("stop_task", {"task_id_or_uuid": "123"}),
-            ("annotate_task", {"task_id_or_uuid": "123", "annotation": "note"}),
+            ("delete_task", {"task_id": "123"}),
+            ("purge_task", {"task_id": "123"}),
+            ("done_task", {"task_id": "123"}),
+            ("start_task", {"task_id": "123"}),
+            ("stop_task", {"task_id": "123"}),
+            ("annotate_task", {"task_id": "123", "annotation": "note"}),
         ],
     )
     def test_nonzero_returncode_raises_task_operation_error(
