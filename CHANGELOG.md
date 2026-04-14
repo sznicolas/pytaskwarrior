@@ -5,13 +5,18 @@ All notable changes to pytaskwarrior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.5]
 
 ### Added
 
 - UdaConfig now accepts `type` as an alias for `uda_type` when instantiated from a dict (e.g., from YAML or user config). This allows `UdaConfig(**uda)` to work seamlessly with user-supplied mappings using the TaskWarrior convention.
 - Harmonized UDA deletion and facade methods: UdaService.delete_uda now maps the library's internal `uda_type` field to TaskWarrior's `uda.<name>.type` key and removes the correct configuration keys; public facade methods `tw.define_uda`, `tw.update_uda` and `tw.delete_uda` were added to simplify UDA management.
 - Documentation review and improvements: updated examples to use the public TaskWarrior façade, added guidance on UDA `uda_type` vs TaskWarrior `type`, and added tag helper examples (`tw.get_tags`, `tw.get_context_tags`) for clarity and consistency.
+
+## [2.0.4]
+
+### Added
+
 - Added TaskID utility class and TaskRef type alias to unify task references (`int` id, `UUID`, or `TaskID`). Exported `TaskID` from the public API and added unit tests.
 - Updated TaskWarrior and adapter method signatures to accept `TaskRef` (int, UUID, or TaskID) for task references.
 
