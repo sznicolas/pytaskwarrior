@@ -37,7 +37,7 @@ class AnnotationDTO(BaseModel):
 
     @field_validator("entry", mode="before")
     @classmethod
-    def parse_entry_date(cls, value: str | datetime | None) -> datetime:
+    def parse_entry_date(cls, value: str | datetime) -> datetime:
         """Parse the entry date from TaskWarrior format.
 
         Args:
@@ -48,4 +48,4 @@ class AnnotationDTO(BaseModel):
         """
         if isinstance(value, datetime):
             return value
-        return parse_taskwarrior_date(value or "")
+        return parse_taskwarrior_date(value)
