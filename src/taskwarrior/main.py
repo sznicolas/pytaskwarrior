@@ -556,6 +556,14 @@ class TaskWarrior:
         """
         return self.uda_service.registry.get_uda(name)
 
+    def get_udas(self) -> list[UdaConfig]:
+        """Get full UDA definitions.
+
+        Returns:
+            List of UdaConfig objects for all defined UDAs.
+        """
+        return self.uda_service.registry.get_udas()
+
     def define_uda(self, uda: UdaConfig) -> None:
         """Define a new UDA via the TaskWarrior facade.
 
