@@ -307,7 +307,7 @@ class TaskOutputDTO(BaseModel):
         mode="before",
     )
     @classmethod
-    def parse_datetime_field(cls, value: str | datetime | None) -> datetime:
+    def parse_datetime_field(cls, value: str | datetime | None) -> datetime | None:
         """Parse datetime fields from TaskWarrior format.
 
         Handles both TaskWarrior's compact format (20260101T193139Z)
@@ -317,11 +317,13 @@ class TaskOutputDTO(BaseModel):
             value: The datetime value to parse, either as string or datetime.
 
         Returns:
-            A datetime object with timezone info.
+            A datetime object with timezone info, or None if value is None.
         """
+        if value is None:
+            return None
         if isinstance(value, datetime):
             return value
-        return parse_taskwarrior_date(value or "")
+        return parse_taskwarrior_date(value)
 
     def get_uda(self, name: str, default: Any = None) -> Any:
         """Get a User Defined Attribute value by name.

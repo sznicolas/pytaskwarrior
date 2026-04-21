@@ -68,3 +68,11 @@ class UdaRegistry:
     def is_uda_field(self, field_name: str) -> bool:
         """Check if a field name corresponds to a registered UDA."""
         return field_name in self._udas
+
+    def get_udas(self) -> list[UdaConfig]:
+        """Return all registered UdaConfig objects as a list.
+
+        This provides a direct way to retrieve the full UdaConfig objects
+        currently stored in the registry.
+        """
+        return list(self._udas.values())
