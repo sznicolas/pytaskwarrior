@@ -82,8 +82,14 @@ class TaskInputDTO(BaseModel):
         default_factory=list, description="List of UUIDs of tasks this task depends on"
     )
     parent: UUID | None = Field(default=None, description="UUID of the template task")
-    recur: RecurrencePeriod | None = Field(
-        default=None, description="Recurrence period for recurring tasks"
+    recur: RecurrencePeriod | str | None = Field(
+        default=None,
+        description=(
+            "Recurrence period. "
+            "Use standard values: 'daily', 'weekly', 'monthly', 'yearly', 'quarterly', 'semiannually', 'hourly', 'minutely', 'secondly'. "
+            "OR use custom TaskWarrior expressions like '2weeks', '3days', 'every 10 days', '2months'. "
+            "TaskWarrior will validate the expression."
+        )
     )
     scheduled: str | None = Field(
         default=None,
