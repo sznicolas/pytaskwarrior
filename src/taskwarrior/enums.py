@@ -57,34 +57,26 @@ class Priority(str, Enum):
 class RecurrencePeriod(str, Enum):
     """Supported recurrence periods for recurring tasks.
 
-    Defines how often a recurring task should repeat. When a recurring
-    task is completed, TaskWarrior automatically creates the next instance.
+    TaskWarrior supports both standard keywords and custom duration expressions.
 
-    Attributes:
-        DAILY: Task repeats every day.
-        WEEKLY: Task repeats every week.
-        MONTHLY: Task repeats every month.
-        YEARLY: Task repeats every year.
-        QUARTERLY: Task repeats every quarter (3 months).
-        SEMIANNUALLY: Task repeats every 6 months.
-        HOURLY: Task repeats every hour.
-        MINUTELY: Task repeats every minute.
-        SECONDLY: Task repeats every second.
+    Standard Keywords (Recommended):
+        - DAILY, WEEKLY, MONTHLY, YEARLY
+        - QUARTERLY, SEMIANNUALLY
+        - HOURLY, MINUTELY, SECONDLY
 
-    Example:
-        >>> from taskwarrior import TaskInputDTO, RecurrencePeriod
-        >>> weekly_task = TaskInputDTO(
-        ...     description="Weekly review",
-        ...     due="monday",
-        ...     recur=RecurrencePeriod.WEEKLY
-        ... )
+    Custom Expressions (Also Valid):
+        - "2weeks" (Every two weeks)
+        - "3days" (Every three days)
+        - "every 10 days"
+        - "2months"
+        - "6months"
 
-    Note:
-        For custom periods not listed here (e.g. ``"2weeks"``, ``"10days"``,
-        ``"6months"``), pass a plain string directly to the ``recur`` field —
-        TaskWarrior accepts any valid recurrence expression:
+    Example (Standard):
+        >>> task = TaskInputDTO(description="Daily standup", recur=RecurrencePeriod.DAILY)
 
-        >>> custom_task = TaskInputDTO(description="Bi-weekly review", recur="2weeks")
+    Example (Custom):
+        >>> task = TaskInputDTO(description="Bi-weekly report", recur="2weeks")
+        # Note: Passing a string directly bypasses the Enum but is fully supported by TaskWarrior.
     """
 
     DAILY = "daily"
