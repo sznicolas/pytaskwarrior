@@ -19,7 +19,7 @@ class TestTaskWarriorAdapterContext:
             config_store=ConfigStore(taskwarrior_config),
             task_cmd="task",
         )
-        return ContextService(adapter, ConfigStore(taskwarrior_config))
+        return ContextService(ConfigStore(taskwarrior_config), adapter)
 
     # ------------------------------------------------------------------
     # define_context

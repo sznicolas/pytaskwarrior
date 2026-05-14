@@ -31,39 +31,7 @@ def _to_taskid(value: TaskRef) -> TaskID:
     """Normalize a TaskRef into a TaskID instance."""
     return value if isinstance(value, TaskID) else TaskID(value)
 
-TASKWARRIOR_VIRTUAL_TAGS: tuple[str, ...] = (
-    "BLOCKED",
-    "UNBLOCKED",
-    "BLOCKING",
-    "DUE",
-    "DUETODAY",
-    "TODAY",
-    "OVERDUE",
-    "WEEK",
-    "MONTH",
-    "QUARTER",
-    "YEAR",
-    "ACTIVE",
-    "SCHEDULED",
-    "PARENT",
-    "CHILD",
-    "UNTIL",
-    "WAITING",
-    "ANNOTATED",
-    "READY",
-    "YESTERDAY",
-    "TOMORROW",
-    "TAGGED",
-    "PENDING",
-    "COMPLETED",
-    "DELETED",
-    "UDA",
-    "ORPHAN",
-    "PRIORITY",
-    "PROJECT",
-    "LATEST",
-)
-TASKWARRIOR_VIRTUAL_TAG_SET = frozenset(TASKWARRIOR_VIRTUAL_TAGS)
+from ..utils.virtual_tags import TASKWARRIOR_VIRTUAL_TAG_SET, TASKWARRIOR_VIRTUAL_TAGS  # noqa: E402
 
 
 class TaskWarriorAdapter:

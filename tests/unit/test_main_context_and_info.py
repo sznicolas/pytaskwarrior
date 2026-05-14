@@ -32,6 +32,7 @@ def test_get_info_handles_context_errors_and_returns_basic_info():
             return "2.6.1"
 
     tw.adapter = DummyAdapter()
+    tw._cli_adapter = tw.adapter  # white-box: expose CLI adapter for get_info()
 
     class DummyConfig:
         taskrc_path = "/tmp/.taskrc"

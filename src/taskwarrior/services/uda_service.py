@@ -3,12 +3,14 @@
 This module provides the UdaService class for managing custom task attributes.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
     from ..config.config_store import ConfigStore
 
-from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
 from ..dto.uda_dto import UdaConfig
 from ..exceptions import TaskOperationError
 from ..registry.uda_registry import UdaRegistry
@@ -18,12 +20,13 @@ class UdaService:
     """Service for managing User Defined Attributes (UDAs).
 
     UDAs allow extending TaskWarrior with custom fields. This service
-    provides methods to define, update, and delete UDAs, delegating
-    the actual work to UdaRegistry.
+    reads and writes UDA definitions directly in ``.taskrc`` via
+    :class:`~taskwarrior.config.config_store.ConfigStore` — no ``task``
+    binary is required.
 
     Attributes:
-        adapter: The TaskWarriorAdapter instance for CLI communication.
-        registry: The UdaRegistry for tracking defined UDAs.
+        config_store: The configuration store backed by ``.taskrc``.
+        registry: The UdaRegistry for tracking defined UDAs in memory.
 
     Example:
         This service is typically accessed via TaskWarrior::
@@ -33,16 +36,21 @@ class UdaService:
             tw.uda_service.define_uda(uda)
     """
 
-    def __init__(self, adapter: TaskWarriorAdapter, config_store: "ConfigStore") -> None:
+    def __init__(
+        self,
+        config_store: "ConfigStore",
+        adapter: "TaskWarriorAdapter | None" = None,
+    ) -> None:
         """Initialize the UDA service.
 
         Args:
-            adapter: The TaskWarriorAdapter to use for CLI commands.
             config_store: The configuration store instance (required).
+            adapter: Legacy parameter kept for backwards compatibility;
+                no longer used for write operations.
         """
-
-        self.adapter = adapter
         self.config_store = config_store
+        # Kept for backwards compatibility; write ops no longer use it.
+        self.adapter = adapter
         self.registry = UdaRegistry()
 
     def load_udas_from_store(self) -> None:
@@ -55,47 +63,39 @@ class UdaService:
         self.registry.register_udas(udas)
 
     def define_uda(self, uda: UdaConfig) -> None:
-        """Define a new UDA in TaskWarrior and register it locally.
+        """Define (or update) a UDA by writing keys directly to ``.taskrc``.
 
-        The service executes the required `task config` commands via the adapter
-        and only updates the registry if all commands succeed.
+        All non-null fields of *uda* are persisted.  On success the UDA is
+        registered in the in-memory registry.
 
         Args:
-            uda: The UdaConfig describing the UDA to create.
+            uda: The UdaConfig describing the UDA to create or update.
 
         Raises:
-            TaskOperationError: If any underlying TaskWarrior config command fails.
+            TaskOperationError: If the taskrc file cannot be written.
 
         Example:
             >>> uda = UdaConfig(name="sev", uda_type=UdaType.STRING, label="Severity")
             >>> service.define_uda(uda)
         """
-        # Build commands to define the UDA
-        field_names = uda.__class__.model_fields.keys() - {"name"}
-        # uda_type is handled first
-        commands: list[list[str]] = [["config", f"uda.{uda.name}.type", uda.uda_type.value]]
-        field_names -= {"uda_type"}
+        try:
+            self.config_store.set_value(f"uda.{uda.name}.type", uda.uda_type.value)
 
-        for field_name in field_names:
-            value = getattr(uda, field_name)
-            if value is not None and value != "":
-                value_str = ",".join(map(str, value)) if field_name == "values" else str(value)
-                commands.append(["config", f"uda.{uda.name}.{field_name}", value_str])
+            field_names = set(uda.__class__.model_fields.keys()) - {"name", "uda_type"}
+            for field_name in sorted(field_names):
+                value = getattr(uda, field_name)
+                if value is not None and value != "":
+                    value_str = (
+                        ",".join(map(str, value)) if field_name == "values" else str(value)
+                    )
+                    self.config_store.set_value(f"uda.{uda.name}.{field_name}", value_str)
+        except Exception as e:
+            raise TaskOperationError(f"Failed to define UDA '{uda.name}': {e}") from e
 
-        # Execute commands via adapter; if any fail, raise and do not modify registry
-        for cmd in commands:
-            result = self.adapter.run_task_command(cmd)
-            if getattr(result, "returncode", 0) != 0:
-                stderr = str(getattr(result, "stderr", ""))
-                raise TaskOperationError(f"Failed to run task command: {cmd} -> {stderr}")
-
-        # On success, update registry
         self.registry.add_uda(uda)
 
     def update_uda(self, uda: UdaConfig) -> None:
-        """Update an existing UDA in TaskWarrior and in the registry.
-
-        Executes commands via adapter and updates the registry on success.
+        """Update an existing UDA in ``.taskrc`` and in the registry.
 
         Args:
             uda: The UdaConfig with updated settings to apply.
@@ -103,41 +103,29 @@ class UdaService:
         Raises:
             TaskOperationError: If applying the updated configuration fails.
         """
-        # For now, same as define_uda
         self.define_uda(uda)
 
     def delete_uda(self, uda: UdaConfig) -> None:
-        """Delete a UDA from TaskWarrior and remove it from the registry.
+        """Delete a UDA by removing its keys from ``.taskrc``.
 
-        Executes `task config <key>` without a value to remove each UDA key.
+        Missing keys are silently ignored (idempotent).
 
         Args:
             uda: The UdaConfig identifying the UDA to remove.
 
         Raises:
-            TaskOperationError: If an unexpected TaskWarrior error occurs while
-                attempting to remove configuration keys (missing keys are tolerated).
+            TaskOperationError: If the taskrc file cannot be written.
         """
-        # Mirror define_uda: skip 'name' and map internal 'uda_type' -> TaskWarrior 'type'
-        field_names = set(uda.__class__.model_fields.keys()) - {"name"}
-        keys_to_delete: list[str] = []
+        try:
+            field_names = set(uda.__class__.model_fields.keys()) - {"name"}
+            # Map internal uda_type → taskrc "type"
+            if "uda_type" in field_names:
+                self.config_store.delete_value(f"uda.{uda.name}.type")
+                field_names.remove("uda_type")
 
-        if "uda_type" in field_names:
-            keys_to_delete.append("type")
-            field_names.remove("uda_type")
+            for field_name in sorted(field_names):
+                self.config_store.delete_value(f"uda.{uda.name}.{field_name}")
+        except Exception as e:
+            raise TaskOperationError(f"Failed to delete UDA '{uda.name}': {e}") from e
 
-        # delete remaining fields deterministically
-        keys_to_delete.extend(sorted(field_names))
-
-        for key in keys_to_delete:
-            cmd = ["config", f"uda.{uda.name}.{key}"]
-            result = self.adapter.run_task_command(cmd)
-            if getattr(result, "returncode", 0) != 0:
-                stderr = str(getattr(result, "stderr", ""))
-                # tolerate missing keys (idempotent deletion)
-                if "no entry named" in stderr.lower():
-                    continue
-                raise TaskOperationError(f"Failed to run task command: {cmd} -> {stderr}")
-
-        # On success, remove from registry
         self.registry.remove_uda(uda.name)

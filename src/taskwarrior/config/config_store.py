@@ -139,6 +139,74 @@ rc.bulk=0
             for n, filters in names.items()
         ]
 
+    def set_value(self, key: str, value: str) -> None:
+        """Upsert a key-value pair in the taskrc file.
+
+        If *key* already exists in the file it is updated in-place; otherwise
+        ``key=value`` is appended at the end.  The in-memory cache is refreshed
+        automatically after the write.
+
+        Args:
+            key: Dotted taskrc key (e.g. ``"uda.severity.type"``).
+            value: New value (may be empty string to clear the value without
+                removing the key).
+
+        Raises:
+            TaskConfigurationError: If the file cannot be written.
+        """
+        pattern = re.compile(r"^\s*" + re.escape(key) + r"\s*=.*$", re.IGNORECASE)
+        try:
+            lines = self._taskrc_path.read_text(encoding="utf-8").splitlines(keepends=True)
+        except OSError as e:
+            raise TaskConfigurationError(f"Cannot read taskrc file: {self._taskrc_path}: {e}") from e
+
+        new_line = f"{key}={value}\n"
+        replaced = False
+        for i, line in enumerate(lines):
+            if pattern.match(line):
+                lines[i] = new_line
+                replaced = True
+                break
+
+        if not replaced:
+            lines.append(new_line)
+
+        try:
+            self._taskrc_path.write_text("".join(lines), encoding="utf-8")
+        except OSError as e:
+            raise TaskConfigurationError(f"Cannot write taskrc file: {self._taskrc_path}: {e}") from e
+
+        self.refresh()
+
+    def delete_value(self, key: str) -> None:
+        """Remove a key from the taskrc file.
+
+        If the key is not present the call is a no-op.  The in-memory cache is
+        refreshed automatically after the write.
+
+        Args:
+            key: Dotted taskrc key to remove (e.g. ``"uda.severity.type"``).
+
+        Raises:
+            TaskConfigurationError: If the file cannot be written.
+        """
+        pattern = re.compile(r"^\s*" + re.escape(key) + r"\s*=.*$", re.IGNORECASE)
+        try:
+            lines = self._taskrc_path.read_text(encoding="utf-8").splitlines(keepends=True)
+        except OSError as e:
+            raise TaskConfigurationError(f"Cannot read taskrc file: {self._taskrc_path}: {e}") from e
+
+        new_lines = [line for line in lines if not pattern.match(line)]
+
+        if len(new_lines) != len(lines):
+            try:
+                self._taskrc_path.write_text("".join(new_lines), encoding="utf-8")
+            except OSError as e:
+                raise TaskConfigurationError(
+                    f"Cannot write taskrc file: {self._taskrc_path}: {e}"
+                ) from e
+            self.refresh()
+
     def get_udas(self) -> list["UdaConfig"]:
         """
         Parse and return UDAs from the cached config mapping.

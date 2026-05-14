@@ -21,6 +21,7 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.11.7",
+    "taskchampion-py>=3.0.1.1",
 ]
 
 [dependency-groups]
@@ -94,3 +95,25 @@ strict_equality = true
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -q --ignore=tests/integration"
+filterwarnings = [
+    "ignore::DeprecationWarning:taskchampion",
+]
+
+[tool.uv.sources]
+taskchampion-py = { path = "tmp/taskchampion-py-fork", editable = true }
+
+[tool.coverage.run]
+source = ["src/taskwarrior"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

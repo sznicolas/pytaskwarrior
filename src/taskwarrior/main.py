@@ -9,12 +9,14 @@ import logging
 import os
 from typing import Any
 
+from .adapters import AdapterProtocol
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.task_id import TaskRef
 from .dto.uda_dto import UdaConfig
 from .enums import TaskStatus  # noqa: F401 — re-exported for public API
+from .exceptions import TaskConfigurationError
 from .services.context_service import ContextService
 from .services.uda_service import UdaService
 
@@ -63,18 +65,26 @@ class TaskWarrior:
         task_cmd: str = "task",
         taskrc_file: str | None = None,
         data_location: str | None = None,
+        adapter: AdapterProtocol | None = None,
     ):
         """Initialize the TaskWarrior wrapper.
 
         Args:
             task_cmd: Path or name of the TaskWarrior binary. Defaults to "task".
+                Ignored when *adapter* is provided and is not a
+                :class:`~taskwarrior.adapters.taskwarrior_adapter.TaskWarriorAdapter`.
             taskrc_file: Path to the taskrc configuration file. If None, uses
                 the TASKRC environment variable or defaults to ~/.taskrc.
             data_location: Optional path to TaskWarrior data directory. If None,
                 TASKDATA environment variable or taskrc value will be used.
+            adapter: Optional adapter implementing :class:`~taskwarrior.adapters.AdapterProtocol`.
+                When provided, all task CRUD operations go through this adapter.
+                Context and UDA management still require the CLI; they are
+                available only if *task_cmd* is found in PATH.
 
         Raises:
-            TaskConfigurationError: If the TaskWarrior binary is not found.
+            TaskConfigurationError: If the TaskWarrior binary is not found and
+                no alternative *adapter* is provided.
         """
         if taskrc_file is None:
             taskrc_file = os.environ.get("TASKRC", "$HOME/.taskrc")
@@ -85,15 +95,58 @@ class TaskWarrior:
         from .config.config_store import ConfigStore
 
         self.config_store = ConfigStore(taskrc_file, data_location)
-        self.adapter: TaskWarriorAdapter = TaskWarriorAdapter(
-            task_cmd=task_cmd, config_store=self.config_store
-        )
-        self.context_service: ContextService = ContextService(self.adapter, self.config_store)
-        self.uda_service: UdaService = UdaService(self.adapter, self.config_store)
 
-        # Auto-load UDA definitions from the configured store
-        # Use the service to orchestrate loading and registry population
-        self.uda_service.load_udas_from_store()
+        # Resolve the CLI adapter (needed for services and as default CRUD adapter).
+        _cli: TaskWarriorAdapter | None
+        if adapter is None:
+            # Classic mode: CLI handles both CRUD and services.
+            _cli = TaskWarriorAdapter(task_cmd=task_cmd, config_store=self.config_store)
+            self.adapter: AdapterProtocol = _cli
+        elif isinstance(adapter, TaskWarriorAdapter):
+            # Caller passed an explicit CLI adapter: reuse it for services too.
+            _cli = adapter
+            self.adapter = adapter
+        else:
+            # Non-CLI adapter (e.g. TaskChampionAdapter): try to build a CLI
+            # adapter for services; proceed gracefully if task binary is absent.
+            try:
+                _cli = TaskWarriorAdapter(task_cmd=task_cmd, config_store=self.config_store)
+            except TaskConfigurationError:
+                _cli = None
+            self.adapter = adapter
+
+        self._cli_adapter: TaskWarriorAdapter | None = _cli
+
+        # Services use ConfigStore directly — always available when config_store is present.
+        self._context_service: ContextService = ContextService(
+            self.config_store, adapter=_cli
+        )
+        self._uda_service: UdaService = UdaService(
+            self.config_store, adapter=_cli
+        )
+        self._uda_service.load_udas_from_store()
+
+    # ------------------------------------------------------------------
+    # Service properties (raise TaskConfigurationError when CLI unavailable)
+    # ------------------------------------------------------------------
+
+    @property
+    def context_service(self) -> ContextService:
+        """Return the context service (always available; writes go directly to .taskrc)."""
+        return self._context_service
+
+    @context_service.setter
+    def context_service(self, value: ContextService) -> None:
+        self._context_service = value
+
+    @property
+    def uda_service(self) -> UdaService:
+        """Return the UDA service (always available; writes go directly to .taskrc)."""
+        return self._uda_service
+
+    @uda_service.setter
+    def uda_service(self, value: UdaService) -> None:
+        self._uda_service = value
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Add a new task to TaskWarrior.
@@ -432,19 +485,32 @@ class TaskWarrior:
         """Get comprehensive TaskWarrior configuration information.
 
         Returns:
-            Dictionary containing task_cmd path, taskrc_file path,
-            options, TaskWarrior version, and active context information.
+            Dictionary containing backend type and version, CLI path and options
+            (when a CLI adapter is active), taskrc file path, and active context
+            information.
 
         Example:
             >>> info = tw.get_info()
-            >>> print(info["version"])
+            >>> print(info["backend_version"])
         """
-        # Compose info from TaskWarrior instance, not adapter
+        _cli: TaskWarriorAdapter | None = getattr(self, "_cli_adapter", None)
+        # Fallback: if the facade was constructed without going through __init__
+        # (e.g. in tests using __new__), use the adapter itself when it exposes
+        # CLI-specific attributes.
+        if _cli is None and isinstance(self.adapter, TaskWarriorAdapter):
+            _cli = self.adapter
+
         info: dict[str, Any] = {
-            "task_cmd": str(self.adapter.task_cmd),
+            "backend_type": (
+                "taskwarrior-cli" if isinstance(self.adapter, TaskWarriorAdapter)
+                else "taskchampion"
+            ),
+            "backend_version": self.adapter.get_version(),
+            "task_cmd": str(_cli.task_cmd) if _cli else None,
             "taskrc_file": str(self.config_store.taskrc_path),
-            "options": self.adapter.cli_options,
-            "version": self.adapter.get_version(),
+            "options": _cli.cli_options if _cli else None,
+            # "version" kept for backward compat: CLI version string when available
+            "version": _cli.get_version() if _cli else None,
         }
 
         # Add current context information (name and details) if available.

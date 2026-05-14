@@ -95,6 +95,7 @@ def test_get_info_with_active_context():
         taskrc_path = "/tmp/.taskrc"
 
     tw.adapter = DummyAdapter()
+    tw._cli_adapter = tw.adapter  # white-box: expose CLI adapter for get_info()
     tw.config_store = DummyConfig()
     tw.get_current_context = lambda: "work"
     tw.context_service = SimpleNamespace(

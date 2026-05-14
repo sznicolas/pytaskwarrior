@@ -58,7 +58,7 @@ class TestApplyContextCommandFailure:
 
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(adapter, ConfigStore(taskwarrior_config))
+        service = ContextService(ConfigStore(taskwarrior_config), adapter)
 
         # Trying to apply a context that doesn't exist should fail
         with pytest.raises(TaskWarriorError) as exc_info:
@@ -76,7 +76,7 @@ class TestApplyContextCommandFailure:
 
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(adapter, ConfigStore(taskwarrior_config))
+        service = ContextService(ConfigStore(taskwarrior_config), adapter)
 
         with pytest.raises(TaskWarriorError) as exc_info:
             service.apply_context("")
@@ -93,7 +93,7 @@ class TestApplyContextCommandFailure:
 
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(adapter, ConfigStore(taskwarrior_config))
+        service = ContextService(ConfigStore(taskwarrior_config), adapter)
 
         with pytest.raises(TaskWarriorError) as exc_info:
             service.apply_context("   ")
@@ -114,7 +114,7 @@ class TestHasContextReturnValue:
 
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(adapter, ConfigStore(taskwarrior_config))
+        service = ContextService(ConfigStore(taskwarrior_config), adapter)
         result = service.has_context("definitely_not_a_real_context")
 
         assert result is False
@@ -131,7 +131,7 @@ class TestHasContextReturnValue:
 
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(adapter, ConfigStore(taskwarrior_config))
+        service = ContextService(ConfigStore(taskwarrior_config), adapter)
 
         # Define a context first
         service.define_context(ContextDTO(name="test_ctx", read_filter="+test", write_filter="+test"))

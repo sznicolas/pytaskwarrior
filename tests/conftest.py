@@ -45,6 +45,18 @@ def tw(taskwarrior_config: str, taskwarrior_data: str) -> TaskWarrior:
 
 
 @pytest.fixture
+def tw_tc() -> TaskWarrior:
+    """TaskWarrior facade backed by in-memory TaskChampionAdapter.
+
+    Does not require the ``task`` binary — safe to run in any environment.
+    Context and UDA services are unavailable (no CLI adapter).
+    """
+    from src.taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
+
+    return TaskWarrior(adapter=TaskChampionAdapter())
+
+
+@pytest.fixture
 def sample_task() -> TaskInputDTO:
     """Create a sample Task object."""
     return TaskInputDTO(
