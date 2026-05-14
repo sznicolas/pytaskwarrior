@@ -2,59 +2,62 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-A modern Python wrapper for [TaskWarrior](https://taskwarrior.org/), the command-line task management tool.
+A modern Python library for [TaskWarrior](https://taskwarrior.org/) task management.
+
+**No `task` binary required.** pytaskwarrior reads and writes TaskWarrior's SQLite
+database directly via [taskchampion-py](https://github.com/GothenburgBitFactory/taskchampion-py).
 
 ## Features
 
-- ✅ **Full CRUD operations** - Create, read, update, delete tasks
-- ✅ **Type-safe** - Pydantic models with full type hints
-- ✅ **Context management** - Define, apply, and switch contexts
-- ✅ **UDA support** - User Defined Attributes
-- ✅ **Recurring tasks** - Full recurrence support
-- ✅ **Annotations** - Add notes to tasks
-- ✅ **Date calculations** - Use TaskWarrior's date expressions
+- ✅ **No binary required** — direct SQLite access via taskchampion-py
+- ✅ **Full CRUD operations** — Create, read, update, delete tasks
+- ✅ **Type-safe** — Pydantic models with full type hints
+- ✅ **Context management** — reads/writes `.taskrc` directly
+- ✅ **UDA support** — User Defined Attributes
+- ✅ **Virtual tags** — `+OVERDUE`, `+DUE`, `+TODAY`, `+WEEK`, `+BLOCKED`, `+READY`, and 20+ more
+- ✅ **Date expressions** — `due.before:tomorrow`, compound expressions (`now + P3D`)
+- ✅ **Recurring tasks** — Full recurrence support
+- ✅ **Optional CLI fallback** — pass `task_cmd="task"` for legacy CLI mode
 
 !!! warning
-    When using `TaskWarrior()` without parameters, it will interact with your system's default TaskWarrior data.
-    This means any operations performed will affect your actual tasks stored in the default location (typically `~/.task/`).  
-    Make sure you are aware of this behavior and consider using custom `taskrc_file` and `data_location` parameters if you want to avoid affecting your real tasks.
+    When using `TaskWarrior()` without parameters it reads/writes your default TaskWarrior
+    database at `~/.task/`.  Use `data_location=` to point to an isolated directory for
+    testing or automation.
 
 ## Quick Example
 
 ```python
 from taskwarrior import TaskWarrior, TaskInputDTO, Priority
 
-# Initialize TaskWarrior
+# No binary needed
 tw = TaskWarrior()
 
 # Create a task
-task = TaskInputDTO(
+task = tw.add_task(TaskInputDTO(
     description="Finish project report",
     priority=Priority.HIGH,
     project="work",
     tags=["urgent"],
     due="friday",
-)
-added = tw.add_task(task)
-print(f"Created task: {added.uuid}")
+))
+print(f"Created task: {task.uuid}")
 
 # Get all pending tasks
-for task in tw.get_tasks():
-    print(f"[{task.priority or '-'}] {task.description}")
+for t in tw.get_tasks():
+    print(f"[{t.priority or '-'}] {t.description}")
+
+# Overdue tasks
+for t in tw.get_tasks("+OVERDUE"):
+    print(f"OVERDUE: {t.description}")
 
 # Complete a task
-tw.done_task(added.uuid)
+tw.done_task(task.uuid)
 ```
-
-## Requirements
-
-- Python 3.12+
-- TaskWarrior 3.4+ installed and accessible via `task` command
 
 ## Next Steps
 
-- [Getting Started](getting-started.md) - Installation and setup
-- [API Reference](api/taskwarrior.md) - Full API documentation
-- [Examples](examples/basic.md) - More usage examples
+- [Getting Started](getting-started.md) — Installation and setup
+- [API Reference](api/taskwarrior.md) — Full API documentation
+- [TaskChampion Adapter](taskchampion-adapter.md) — Architecture details
+- [Examples](examples/basic.md) — More usage examples

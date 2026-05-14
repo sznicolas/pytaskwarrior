@@ -35,12 +35,13 @@ class TestTaskWarriorInit:
         assert "taskrc_file" in info
         assert "options" in info
         assert "version" in info
+        assert "backend_type" in info
 
-        # Verify types
-        assert isinstance(info["task_cmd"], str)
+        # With default TC adapter: task_cmd and options are None
+        assert info["task_cmd"] is None
+        assert info["options"] is None
         assert isinstance(info["taskrc_file"], str)
-        assert isinstance(info["options"], list)
-        assert isinstance(info["version"], str)
+        assert info["backend_type"] == "taskchampion"
 
     def test_get_info_with_custom_params(self, taskwarrior_config: str):
         """Test get_info with custom parameters."""
@@ -57,21 +58,24 @@ class TestTaskWarriorInit:
         assert isinstance(info["version"], str)
 
     def test_taskwarrior_init_defaults(self):
-        """Test TaskWarrior and Adapter initialization with defaults."""
+        """Test TaskWarrior and Adapter initialization with defaults (TaskChampion)."""
         if "TASKRC" in os.environ:
             del os.environ["TASKRC"]
         if "TASKDATA" in os.environ:
             del os.environ["TASKDATA"]
 
-        tw = TaskWarrior()  # config_store injected automatically
-        assert "task" in str(tw.adapter.task_cmd)
-        # On ne teste plus l'attribut interne supprimé
+        tw = TaskWarrior()
+        from src.taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
+        assert isinstance(tw.adapter, TaskChampionAdapter)
         info = tw.get_info()
         assert info["taskrc_file"] is not None and info["taskrc_file"] != ""
+        assert info["backend_type"] == "taskchampion"
         # Default should expand to real home directory
         expected_taskrc = Path.home() / ".taskrc"
         assert Path(os.path.expandvars(info["taskrc_file"])).expanduser() == expected_taskrc
-        assert "rc.confirmation=off" in tw.adapter.cli_options
+        # No CLI: task_cmd and options are None
+        assert info["task_cmd"] is None
+        assert info["options"] is None
 
     def test_get_projects(self, taskwarrior_config: str):
         """Test getting projects from TaskWarrior."""

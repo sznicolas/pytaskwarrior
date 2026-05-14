@@ -1,178 +1,178 @@
 # TaskChampion Adapter
 
-Direct-SQLite access for pytaskwarrior via
-[taskchampion-py](https://github.com/GothenburgBitFactory/taskchampion-py)
-(PyO3 bindings to the Rust
-[taskchampion](https://github.com/GothenburgBitFactory/taskchampion) library).
+The `TaskChampionAdapter` is the **default backend** for pytaskwarrior.
+It provides direct access to TaskWarrior's SQLite database via
+[taskchampion-py](https://github.com/GothenburgBitFactory/taskchampion-py) —
+Rust bindings to the taskchampion storage engine.
 
-## Motivation
+No `task` binary is required.
 
-The default `TaskWarriorAdapter` spawns a `task` subprocess for every
-operation.  `TaskChampionAdapter` reads and writes the task database
-directly, removing process-spawn overhead and the CLI dependency while
-keeping the same `AdapterProtocol` surface.
+## Architecture
 
-## Quick start
+```
+TaskWarrior (facade)
+├── TaskChampionAdapter        ← default CRUD backend
+│   ├── taskchampion-py        ← Rust PyO3 bindings (taskchampion 3.0.1)
+│   │   └── Replica            ← reads/writes ~/.task/taskchampion.sqlite
+│   ├── tc_filter.py           ← Python filter engine
+│   │   ├── Date-range tokens  ← due.before:X, scheduled.after:X, …
+│   │   └── Virtual tags       ← +OVERDUE, +DUE, +TODAY, +BLOCKED, …
+│   └── tc_converter.py        ← TaskOutputDTO ↔ TC Task conversion
+├── ConfigStore                ← reads/writes ~/.taskrc
+│   ├── ContextService         ← define/apply/delete contexts (no CLI)
+│   └── UdaService             ← define/delete UDAs (no CLI)
+└── TaskWarriorAdapter         ← optional CLI fallback (task_cmd="task")
+```
+
+## Usage
 
 ```python
+from taskwarrior import TaskWarrior
+
+# Default: TaskChampionAdapter on ~/.task
+tw = TaskWarrior()
+
+# Custom data directory
+tw = TaskWarrior(data_location="/path/to/mydata")
+
+# In-memory (for tests)
 from taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
-from taskwarrior.dto.task_dto import TaskInputDTO
+tw = TaskWarrior(adapter=TaskChampionAdapter(data_location=None))
 
-adapter = TaskChampionAdapter(data_location="~/.local/share/task")
-
-task = adapter.add_task(TaskInputDTO(description="Buy milk", tags=["errand"]))
-print(task.index, task.uuid, task.description)
-
-tasks = adapter.get_tasks(filter="project:home +errand")
-adapter.done_task(task.uuid)
+# Explicit CLI mode (requires task binary)
+tw = TaskWarrior(task_cmd="task")
 ```
 
-Use `data_location=None` for an **in-memory** database (useful in tests):
+## Supported Filter Syntax
+
+The filter engine (`tc_filter.py`) supports a subset of TaskWarrior's filter syntax,
+applied as a Python post-query pass over all tasks.
+
+| Token | Example | Notes |
+|-------|---------|-------|
+| `+tag` / `-tag` | `+urgent -someday` | User tags |
+| `+VIRTUAL` | `+OVERDUE`, `-BLOCKED` | 28 virtual tags supported |
+| `status:X` | `status:pending` | pending / completed / deleted / waiting |
+| `status.not:X` | `status.not:completed` | Negated status |
+| `project:X` | `project:work` | Hierarchical: matches `work.reports` too |
+| `uuid:X` | `uuid:abc-123` | Exact UUID |
+| `priority:X` | `priority:H` | H / M / L |
+| `parent:X` | `parent:uuid` | Recurring task parent |
+| `field.before:X` | `due.before:tomorrow` | Strict less-than |
+| `field.after:X` | `scheduled.after:eom` | Strict greater-than |
+| `field.by:X` | `due.by:friday` | Less-than-or-equal |
+| `field.not:X` | `due.not:today` | Not equal (tasks with no date also match) |
+| `+LATEST` | | Keep only the most recent task |
+
+**Date fields** for range tokens: `due`, `wait`, `scheduled`, `until`, `entry`, `modified`
+
+**Not supported** (requires CLI adapter): `or`, `and`, parenthesised expressions.
+
+## Virtual Tags
+
+All 28 virtual tags are computed in pure Python:
+
+| Tag | Computation |
+|-----|-------------|
+| `OVERDUE` | `due < now` and task is pending/waiting |
+| `DUE` | `due ≤ now + 7 days` |
+| `DUETODAY` | due date is today |
+| `TODAY` | due today or scheduled today |
+| `TOMORROW` | due tomorrow |
+| `YESTERDAY` | due yesterday |
+| `WEEK` | `due ≤ now + 7 days` |
+| `MONTH` | `due < start of next month` |
+| `QUARTER` | `due < start of next quarter` |
+| `YEAR` | `due < start of next year` |
+| `SCHEDULED` | `scheduled` field is set |
+| `UNTIL` | `until` field is set |
+| `BLOCKED` | depends on at least one pending task |
+| `UNBLOCKED` | not blocked |
+| `BLOCKING` | other tasks depend on this one |
+| `ACTIVE` | task has been started |
+| `WAITING` | wait date is in the future |
+| `PENDING` | status is pending (not waiting) |
+| `COMPLETED` | status is completed |
+| `DELETED` | status is deleted |
+| `READY` | pending, not blocked, not scheduled in future |
+| `TAGGED` | has at least one user tag |
+| `ANNOTATED` | has at least one annotation |
+| `PRIORITY` | has a priority set |
+| `PROJECT` | belongs to a project |
+| `PARENT` | is a recurrence template |
+| `CHILD` | is a recurrence instance |
+| `UDA` | has at least one UDA field set |
+
+## Date Expression Support
+
+Date expressions are resolved by `DateResolver` — no CLI needed:
+
+| Expression | Meaning |
+|------------|---------|
+| `today`, `tomorrow`, `yesterday` | Calendar days |
+| `now` | Current moment |
+| `eod`, `eow`, `eom`, `eoy` | End of day/week/month/year |
+| `monday` … `sunday` | Next occurrence of weekday |
+| `2026-01-15`, `2026-01-15T12:00:00Z` | ISO 8601 |
+| `P2W`, `P3D`, `PT4H` | ISO duration (added to now) |
+| `now+3d`, `eom-1w`, `today+2h` | Compact relative |
+| `now + P1D`, `today + 3d` | Compound with spaces |
+
+## Context and UDA Management
+
+Contexts and UDAs are managed entirely through `.taskrc` — no CLI needed:
 
 ```python
-adapter = TaskChampionAdapter()  # in-memory, no file I/O
+from taskwarrior.dto.context_dto import ContextDTO
+from taskwarrior.dto.uda_dto import UdaConfig, UdaType
+
+# Contexts — written directly to .taskrc
+tw.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
+tw.apply_context("work")
+tw.unset_context()
+tw.delete_context("work")
+
+# UDAs — written directly to .taskrc
+tw.define_uda(UdaConfig(name="complexity", uda_type=UdaType.STRING, label="Complexity"))
+tw.delete_uda(UdaConfig(name="complexity", uda_type=UdaType.STRING))
 ```
 
-## Constructor parameters
+## Sync Support
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `data_location` | `str \| Path \| None` | `None` | Path to the taskchampion data directory. `None` = in-memory. |
-| `create_if_missing` | `bool` | `True` | Create the DB if the path doesn't exist. |
-| `sync_server_url` | `str \| None` | `None` | taskchampion sync server URL. |
-| `sync_client_id` | `str \| None` | `None` | Client UUID sent to the sync server. |
-| `sync_encryption_secret` | `str \| None` | `None` | Encryption secret for sync. |
+The default `TaskWarrior()` constructor reads sync credentials from `.taskrc`
+and passes them to `TaskChampionAdapter`:
 
-## Supported filter syntax
-
-`get_tasks(filter=...)` accepts a **subset** of the TaskWarrior filter language.
-Tokens are combined with **AND** logic.
-
-| Token | Example | Meaning |
-|---|---|---|
-| `+tag` | `+work` | Task must have the tag |
-| `-tag` | `-personal` | Task must NOT have the tag |
-| `status:X` | `status:pending` | Exact status match |
-| `status.not:X` | `status.not:deleted` | Negate status |
-| `project:X` | `project:work` | Exact or hierarchical prefix (`work` matches `work.reports`) |
-| `uuid:X` | `uuid:abc123…` | Exact UUID match |
-| `priority:X` | `priority:H` | Exact priority (H / M / L / "") |
-| `parent:X` | `parent:uuid…` | Match recurring-instance parent UUID |
-| `+LATEST` | `+LATEST` | Return only the most recently created task |
-
-## Feature parity
-
-### ✅ Fully supported
-
-| Feature | Notes |
-|---|---|
-| add / modify / get / get_tasks | Full CRUD |
-| delete / purge / done / start / stop | All status transitions |
-| annotate | Unique timestamps guaranteed |
-| tags | User tags: add, remove, diff |
-| UDAs | Legacy (`key`) and namespaced (`ns.key`) |
-| dependencies | add, remove, diff |
-| project | Hierarchical project names |
-| recur | Standard `RecurrencePeriod` values |
-| scheduled / until | Via raw `set_value` |
-| wait (hiding) | `TaskStatus.WAITING` via `is_waiting()` |
-| annotations | With collision-safe timestamps |
-| get_projects | Scan all tasks |
-| get_tags | User and virtual (opt-in) |
-| get_recurring_instances | By `parent` UUID |
-| `AdapterProtocol` compliance | `isinstance(adapter, AdapterProtocol)` → `True` |
-
-### ⚠️ Partially supported
-
-| Feature | Limitation |
-|---|---|
-| `recur` output | Non-standard recurrence strings (e.g. `"2weeks"`) are mapped to `None` in `TaskOutputDTO.recur` (the raw value is preserved in the DB) |
-| `urgency` | Always `None` — not computed (requires TW urgency formula) |
-| Filter expressions | Only the tokens listed above; `due.before:tomorrow`, virtual-tag filters (`+OVERDUE`, `+DUE`), urgency sort, etc. are not supported |
-
-### ❌ Not supported
-
-| Feature | Reason |
-|---|---|
-| `task_calc("tomorrow")` | Now supported via `DateResolver` — returns ISO 8601 UTC string for common TW expressions |
-| `task_date_validator("eom")` | Now returns `True` for all expressions supported by `DateResolver` |
-| TW date expressions in input DTOs | Fields like `due="tomorrow"` are resolved by `DateResolver`; compound expressions with spaces (e.g. `"today + 2weeks"`) are still skipped with a warning — use compact form (`"now+2w"`) |
-| Hooks (`pre-add`, `on-modify`, …) | Specific to the `task` executable |
-| Context / `~/.taskrc` reading | taskchampion doesn't read taskrc; UDA config must be supplied separately |
-| Recurrence expansion | taskchampion stores the recur field but doesn't expand instances |
-| Thread safety | taskchampion-py Replica is not `Send`/thread-safe |
-| Sync (v2) | Requires explicit `sync_server_url`; HTTP taskchampion sync servers supported |
-
-## Hybrid model — facade with `TaskChampionAdapter`
-
-When `TaskWarrior` is initialised with a `TaskChampionAdapter`, the façade
-operates in **hybrid mode**: task CRUD goes through SQLite while
-configuration services fall back to the CLI.
-
+```ini
+# .taskrc
+sync.server.url=https://taskchampion.example.com
+sync.client.id=my-client-id
+sync.encryption.secret=my-secret
 ```
-TaskWarrior(adapter=TaskChampionAdapter(...))
-│
-├─ task CRUD (add/modify/get/done/…)  → TaskChampionAdapter → SQLite
-│
-├─ context_service                     → TaskWarriorAdapter (CLI) if available
-│                                        raises TaskConfigurationError otherwise
-│
-└─ uda_service                         → TaskWarriorAdapter (CLI) if available
-                                         raises TaskConfigurationError otherwise
-```
-
-### Which methods require the CLI?
-
-| Category | Requires CLI (`task` binary) |
-|---|---|
-| Task CRUD (`add_task`, `get_tasks`, …) | ❌ No |
-| `task_calc` / `task_date_validator` | ❌ No (handled by `DateResolver`) |
-| `context_service.*` | ✅ Yes — raises `TaskConfigurationError` when CLI unavailable |
-| `uda_service.*` | ✅ Yes — raises `TaskConfigurationError` when CLI unavailable |
-| `synchronize()` | ❌ No (requires sync server config, not CLI) |
-| `get_info()` — `task_cmd`, `version` | ⚠️ Present only when CLI adapter available |
-
-### Using the `tw_tc` test fixture
 
 ```python
-# In tests — no task binary required
-def test_something(tw_tc: TaskWarrior):
-    task = tw_tc.add_task(TaskInputDTO(description="Buy milk"))
-    assert task.description == "Buy milk"
+tw = TaskWarrior()        # sync config picked up automatically
+tw.synchronize()          # syncs via taskchampion sync protocol
+tw.is_sync_configured()   # True if sync.server.url is set
 ```
 
-The `tw_tc` fixture (defined in `tests/conftest.py`) creates a `TaskWarrior`
-backed by an in-memory `TaskChampionAdapter`.  It is safe to use in any CI
-environment without installing TaskWarrior.
+## Limitations vs CLI Adapter
 
-## Date expression support (`DateResolver`)
+| Feature | TC Adapter | CLI Adapter |
+|---------|-----------|-------------|
+| CRUD operations | ✅ | ✅ |
+| Virtual tags | ✅ (Python) | ✅ (native) |
+| Date expressions | ✅ (Python) | ✅ (native) |
+| OR / AND filters | ❌ | ✅ |
+| `task sync` CLI | ❌ | ✅ |
+| TC sync protocol | ✅ | ❌ |
+| Binary required | ❌ | ✅ |
 
-`TaskChampionAdapter` resolves TaskWarrior date expressions via
-`taskwarrior.utils.date_resolver.resolve_date()` — no `task` binary needed.
+## Compatibility with taskchampion-py Fork
 
-| Expression | Example | Supported |
-|---|---|---|
-| ISO 8601 | `"2026-01-15T14:30:00Z"` | ✅ |
-| Named | `"now"`, `"today"`, `"tomorrow"`, `"yesterday"` | ✅ |
-| End-of-period | `"eod"`, `"eow"`, `"eom"`, `"eoy"` | ✅ |
-| Compact relative | `"now+2d"`, `"now-1w"`, `"now+1m"` | ✅ |
-| ISO 8601 duration | `"P2W"`, `"P3D"`, `"P1M"`, `"P1Y"` | ✅ |
-| Weekday names | `"monday"` … `"sunday"` (next occurrence) | ✅ |
-| Compound arithmetic | `"today + 2weeks"`, `"due.before:tomorrow"` | ❌ (use compact form) |
+This library depends on a fork of `taskchampion-py` (version `3.0.1.1`) that
+tracks taskchampion `3.0.1`. The fork is located at
+`tmp/taskchampion-py-fork/` and must be built locally until merged upstream:
 
-## Evaluation 2 — taskchampion 3.x fork
-
-A second evaluation (`P2`) targets a fork of `taskchampion-py` updated to
-the `taskchampion` 3.0.2-pre Rust crate.  Key differences vs 2.0.2:
-
-| Change | Impact |
-|---|---|
-| Entire `Replica` API becomes `async` | Requires `tokio::runtime::Runtime::block_on()` bridge in PyO3 |
-| `Replica<S: Storage>` becomes generic | Requires `Box<dyn Storage + Send + Sync>` type-erasure |
-| New `pending_tasks()` method | `get_tasks(include_completed=False, include_deleted=False)` becomes O(pending) instead of O(all) |
-| Flat UDA API: `get_user_defined_attribute(key)` | Replaces `get_uda(ns, key)` namespace pattern |
-| New sync backends: AWS S3, Git | Exposed via new `sync_to_aws` / `sync_to_git` methods |
-| `Status::Unknown(String)` payload | Better handling of unknown status values |
-| MSRV bump: 1.83 → 1.91.1 | Requires Rust toolchain upgrade |
-
-See `tmp/taskchampion-py-fork/` (Phase 2) for the fork implementation.
+```bash
+uv sync  # builds and installs the fork automatically
+```

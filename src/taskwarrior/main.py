@@ -10,6 +10,7 @@ import os
 from typing import Any
 
 from .adapters import AdapterProtocol
+from .adapters.taskchampion_adapter import TaskChampionAdapter
 from .adapters.taskwarrior_adapter import TaskWarriorAdapter
 from .dto.context_dto import ContextDTO
 from .dto.task_dto import TaskInputDTO, TaskOutputDTO
@@ -26,24 +27,18 @@ logger = logging.getLogger(__name__)
 class TaskWarrior:
     """A Python API wrapper for TaskWarrior.
 
-    This class provides a high-level interface for interacting with TaskWarrior
-    via CLI commands. It supports all common task operations, context management,
-    and User Defined Attributes (UDAs).
-
-    Note:
-        When creating tasks with empty or None descriptions, the behavior depends
-        on the underlying TaskWarrior CLI validation. Empty descriptions may be
-        rejected with a TaskValidationError or passed through to TaskWarrior,
-        which might reject them with a CLI error. The TaskInputDTO validation
-        will reject empty or None descriptions before they reach TaskWarrior.
+    By default uses :class:`~taskwarrior.adapters.taskchampion_adapter.TaskChampionAdapter`
+    for direct SQLite access — no ``task`` binary required.  Pass
+    ``task_cmd="task"`` (or any path to the binary) to use the classic CLI
+    adapter instead.
 
     Attributes:
-        adapter: The underlying TaskWarriorAdapter instance.
+        adapter: The underlying adapter instance (TaskChampion or CLI).
         context_service: Service for managing contexts.
         uda_service: Service for managing UDAs.
 
     Example:
-        Basic usage::
+        Basic usage (no binary needed)::
 
             from taskwarrior import TaskWarrior, TaskInputDTO
 
@@ -52,7 +47,11 @@ class TaskWarrior:
             added = tw.add_task(task)
             print(f"Added task: {added.uuid}")
 
-        With custom configuration::
+        Explicit CLI adapter::
+
+            tw = TaskWarrior(task_cmd="task")
+
+        Custom paths::
 
             tw = TaskWarrior(
                 taskrc_file="/path/to/.taskrc",
@@ -62,7 +61,7 @@ class TaskWarrior:
 
     def __init__(
         self,
-        task_cmd: str = "task",
+        task_cmd: str | None = None,
         taskrc_file: str | None = None,
         data_location: str | None = None,
         adapter: AdapterProtocol | None = None,
@@ -70,21 +69,18 @@ class TaskWarrior:
         """Initialize the TaskWarrior wrapper.
 
         Args:
-            task_cmd: Path or name of the TaskWarrior binary. Defaults to "task".
-                Ignored when *adapter* is provided and is not a
-                :class:`~taskwarrior.adapters.taskwarrior_adapter.TaskWarriorAdapter`.
+            task_cmd: Path or name of the TaskWarrior binary.  When ``None``
+                (the default) the :class:`~taskwarrior.adapters.taskchampion_adapter.TaskChampionAdapter`
+                is used and no ``task`` binary is required.  Pass ``"task"``
+                (or an absolute path) to use the CLI adapter instead.
             taskrc_file: Path to the taskrc configuration file. If None, uses
                 the TASKRC environment variable or defaults to ~/.taskrc.
-            data_location: Optional path to TaskWarrior data directory. If None,
-                TASKDATA environment variable or taskrc value will be used.
-            adapter: Optional adapter implementing :class:`~taskwarrior.adapters.AdapterProtocol`.
-                When provided, all task CRUD operations go through this adapter.
-                Context and UDA management still require the CLI; they are
-                available only if *task_cmd* is found in PATH.
-
-        Raises:
-            TaskConfigurationError: If the TaskWarrior binary is not found and
-                no alternative *adapter* is provided.
+            data_location: Path to the TaskWarrior data directory. If None,
+                uses the TASKDATA environment variable, the value from taskrc,
+                or ``~/.task`` as a last resort.
+            adapter: Explicit adapter instance.  Overrides *task_cmd* for CRUD
+                operations.  Useful for injecting a custom or in-memory adapter
+                (e.g. ``TaskChampionAdapter(data_location=None)`` for tests).
         """
         if taskrc_file is None:
             taskrc_file = os.environ.get("TASKRC", "$HOME/.taskrc")
@@ -96,28 +92,32 @@ class TaskWarrior:
 
         self.config_store = ConfigStore(taskrc_file, data_location)
 
-        # Resolve the CLI adapter (needed for services and as default CRUD adapter).
-        _cli: TaskWarriorAdapter | None
-        if adapter is None:
-            # Classic mode: CLI handles both CRUD and services.
+        _cli: TaskWarriorAdapter | None = None
+
+        if adapter is not None:
+            # Caller supplied an explicit adapter — use it directly.
+            if isinstance(adapter, TaskWarriorAdapter):
+                _cli = adapter
+            self.adapter: AdapterProtocol = adapter
+
+        elif task_cmd is not None:
+            # Explicit CLI mode: build a TaskWarriorAdapter.
             _cli = TaskWarriorAdapter(task_cmd=task_cmd, config_store=self.config_store)
-            self.adapter: AdapterProtocol = _cli
-        elif isinstance(adapter, TaskWarriorAdapter):
-            # Caller passed an explicit CLI adapter: reuse it for services too.
-            _cli = adapter
-            self.adapter = adapter
+            self.adapter = _cli
+
         else:
-            # Non-CLI adapter (e.g. TaskChampionAdapter): try to build a CLI
-            # adapter for services; proceed gracefully if task binary is absent.
-            try:
-                _cli = TaskWarriorAdapter(task_cmd=task_cmd, config_store=self.config_store)
-            except TaskConfigurationError:
-                _cli = None
-            self.adapter = adapter
+            # Default mode: TaskChampionAdapter — no binary required.
+            sync_cfg = self.config_store.get_sync_config()
+            self.adapter = TaskChampionAdapter(
+                data_location=self.config_store.data_location,
+                sync_server_url=sync_cfg.get("sync.server.url") or sync_cfg.get("sync.server"),
+                sync_client_id=sync_cfg.get("sync.client.id"),
+                sync_encryption_secret=sync_cfg.get("sync.encryption.secret"),
+            )
 
         self._cli_adapter: TaskWarriorAdapter | None = _cli
 
-        # Services use ConfigStore directly — always available when config_store is present.
+        # Services write directly to .taskrc — no CLI needed.
         self._context_service: ContextService = ContextService(
             self.config_store, adapter=_cli
         )

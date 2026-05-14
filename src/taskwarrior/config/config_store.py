@@ -97,6 +97,22 @@ rc.bulk=0
         return self._taskrc_path
 
     @property
+    def data_location(self) -> Path:
+        """Return the effective task data directory.
+
+        Resolution order:
+        1. Explicit *data_location* passed to the constructor
+        2. ``rc.data.location`` key from the taskrc file
+        3. ``~/.task`` (TaskWarrior default)
+        """
+        if self._data_location:
+            return self._data_location
+        from_rc = self.config.get("rc.data.location")
+        if from_rc:
+            return Path(os.path.expandvars(from_rc)).expanduser()
+        return Path("~/.task").expanduser()
+
+    @property
     def cli_options(self) -> list[str]:
         """Return CLI options for Taskwarrior commands, including defaults."""
         options = [f"rc:{self._taskrc_path}"]

@@ -6,14 +6,16 @@ Common issues and solutions when using `pytaskwarrior`.
 
 ## `task` binary not found
 
-**Error:**
+Since pytaskwarrior v2.1, the `task` binary is **not required** by default.
+`TaskWarrior()` uses the taskchampion backend directly.
+
+If you explicitly pass `task_cmd="task"` and get this error:
+
 ```
 FileNotFoundError: [Errno 2] No such file or directory: 'task'
 ```
 
-**Cause:** TaskWarrior is not installed or not on `PATH`.
-
-**Fix:**
+Either remove the `task_cmd` argument to use the default backend, or install TaskWarrior:
 
 ```bash
 # macOS
@@ -22,30 +24,35 @@ brew install task
 # Ubuntu / Debian
 sudo apt install taskwarrior
 
-# Verify
-task --version
-```
-
-If `task` is installed in a non-standard location, pass the path explicitly:
-
-```python
+# Non-standard location
 tw = TaskWarrior(task_cmd="/usr/local/bin/task")
 ```
 
 ---
 
-## Wrong Python or TaskWarrior version
-
-**Symptom:** Unexpected errors or missing features.
+## Wrong Python version
 
 **Requirements:**
 - Python ≥ 3.12
-- TaskWarrior ≥ 3.0
 
 ```bash
-python --version
-task --version
+python --version  # must be 3.12+
 ```
+
+---
+
+## `taskchampion-py` not installed or wrong version
+
+**Symptom:** `ModuleNotFoundError: No module named 'taskchampion'`
+
+**Fix:**
+```bash
+pip install pytaskwarrior  # installs taskchampion-py automatically
+# or from source:
+uv sync
+```
+
+pytaskwarrior requires `taskchampion-py >= 3.0.1.1`.
 
 ---
 
@@ -53,9 +60,7 @@ task --version
 
 **Symptom:** `task.get_uda("my_field")` always returns `None`.
 
-**Causes and fixes:**
-
-1. **UDA not registered** — the UDA must be declared before creating tasks:
+1. **UDA not registered** — declare the UDA before creating tasks:
 
     ```python
     from taskwarrior import TaskWarrior, UdaConfig, UdaType
@@ -73,79 +78,56 @@ task --version
 
 ## `get_tasks()` returns an empty list
 
-**Symptom:** No tasks returned even though `task list` shows tasks in the terminal.
-
-**Causes and fixes:**
-
 1. **Active context filtering** — if a context is active, it filters all queries:
 
     ```python
-    tw.clear_context()  # remove the active context
+    tw.unset_context()        # remove the active context
     tasks = tw.get_tasks()
     ```
 
-2. **Wrong `data_location`** — `TaskWarrior` was instantiated with a different data directory than your terminal:
+2. **Wrong `data_location`** — pointing to a different directory:
 
     ```python
-    tw = TaskWarrior(data_location="~/.task")  # match your actual data path
+    tw = TaskWarrior(data_location="~/.task")
     ```
 
-3. **Filter too restrictive** — check the filter string:
+3. **Filter too restrictive** — try without a filter first:
 
     ```python
-    tasks = tw.get_tasks("status:pending")
+    tasks = tw.get_tasks()
     ```
+
+---
+
+## OR / AND filters not working
+
+pytaskwarrior's Python filter engine does not support `or`, `and`, or
+parenthesised expressions. All tokens are combined with implicit AND.
+
+For complex boolean logic, filter in Python after retrieving tasks:
+
+```python
+tasks = tw.get_tasks()
+result = [t for t in tasks if "work" in (t.project or "") or "urgent" in (t.tags or [])]
+```
 
 ---
 
 ## Import error: `ModuleNotFoundError: No module named 'taskwarrior'`
 
-**Fix:** Install the package:
-
 ```bash
 pip install pytaskwarrior
 ```
 
-Note: the **pip package** is named `pytaskwarrior`, but the **Python import** is `taskwarrior`:
+Note: the **pip package** is `pytaskwarrior`, but the **Python import** is `taskwarrior`:
 
 ```python
 from taskwarrior import TaskWarrior  # correct
-from pytaskwarrior import TaskWarrior  # wrong
-```
-
----
-
-## `AnnotationDTO` or `ContextDTO` not found
-
-These types are part of the public API since v1.0.0. Import from the top-level package:
-
-```python
-from taskwarrior import AnnotationDTO, ContextDTO
-```
-
-If you get an `ImportError`, upgrade to the latest version:
-
-```bash
-pip install --upgrade pytaskwarrior
-```
-
----
-
-## Version shows `0.0.0` or old version
-
-**Cause:** The package was not reinstalled after a version bump in `pyproject.toml`.
-
-**Fix:**
-
-```bash
-pip install -e .   # editable install
-# or with uv
-uv pip install -e .
 ```
 
 ---
 
 ## Still stuck?
 
-- Open an issue on [GitHub](https://github.com/nschmeltz/pytaskwarrior/issues)
+- Open an issue on [GitHub](https://github.com/sznicolas/pytaskwarrior/issues)
 - Check the [API reference](api/taskwarrior.md) for correct method signatures

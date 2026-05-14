@@ -323,12 +323,11 @@ class TaskChampionAdapter:
     def task_calc(self, date_str: str) -> str:
         """Resolve a TaskWarrior date expression and return an ISO 8601 string.
 
-        Supports the expressions handled by
-        :func:`~taskwarrior.utils.date_resolver.resolve_date` (``"today"``,
-        ``"tomorrow"``, ``"eom"``, ``"now+2w"``, ISO 8601, …).
-
-        Compound arithmetic with spaces (``"today + 2weeks"``) is **not**
-        supported; use the compact form ``"now+2w"`` instead.
+        Supports all expressions handled by
+        :func:`~taskwarrior.utils.date_resolver.resolve_date`: named dates
+        (``"today"``, ``"tomorrow"``, ``"eom"``), ISO 8601, compact relative
+        (``"now+2w"``), ISO durations (``"P2W"``), weekday names, and
+        compound expressions with spaces (``"today + P3D"``, ``"now + 1d"``).
 
         Raises:
             TaskWarriorError: If the expression cannot be resolved.
@@ -374,12 +373,15 @@ class TaskChampionAdapter:
         Parameters
         ----------
         include_virtual_tags:
-            When ``True``, synthetic tags (``PENDING``, ``ACTIVE``, …) are
-            included in addition to user-defined tags.
+            When ``True``, TaskWarrior virtual tags (``TODAY``, ``READY``,
+            ``OVERDUE``, …) are appended in addition to user-defined tags.
         """
         tags: set[str] = set()
         for task in self._replica.all_tasks().values():
             for t in task.get_tags():
-                if include_virtual_tags or t.is_user():
+                if t.is_user():
                     tags.add(str(t))
+        if include_virtual_tags:
+            from ..utils.virtual_tags import TASKWARRIOR_VIRTUAL_TAGS
+            tags.update(TASKWARRIOR_VIRTUAL_TAGS)
         return sorted(tags)
