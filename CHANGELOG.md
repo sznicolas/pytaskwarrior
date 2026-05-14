@@ -5,7 +5,218 @@ All notable changes to pytaskwarrior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.6]
+## [3.0.0] - 2026-05-15
+
+**Major release.** The default backend is now `TaskChampionAdapter` — direct SQLite
+access via [taskchampion-py](https://github.com/GothenburgBitFactory/taskchampion-py).
+The `task` binary is no longer required for any operation.
+
+### Breaking Changes
+
+#### `TaskWarrior()` default backend changed
+
+`TaskWarrior()` now creates a `TaskChampionAdapter` instead of a `TaskWarriorAdapter`.
+
+```python
+# Before (2.x): required the task binary
+tw = TaskWarrior()              # → TaskWarriorAdapter (CLI)
+
+# After (3.0): no binary needed
+tw = TaskWarrior()              # → TaskChampionAdapter (direct SQLite)
+tw = TaskWarrior(task_cmd="task")  # → TaskWarriorAdapter (explicit CLI mode)
+```
+
+**Migration:** Add `task_cmd="task"` to your `TaskWarrior()` call if you need the CLI adapter.
+
+#### `TaskWarrior.__init__` signature: `task_cmd` default changed
+
+`task_cmd` changed from `str = "task"` to `str | None = None`.
+
+| Before | After |
+|--------|-------|
+| `TaskWarrior(task_cmd="task")` | unchanged ✅ |
+| `TaskWarrior()` | now uses TC adapter (no CLI) |
+| `TaskWarrior("/usr/bin/task")` | `TaskWarrior(task_cmd="/usr/bin/task")` |
+
+Note: `task_cmd` was the first positional argument.  
+**If you were calling `TaskWarrior("task")` positionally, add the keyword: `TaskWarrior(task_cmd="task")`.**
+
+#### `TaskWarrior.get_info()` keys may be `None`
+
+When using the default `TaskChampionAdapter`, `info["task_cmd"]`, `info["options"]`,
+and `info["version"]` are `None` (no CLI configured).
+
+```python
+info = tw.get_info()
+# Before: info["task_cmd"] always str
+# After:  info["task_cmd"] is None when using TC adapter (default)
+#         info["backend_type"] is "taskchampion" or "taskwarrior-cli"
+```
+
+**Migration:** Guard with `if info["task_cmd"]` before using, or check `info["backend_type"]`.
+
+#### `ContextService.__init__` argument order changed
+
+```python
+# Before (2.x)
+ContextService(adapter, config_store)
+
+# After (3.0)
+ContextService(config_store, adapter=None)  # adapter is now optional
+```
+
+**Migration:** Swap arguments or use keyword syntax.  
+Note: `ContextService` is not part of the typical public API (`tw.context_service` is).
+
+#### `UdaService.__init__` argument order changed
+
+```python
+# Before (2.x)
+UdaService(adapter, config_store)
+
+# After (3.0)
+UdaService(config_store, adapter=None)  # adapter is now optional
+```
+
+**Migration:** Swap arguments or use keyword syntax.
+
+#### `taskchampion-py` minimum version bumped to `3.0.1.1`
+
+The dependency `taskchampion-py` is now pinned to `>=3.0.1.1` (was `>=2.0.2`).
+This version tracks the taskchampion Rust crate `3.0.1` and requires building the
+fork from `tmp/taskchampion-py-fork/` until it is published upstream.
+
+---
+
+### Added
+
+#### Direct `.taskrc` writes — no CLI required
+
+`ConfigStore` now supports writing configuration:
+
+- `ConfigStore.set_value(key, value)` — upsert any key in `.taskrc`
+- `ConfigStore.delete_value(key)` — remove a key from `.taskrc`
+- `ConfigStore.data_location` — property returning the effective data directory
+  (constructor arg → `rc.data.location` in taskrc → `~/.task`)
+
+`ContextService` and `UdaService` use `ConfigStore` directly for all writes.
+The `task` binary is no longer called for `define_context`, `apply_context`,
+`define_uda`, `delete_uda`, or any configuration change.
+
+#### Date-range filter expressions
+
+New filter tokens in `tc_filter.py`:
+
+```python
+tw.get_tasks("due.before:tomorrow")
+tw.get_tasks("due.after:eom")
+tw.get_tasks("due.by:friday")          # inclusive
+tw.get_tasks("scheduled.after:today")
+tw.get_tasks("wait.before:now")
+```
+
+Supported fields: `due`, `wait`, `scheduled`, `until`, `entry`, `modified`  
+Supported operators: `before` (strict `<`), `after` (strict `>`), `by` (`<=`), `not` (`!=`)  
+Threshold is resolved via `DateResolver` — all TW date expressions supported.
+
+#### Virtual tags — 28 tags computed in pure Python
+
+`+TAG` / `-TAG` filter tokens for all standard TaskWarrior virtual tags:
+
+| Category | Tags |
+|----------|------|
+| Date | `+OVERDUE`, `+DUE`, `+DUETODAY`, `+TODAY`, `+TOMORROW`, `+YESTERDAY`, `+WEEK`, `+MONTH`, `+QUARTER`, `+YEAR` |
+| Status | `+PENDING`, `+COMPLETED`, `+DELETED`, `+WAITING`, `+ACTIVE` |
+| Dependencies | `+BLOCKED`, `+UNBLOCKED`, `+BLOCKING` |
+| Task state | `+SCHEDULED`, `+UNTIL`, `+READY`, `+TAGGED`, `+ANNOTATED`, `+PRIORITY`, `+PROJECT`, `+PARENT`, `+CHILD`, `+UDA` |
+
+```python
+tw.get_tasks("+OVERDUE")
+tw.get_tasks("+READY -BLOCKED")
+tw.get_tasks("+DUE project:work")
+tw.get_tasks("+WEEK +PRIORITY")
+```
+
+#### Compound date expressions in `DateResolver`
+
+`DateResolver` (and `task_calc`) now supports expressions with spaces:
+
+```python
+tw.task_calc("now + P1D")      # ISO duration
+tw.task_calc("today + 3d")     # compact
+tw.task_calc("eom - P1W")      # subtract
+tw.task_calc("now + 2weeks")   # TW shorthand
+# Filter expressions
+tw.get_tasks("due.before:now + P7D")
+```
+
+#### `apply_filter(now=)` parameter
+
+`apply_filter()` accepts an optional `now` parameter for deterministic testing
+of date-based filters and virtual tags.
+
+#### Sync config auto-read from `.taskrc`
+
+When using the default `TaskChampionAdapter`, sync configuration is read
+automatically from `.taskrc`:
+
+```ini
+sync.server.url=https://taskchampion.example.com
+sync.client.id=my-client-id
+sync.encryption.secret=my-secret
+```
+
+No changes required — `tw.synchronize()` and `tw.is_sync_configured()` work as before.
+
+#### `TaskChampionAdapter.get_tags(include_virtual_tags=True)`
+
+Now includes `TASKWARRIOR_VIRTUAL_TAGS` (28 names) alongside user tags.
+
+#### Virtual tags extracted to `utils/virtual_tags.py`
+
+`TASKWARRIOR_VIRTUAL_TAGS` and `TASKWARRIOR_VIRTUAL_TAG_SET` are now in
+`taskwarrior.utils.virtual_tags` (previously only in `taskwarrior_adapter`).
+
+---
+
+### Changed
+
+- `ContextService` and `UdaService` no longer call the `task` CLI for any write
+  operation; they write directly to `.taskrc` via `ConfigStore`.
+- `TaskWarrior.__init__`: services are always instantiated regardless of whether
+  the CLI adapter is available. Properties `context_service` and `uda_service` no
+  longer raise `TaskConfigurationError`.
+- `task_calc()` docstring updated: compound expressions with spaces are now supported.
+- `get_tags(include_virtual_tags=True)`: now returns TW virtual tag names (not TC
+  internal synthetic tag strings like `Synthetic(Pending)`).
+
+---
+
+### Migration Guide (2.x → 3.0)
+
+```python
+# 1. No-arg constructor now uses TC adapter
+tw = TaskWarrior()                    # was CLI, now TC (no binary)
+tw = TaskWarrior(task_cmd="task")     # explicit CLI mode
+
+# 2. get_info() keys may be None
+info = tw.get_info()
+if info["task_cmd"]:                  # guard before use
+    print(info["task_cmd"])
+print(info["backend_type"])           # "taskchampion" or "taskwarrior-cli"
+
+# 3. Service constructors (internal use only)
+# ContextService(config_store, adapter=None)  — swapped
+# UdaService(config_store, adapter=None)      — swapped
+# Both are accessed via tw.context_service / tw.uda_service — unaffected
+
+# 4. New filter features
+tw.get_tasks("+OVERDUE")
+tw.get_tasks("due.before:tomorrow")
+tw.get_tasks("+READY project:work")
+```
+
+
 
 ### Added
 
