@@ -70,7 +70,7 @@ applied as a Python post-query pass over all tasks.
 
 ## Virtual Tags
 
-All 28 virtual tags are computed in pure Python:
+All 30 virtual tags are recognized. 28 are computed in pure Python; 2 have special behaviour:
 
 | Tag | Computation |
 |-----|-------------|
@@ -102,6 +102,8 @@ All 28 virtual tags are computed in pure Python:
 | `PARENT` | is a recurrence template |
 | `CHILD` | is a recurrence instance |
 | `UDA` | has at least one UDA field set |
+| `ORPHAN` | ⚠ not computed — always `False` (requires CLI for full support) |
+| `LATEST` | **special** — `+LATEST` keeps only the most recently created task from the result set |
 
 ## Date Expression Support
 
@@ -139,21 +141,27 @@ tw.delete_uda(UdaConfig(name="complexity", uda_type=UdaType.STRING))
 
 ## Sync Support
 
-The default `TaskWarrior()` constructor reads sync credentials from `.taskrc`
-and passes them to `TaskChampionAdapter`:
+Both remote (taskchampion HTTP server) and local directory sync are supported.
+Sync configuration is read automatically from `.taskrc`:
 
 ```ini
-# .taskrc
-sync.server.url=https://taskchampion.example.com
-sync.client.id=my-client-id
-sync.encryption.secret=my-secret
+# Remote sync
+sync.server.origin=https://taskchampion.example.com
+sync.server.client_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+sync.encryption.secret=my-passphrase
+
+# Local sync (alternative)
+sync.local.server_dir=/path/to/shared/server
 ```
 
 ```python
 tw = TaskWarrior()        # sync config picked up automatically
-tw.synchronize()          # syncs via taskchampion sync protocol
-tw.is_sync_configured()   # True if sync.server.url is set
+tw.synchronize()          # runs sync_to_remote or sync_to_local
+tw.is_sync_configured()   # True if any sync key is present
 ```
+
+See **[Synchronization](sync.md)** for the full guide, including direct
+`TaskChampionAdapter` usage, troubleshooting, and differences from `task sync`.
 
 ## Limitations vs CLI Adapter
 

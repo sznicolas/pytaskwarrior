@@ -62,7 +62,43 @@ pytaskwarrior respects these environment variables:
 - `TASKRC` — Path to taskrc file (default: `~/.taskrc`)
 - `TASKDATA` — Path to task data directory
 
-## Creating Tasks
+## Data & Configuration
+
+### Where data is stored
+
+| File / Directory | Default path | Purpose |
+|-----------------|-------------|---------|
+| `.taskrc` | `~/.taskrc` | Configuration (contexts, UDAs, sync, …) |
+| Task database | `~/.task/taskchampion.sqlite` | All tasks (SQLite, written by taskchampion) |
+
+Both are **created automatically** on first use if they don't exist.
+
+### Resolution order
+
+`data_location` is resolved in this order:
+
+1. `data_location=` argument passed to `TaskWarrior()`
+2. `TASKDATA` environment variable
+3. `rc.data.location` key in `.taskrc`
+4. `~/.task` (default)
+
+`taskrc_file` is resolved as:
+
+1. `taskrc_file=` argument passed to `TaskWarrior()`
+2. `TASKRC` environment variable
+3. `~/.taskrc` (default)
+
+### Inspecting the active configuration
+
+```python
+tw = TaskWarrior()
+print(tw.config_store.taskrc_path)     # Path to .taskrc
+print(tw.config_store.data_location)   # Resolved data directory
+print(tw.config_store.config)          # All key-value pairs from .taskrc
+print(tw.get_info())                   # Backend type, version, paths
+```
+
+
 
 ### Simple Task
 
@@ -148,7 +184,7 @@ tw.date_validator("tomorrow") # → True
 
 ## Virtual Tags
 
-All standard TaskWarrior virtual tags are supported in filters:
+All 30 TaskWarrior virtual tags are supported in filters (28 computed in pure Python):
 
 | Tag | Meaning |
 |-----|---------|
@@ -156,17 +192,32 @@ All standard TaskWarrior virtual tags are supported in filters:
 | `+DUE` | Due within 7 days |
 | `+DUETODAY` | Due today |
 | `+TODAY` | Due or scheduled today |
+| `+TOMORROW` | Due tomorrow |
+| `+YESTERDAY` | Due yesterday |
 | `+WEEK` | Due within 7 days |
 | `+MONTH` | Due this month |
+| `+QUARTER` | Due this quarter |
+| `+YEAR` | Due this year |
 | `+BLOCKED` | Depends on incomplete tasks |
 | `+UNBLOCKED` | No blocking dependencies |
+| `+BLOCKING` | Other tasks depend on this one |
 | `+READY` | Pending, not blocked, not scheduled in future |
 | `+SCHEDULED` | Has a scheduled date |
+| `+UNTIL` | Has an expiry date |
 | `+ACTIVE` | Currently started |
 | `+WAITING` | Wait date in the future |
+| `+PENDING` | Status is pending |
+| `+COMPLETED` | Status is completed |
+| `+DELETED` | Status is deleted |
 | `+TAGGED` | Has at least one user tag |
+| `+ANNOTATED` | Has at least one annotation |
 | `+PRIORITY` | Has a priority set |
 | `+PROJECT` | Belongs to a project |
+| `+PARENT` | Is a recurrence template |
+| `+CHILD` | Is a recurrence instance |
+| `+UDA` | Has at least one UDA value set |
+| `+ORPHAN` | ⚠ not computed (always `False`; use CLI for full support) |
+| `+LATEST` | Keep only the most recently created task in results |
 
 ## Next Steps
 

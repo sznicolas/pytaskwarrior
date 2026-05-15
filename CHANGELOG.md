@@ -86,6 +86,20 @@ The dependency `taskchampion-py` is now pinned to `>=3.0.1.1` (was `>=2.0.2`).
 This version tracks the taskchampion Rust crate `3.0.1` and requires building the
 fork from `tmp/taskchampion-py-fork/` until it is published upstream.
 
+The fork is built with the `server-local` feature enabled, adding support for
+local directory sync (`sync_to_local`).
+
+#### Sync config key names align with TaskWarrior 3.x
+
+If you were using sync keys from an earlier pytaskwarrior 3.0 pre-release, update
+your `.taskrc`:
+
+| Old (incorrect) | New (TW 3.x standard) |
+|---|---|
+| `sync.server.url` | `sync.server.origin` |
+| `sync.client.id` | `sync.server.client_id` |
+| `sync.encryption.secret` | unchanged ✅ |
+
 ---
 
 ### Added
@@ -119,7 +133,7 @@ Supported fields: `due`, `wait`, `scheduled`, `until`, `entry`, `modified`
 Supported operators: `before` (strict `<`), `after` (strict `>`), `by` (`<=`), `not` (`!=`)  
 Threshold is resolved via `DateResolver` — all TW date expressions supported.
 
-#### Virtual tags — 28 tags computed in pure Python
+#### Virtual tags — 30 tags supported in pure Python
 
 `+TAG` / `-TAG` filter tokens for all standard TaskWarrior virtual tags:
 
@@ -128,7 +142,8 @@ Threshold is resolved via `DateResolver` — all TW date expressions supported.
 | Date | `+OVERDUE`, `+DUE`, `+DUETODAY`, `+TODAY`, `+TOMORROW`, `+YESTERDAY`, `+WEEK`, `+MONTH`, `+QUARTER`, `+YEAR` |
 | Status | `+PENDING`, `+COMPLETED`, `+DELETED`, `+WAITING`, `+ACTIVE` |
 | Dependencies | `+BLOCKED`, `+UNBLOCKED`, `+BLOCKING` |
-| Task state | `+SCHEDULED`, `+UNTIL`, `+READY`, `+TAGGED`, `+ANNOTATED`, `+PRIORITY`, `+PROJECT`, `+PARENT`, `+CHILD`, `+UDA` |
+| Task state | `+SCHEDULED`, `+UNTIL`, `+READY`, `+TAGGED`, `+ANNOTATED`, `+PRIORITY`, `+PROJECT`, `+PARENT`, `+CHILD`, `+UDA`, `+ORPHAN` |
+| Special | `+LATEST` (keep only the most recently created task) |
 
 ```python
 tw.get_tasks("+OVERDUE")
@@ -158,19 +173,46 @@ of date-based filters and virtual tags.
 #### Sync config auto-read from `.taskrc`
 
 When using the default `TaskChampionAdapter`, sync configuration is read
-automatically from `.taskrc`:
+automatically from `.taskrc` using the standard TaskWarrior 3.x key names:
 
 ```ini
-sync.server.url=https://taskchampion.example.com
-sync.client.id=my-client-id
+# Remote sync (taskchampion sync server)
+sync.server.origin=https://taskchampion.example.com
+sync.server.client_id=11111111-2222-3333-4444-555555555555
 sync.encryption.secret=my-secret
+
+# Local sync (directory-based)
+sync.local.server_dir=/path/to/shared/server_dir
 ```
+
+Both remote and local sync are supported. If `sync.server.origin` is set but
+`sync.server.client_id` is absent, a stable UUID is generated and persisted to
+`.taskrc` automatically.
 
 No changes required — `tw.synchronize()` and `tw.is_sync_configured()` work as before.
 
-#### `TaskChampionAdapter.get_tags(include_virtual_tags=True)`
+#### `TaskChampionAdapter` — local directory sync
 
-Now includes `TASKWARRIOR_VIRTUAL_TAGS` (28 names) alongside user tags.
+`TaskChampionAdapter` now accepts a `sync_local_server_dir` parameter for
+taskchampion-style local directory sync:
+
+```python
+adapter = TaskChampionAdapter(sync_local_server_dir="/path/to/server_dir")
+adapter.synchronize()
+```
+
+`sync_local_server_dir` takes precedence over `sync_server_url` when both are set.
+Requires the `server-local` feature in the `taskchampion-py` fork.
+
+#### Stable `sync.server.client_id` auto-generated and persisted
+
+When remote sync (`sync.server.origin`) is configured but no `sync.server.client_id`
+exists in `.taskrc`, a stable UUID is generated and written to `.taskrc` automatically.
+This prevents each session from registering as a new client with the sync server.
+
+
+
+Now includes `TASKWARRIOR_VIRTUAL_TAGS` (30 names) alongside user tags.
 
 #### Virtual tags extracted to `utils/virtual_tags.py`
 

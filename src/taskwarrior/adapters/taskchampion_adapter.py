@@ -19,7 +19,7 @@ Limitations vs :class:`~taskwarrior.adapters.taskwarrior_adapter.TaskWarriorAdap
   supported; see :mod:`~taskwarrior.adapters.tc_filter` for what is.
 * Urgency is always ``None`` (not computed).
 * UDA config / context support requires separate configuration.
-* Sync requires an explicit ``sync_server_url`` parameter.
+* Sync requires ``sync_server_url`` (remote) or ``sync_local_server_dir`` (local directory).
 """
 
 from __future__ import annotations
@@ -65,13 +65,17 @@ class TaskChampionAdapter:
     create_if_missing:
         When *data_location* is given, create the directory / DB if absent.
     sync_server_url:
-        Optional taskchampion sync server URL.  When set, :meth:`synchronize`
-        will attempt a network sync.
+        Remote taskchampion sync server URL (``sync.server.origin`` in taskrc).
+        When set, :meth:`synchronize` will use ``sync_to_remote``.
     sync_client_id:
         Client identifier sent to the sync server.  A random UUID is used
-        when not supplied.
+        when not supplied (not recommended — prefer persisting in taskrc).
     sync_encryption_secret:
-        Encryption secret for the sync server.
+        Encryption secret for the remote sync server.
+    sync_local_server_dir:
+        Local directory used as a sync server (``sync.local.server_dir`` in
+        taskrc).  When set, :meth:`synchronize` will use ``sync_to_local``.
+        Takes precedence over *sync_server_url*.
     """
 
     def __init__(
@@ -81,6 +85,7 @@ class TaskChampionAdapter:
         sync_server_url: str | None = None,
         sync_client_id: str | None = None,
         sync_encryption_secret: str | None = None,
+        sync_local_server_dir: str | None = None,
     ) -> None:
         if data_location is None:
             self._replica = Replica.new_in_memory()
@@ -89,10 +94,11 @@ class TaskChampionAdapter:
                 str(Path(data_location).expanduser()), create_if_missing
             )
 
-        self._sync_configured = bool(sync_server_url)
+        self._sync_local_server_dir = sync_local_server_dir
         self._sync_server_url = sync_server_url
         self._sync_client_id = sync_client_id or str(_uuid.uuid4())
         self._sync_encryption_secret = sync_encryption_secret or ""
+        self._sync_configured = bool(sync_local_server_dir or sync_server_url)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -289,25 +295,32 @@ class TaskChampionAdapter:
     # ------------------------------------------------------------------
 
     def synchronize(self) -> None:
-        """Sync with a taskchampion sync server.
+        """Sync with a taskchampion sync server (remote or local).
 
-        Raises :exc:`~taskwarrior.exceptions.TaskSyncError` if no sync server
+        Dispatches to ``sync_to_local`` when *sync_local_server_dir* was
+        supplied, otherwise to ``sync_to_remote``.
+
+        Raises :exc:`~taskwarrior.exceptions.TaskSyncError` if no sync backend
         is configured or if the sync operation fails.
         """
         if not self._sync_configured:
             raise TaskSyncError(
                 "No sync server configured. "
-                "Pass sync_server_url to TaskChampionAdapter()."
+                "Pass sync_local_server_dir or sync_server_url to TaskChampionAdapter()."
             )
         try:
-            from taskchampion import ServerConfig  # type: ignore[attr-defined]
-
-            server = ServerConfig.new_sync_to_url(
-                self._sync_server_url,
-                self._sync_client_id,
-                self._sync_encryption_secret,
-            )
-            self._replica.sync(server, avoid_snapshots=False)
+            if self._sync_local_server_dir:
+                self._replica.sync_to_local(
+                    str(Path(self._sync_local_server_dir).expanduser()),
+                    False,  # avoid_snapshots
+                )
+            else:
+                self._replica.sync_to_remote(
+                    self._sync_server_url,
+                    self._sync_client_id,
+                    self._sync_encryption_secret,
+                    False,  # avoid_snapshots
+                )
             logger.info("Sync completed")
         except Exception as exc:
             raise TaskSyncError(f"Sync failed: {exc}") from exc

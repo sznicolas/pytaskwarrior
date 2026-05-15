@@ -107,12 +107,25 @@ class TaskWarrior:
 
         else:
             # Default mode: TaskChampionAdapter — no binary required.
+            import uuid as _uuid
+
             sync_cfg = self.config_store.get_sync_config()
+            sync_server_url = sync_cfg.get("sync.server.origin")
+            sync_local_dir = sync_cfg.get("sync.local.server_dir")
+            sync_client_id = sync_cfg.get("sync.server.client_id")
+            sync_encryption_secret = sync_cfg.get("sync.encryption.secret")
+
+            # Persist a stable client_id if remote sync is configured but none is set.
+            if sync_server_url and not sync_client_id:
+                sync_client_id = str(_uuid.uuid4())
+                self.config_store.set_value("sync.server.client_id", sync_client_id)
+
             self.adapter = TaskChampionAdapter(
                 data_location=self.config_store.data_location,
-                sync_server_url=sync_cfg.get("sync.server.url") or sync_cfg.get("sync.server"),
-                sync_client_id=sync_cfg.get("sync.client.id"),
-                sync_encryption_secret=sync_cfg.get("sync.encryption.secret"),
+                sync_server_url=sync_server_url,
+                sync_client_id=sync_client_id,
+                sync_encryption_secret=sync_encryption_secret,
+                sync_local_server_dir=sync_local_dir,
             )
 
         self._cli_adapter: TaskWarriorAdapter | None = _cli

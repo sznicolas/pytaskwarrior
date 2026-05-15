@@ -6,7 +6,7 @@ Common issues and solutions when using `pytaskwarrior`.
 
 ## `task` binary not found
 
-Since pytaskwarrior v2.1, the `task` binary is **not required** by default.
+Since pytaskwarrior **3.0**, the `task` binary is **not required** by default.
 `TaskWarrior()` uses the taskchampion backend directly.
 
 If you explicitly pass `task_cmd="task"` and get this error:

@@ -1,6 +1,12 @@
 # Building TaskWarrior 3.x from Source
 
-If TaskWarrior 3.x is not packaged for your OS, you can build it from sources. To use pytaskwarrior, you must have TaskWarrior 3.4+ available on your system. This guide explains how to build TaskWarrior 3.x from source using the provided Dockerfile, ensuring a reproducible and portable build process.
+!!! note "Binary not required by default"
+    `TaskWarrior()` uses the **taskchampion backend** by default — no `task` binary needed.
+    This guide is only necessary if you want CLI mode (`TaskWarrior(task_cmd="task")`).
+
+If TaskWarrior 3.x is not packaged for your OS and you need CLI mode, you can build it
+from source. This guide explains how to build TaskWarrior 3.x using the provided
+Dockerfile, ensuring a reproducible and portable build process.
 
 ## Prerequisites
 

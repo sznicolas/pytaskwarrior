@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -489,8 +490,12 @@ class TestUtilityMethods:
     def test_is_sync_configured_false(self, adapter: TaskChampionAdapter) -> None:
         assert adapter.is_sync_configured() is False
 
-    def test_is_sync_configured_true(self) -> None:
+    def test_is_sync_configured_true_remote(self) -> None:
         a = TaskChampionAdapter(sync_server_url="https://sync.example.com")
+        assert a.is_sync_configured() is True
+
+    def test_is_sync_configured_true_local(self) -> None:
+        a = TaskChampionAdapter(sync_local_server_dir="/tmp/server")
         assert a.is_sync_configured() is True
 
     def test_synchronize_raises_without_config(
@@ -498,6 +503,56 @@ class TestUtilityMethods:
     ) -> None:
         with pytest.raises(TaskSyncError):
             adapter.synchronize()
+
+    def test_synchronize_remote_calls_sync_to_remote(self) -> None:
+        """synchronize() with a remote URL must call replica.sync_to_remote."""
+        from unittest.mock import MagicMock
+
+        a = TaskChampionAdapter(
+            sync_server_url="https://sync.example.com",
+            sync_client_id="11111111-2222-3333-4444-555555555555",
+            sync_encryption_secret="secret",
+        )
+        a._replica = MagicMock()
+        a.synchronize()
+        a._replica.sync_to_remote.assert_called_once_with(
+            "https://sync.example.com",
+            "11111111-2222-3333-4444-555555555555",
+            "secret",
+            False,
+        )
+
+    def test_synchronize_local_calls_sync_to_local(self, tmp_path: Path) -> None:
+        """synchronize() with a local dir must call replica.sync_to_local."""
+        from unittest.mock import MagicMock
+
+        a = TaskChampionAdapter(sync_local_server_dir=str(tmp_path / "server"))
+        a._replica = MagicMock()
+        a.synchronize()
+        a._replica.sync_to_local.assert_called_once_with(str(tmp_path / "server"), False)
+
+    def test_synchronize_local_takes_precedence(self, tmp_path: Path) -> None:
+        """sync_local_server_dir takes precedence over sync_server_url."""
+        from unittest.mock import MagicMock
+
+        a = TaskChampionAdapter(
+            sync_server_url="https://sync.example.com",
+            sync_local_server_dir=str(tmp_path / "server"),
+        )
+        a._replica = MagicMock()
+        a.synchronize()
+        a._replica.sync_to_local.assert_called_once()
+        a._replica.sync_to_remote.assert_not_called()
+
+    def test_synchronize_wraps_exception_as_task_sync_error(self) -> None:
+        """Exceptions from the replica sync call must be wrapped in TaskSyncError."""
+        from unittest.mock import MagicMock
+
+        a = TaskChampionAdapter(sync_server_url="https://sync.example.com")
+        a._replica = MagicMock()
+        a._replica.sync_to_remote.side_effect = RuntimeError("network error")
+        with pytest.raises(TaskSyncError, match="network error"):
+            a.synchronize()
 
 
 # ---------------------------------------------------------------------------
