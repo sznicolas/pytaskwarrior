@@ -17,7 +17,6 @@ from .dto.task_dto import TaskInputDTO, TaskOutputDTO
 from .dto.task_id import TaskRef
 from .dto.uda_dto import UdaConfig
 from .enums import TaskStatus  # noqa: F401 — re-exported for public API
-from .exceptions import TaskConfigurationError
 from .services.context_service import ContextService
 from .services.uda_service import UdaService
 
@@ -131,35 +130,13 @@ class TaskWarrior:
         self._cli_adapter: TaskWarriorAdapter | None = _cli
 
         # Services write directly to .taskrc — no CLI needed.
-        self._context_service: ContextService = ContextService(
-            self.config_store, adapter=_cli
-        )
-        self._uda_service: UdaService = UdaService(
-            self.config_store, adapter=_cli
-        )
+        self._context_service: ContextService = ContextService(self.config_store)
+        self._uda_service: UdaService = UdaService(self.config_store)
         self._uda_service.load_udas_from_store()
 
     # ------------------------------------------------------------------
-    # Service properties (raise TaskConfigurationError when CLI unavailable)
+    # Public task API
     # ------------------------------------------------------------------
-
-    @property
-    def context_service(self) -> ContextService:
-        """Return the context service (always available; writes go directly to .taskrc)."""
-        return self._context_service
-
-    @context_service.setter
-    def context_service(self, value: ContextService) -> None:
-        self._context_service = value
-
-    @property
-    def uda_service(self) -> UdaService:
-        """Return the UDA service (always available; writes go directly to .taskrc)."""
-        return self._uda_service
-
-    @uda_service.setter
-    def uda_service(self, value: UdaService) -> None:
-        self._uda_service = value
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Add a new task to TaskWarrior.
@@ -224,6 +201,7 @@ class TaskWarrior:
         filter: str = "",
         include_completed: bool = False,
         include_deleted: bool = False,
+        apply_context: bool = True,
     ) -> list[TaskOutputDTO]:
         """Retrieve multiple tasks matching a filter.
 
@@ -234,8 +212,10 @@ class TaskWarrior:
         Deleted and completed tasks are excluded by default; use
         *include_completed* / *include_deleted* to override.
 
-        If a context is active, its read_filter is applied in addition to the
-        provided filter (combined with AND).
+        If a context is active and *apply_context* is ``True`` (the default),
+        its read_filter is applied in addition to the provided filter
+        (combined with AND).  Pass ``apply_context=False`` to bypass context
+        injection and query raw tasks regardless of the active context.
 
         Args:
             filter: TaskWarrior filter expression.  Examples::
@@ -244,9 +224,13 @@ class TaskWarrior:
                 tw.get_tasks("project:work +urgent")            # project filter
                 tw.get_tasks("project:dmc or project:pro")      # OR — works!
                 tw.get_tasks("project:work", include_completed=True)
+                tw.get_tasks(apply_context=False)               # bypass context
 
             include_completed: Include completed tasks (default ``False``).
             include_deleted: Include deleted tasks (default ``False``).
+            apply_context: When ``True`` (default), the active context's
+                read_filter is automatically prepended to the query.  Set to
+                ``False`` to query tasks without any context filter.
 
         Returns:
             List of tasks matching the filter.
@@ -254,22 +238,22 @@ class TaskWarrior:
         Raises:
             TaskWarriorError: If the query fails.
         """
-        # Combine the user-provided filter with the active context's read_filter
         combined_filter = filter or ""
-        try:
-            current_context = self.get_current_context()
-            if current_context:
-                contexts = self.context_service.get_contexts()
-                active = next((c for c in contexts if c.active or c.name == current_context), None)
-                if active and active.read_filter:
-                    ctx_read = active.read_filter.strip()
-                    if combined_filter.strip():
-                        combined_filter = f"{ctx_read} and ({combined_filter})"
-                    else:
-                        combined_filter = ctx_read
-        except Exception as e:
-            # Do not fail listing due to context lookup issues — log and proceed
-            logger.debug("Failed to apply context read_filter to get_tasks(): %s", e)
+        if apply_context:
+            try:
+                current_context = self.get_current_context()
+                if current_context:
+                    contexts = self._context_service.get_contexts()
+                    active = next((c for c in contexts if c.active or c.name == current_context), None)
+                    if active and active.read_filter:
+                        ctx_read = active.read_filter.strip()
+                        if combined_filter.strip():
+                            combined_filter = f"{ctx_read} and ({combined_filter})"
+                        else:
+                            combined_filter = ctx_read
+            except Exception as e:
+                # Do not fail listing due to context lookup issues — log and proceed
+                logger.debug("Failed to apply context read_filter to get_tasks(): %s", e)
 
         return self.adapter.get_tasks(
             filter=combined_filter,
@@ -402,7 +386,7 @@ class TaskWarrior:
         Raises:
             TaskWarriorError: If context creation fails.
         """
-        self.context_service.define_context(context)
+        self._context_service.define_context(context)
 
     def apply_context(self, context: str) -> None:
         """Activate a context.
@@ -418,7 +402,7 @@ class TaskWarrior:
         Example:
             >>> tw.apply_context("work")
         """
-        self.context_service.apply_context(context)
+        self._context_service.apply_context(context)
 
     def unset_context(self) -> None:
         """Deactivate the current context.
@@ -428,7 +412,7 @@ class TaskWarrior:
         Raises:
             TaskWarriorError: If unsetting fails.
         """
-        self.context_service.unset_context()
+        self._context_service.unset_context()
 
     def get_contexts(self) -> list[ContextDTO]:
         """List all defined contexts.
@@ -439,7 +423,7 @@ class TaskWarrior:
         Raises:
             TaskWarriorError: If retrieval fails.
         """
-        return self.context_service.get_contexts()
+        return self._context_service.get_contexts()
 
     def get_current_context(self) -> str | None:
         """Get the name of the currently active context.
@@ -450,7 +434,7 @@ class TaskWarrior:
         Raises:
             TaskWarriorError: If retrieval fails.
         """
-        return self.context_service.get_current_context()
+        return self._context_service.get_current_context()
 
     def delete_context(self, context: str) -> None:
         """Delete a defined context.
@@ -461,7 +445,7 @@ class TaskWarrior:
         Raises:
             TaskWarriorError: If the context doesn't exist or deletion fails.
         """
-        self.context_service.delete_context(context)
+        self._context_service.delete_context(context)
 
     def has_context(self, context: str) -> bool:
         """Check if a context exists.
@@ -472,11 +456,41 @@ class TaskWarrior:
         Returns:
             True if the context exists, False otherwise.
         """
-        return self.context_service.has_context(context)
+        return self._context_service.has_context(context)
 
     def is_sync_configured(self) -> bool:
         """Return True if synchronization is configured for this TaskWarrior instance."""
         return self.adapter.is_sync_configured()
+
+    def has_local_changes(self) -> bool:
+        """Return ``True`` if there are local changes not yet pushed to the sync server.
+
+        For the :class:`~taskwarrior.adapters.taskchampion_adapter.TaskChampionAdapter`
+        this queries the real pending-operations count from the SQLite replica.
+        For the CLI adapter this always returns ``False`` (the CLI manages sync
+        state internally).
+
+        .. note::
+            This only reflects the *local* side.  New tasks or changes on the
+            remote server cannot be detected without calling :meth:`synchronize`.
+
+        Example:
+            >>> tw = TaskWarrior()
+            >>> tw.add_task(TaskInputDTO(description="Buy milk"))
+            >>> tw.has_local_changes()   # True — not yet synced
+            >>> tw.synchronize()
+            >>> tw.has_local_changes()   # False — fully synced
+        """
+        return self.adapter.has_local_changes()
+
+    def pending_local_ops_count(self) -> int:
+        """Return the number of local operations pending synchronization.
+
+        Useful for logging or progress display.  ``0`` means the local replica
+        is fully synced (from the local side).
+        Returns ``0`` for the CLI adapter.
+        """
+        return self.adapter.pending_local_ops_count()
 
     def synchronize(self) -> None:
         """Run TaskWarrior synchronization via ``task sync``.
@@ -498,20 +512,30 @@ class TaskWarrior:
         """Get comprehensive TaskWarrior configuration information.
 
         Returns:
-            Dictionary containing backend type and version, CLI path and options
-            (when a CLI adapter is active), taskrc file path, and active context
-            information.
+            Dictionary with the following keys:
+
+            * ``backend_type`` — ``"taskchampion"`` or ``"taskwarrior-cli"``
+            * ``backend_version`` — version string of the active backend
+            * ``task_cmd`` — path to the ``task`` binary (``None`` for TC adapter)
+            * ``taskrc_file`` — path to the active ``.taskrc``
+            * ``data_location`` — resolved path to the data directory, or ``None``
+              when an in-memory database is used
+            * ``options`` — CLI options list (``None`` for TC adapter)
+            * ``sync_configured`` — ``True`` when a sync backend is active
+            * ``sync_backend`` — ``"remote"``, ``"local"``, or ``None``
+              (TC adapter only; absent for CLI adapter)
+            * ``sync_server_url`` — remote sync server URL (TC adapter only)
+            * ``sync_local_server_dir`` — local sync server directory (TC adapter only)
+            * ``sync_client_id`` — client UUID used for remote sync (TC adapter only)
+            * ``current_context`` — name of the active context, or ``None``
+            * ``current_context_details`` — dict with context details, or ``None``
 
         Example:
             >>> info = tw.get_info()
-            >>> print(info["backend_version"])
+            >>> print(info["backend_type"])
+            >>> print(info["data_location"])
         """
-        _cli: TaskWarriorAdapter | None = getattr(self, "_cli_adapter", None)
-        # Fallback: if the facade was constructed without going through __init__
-        # (e.g. in tests using __new__), use the adapter itself when it exposes
-        # CLI-specific attributes.
-        if _cli is None and isinstance(self.adapter, TaskWarriorAdapter):
-            _cli = self.adapter
+        _cli: TaskWarriorAdapter | None = self._cli_adapter
 
         info: dict[str, Any] = {
             "backend_type": (
@@ -521,10 +545,17 @@ class TaskWarrior:
             "backend_version": self.adapter.get_version(),
             "task_cmd": str(_cli.task_cmd) if _cli else None,
             "taskrc_file": str(self.config_store.taskrc_path),
+            "data_location": self.adapter.get_data_location(),
             "options": _cli.cli_options if _cli else None,
-            # "version" kept for backward compat: CLI version string when available
-            "version": _cli.get_version() if _cli else None,
         }
+
+        # Sync information — detailed keys for TC adapter, basic flag for CLI.
+        sync_info: dict[str, Any] = {
+            "sync_configured": self.adapter.is_sync_configured(),
+        }
+        if isinstance(self.adapter, TaskChampionAdapter):
+            sync_info.update(self.adapter.get_sync_info())
+        info.update(sync_info)
 
         # Add current context information (name and details) if available.
         current_context: str | None = None
@@ -532,7 +563,7 @@ class TaskWarrior:
         try:
             current_context = self.get_current_context()
             if current_context:
-                contexts = self.context_service.get_contexts()
+                contexts = self._context_service.get_contexts()
                 active = next((c for c in contexts if c.active or c.name == current_context), None)
                 if active:
                     current_context_details = {
@@ -604,7 +635,7 @@ class TaskWarrior:
             >>> tw.reload_udas()
             >>> names = tw.get_uda_names()
         """
-        self.uda_service.load_udas_from_store()
+        self._uda_service.load_udas_from_store()
 
     def get_uda_names(self) -> set[str]:
         """Get all defined UDA names.
@@ -616,7 +647,7 @@ class TaskWarrior:
             >>> names = tw.get_uda_names()
             >>> print(names)  # {"severity", "estimate", "customer"}
         """
-        return self.uda_service.registry.get_uda_names()
+        return self._uda_service.registry.get_uda_names()
 
     def get_uda_config(self, name: str) -> UdaConfig | None:
         """Get the configuration for a specific UDA.
@@ -633,7 +664,7 @@ class TaskWarrior:
             ...     print(config.type)  # UdaType.STRING
             ...     print(config.values)  # ["low", "medium", "high"]
         """
-        return self.uda_service.registry.get_uda(name)
+        return self._uda_service.registry.get_uda(name)
 
     def get_udas(self) -> list[UdaConfig]:
         """Get full UDA definitions.
@@ -641,7 +672,7 @@ class TaskWarrior:
         Returns:
             List of UdaConfig objects for all defined UDAs.
         """
-        return self.uda_service.registry.get_udas()
+        return self._uda_service.registry.get_udas()
 
     def define_uda(self, uda: UdaConfig) -> None:
         """Define a new UDA via the TaskWarrior facade.
@@ -655,12 +686,10 @@ class TaskWarrior:
         Raises:
             TaskOperationError: If creating the UDA via the underlying adapter fails.
         """
-        self.uda_service.define_uda(uda)
+        self._uda_service.define_uda(uda)
 
     def update_uda(self, uda: UdaConfig) -> None:
         """Update an existing UDA via the TaskWarrior facade.
-
-        Delegates to UdaService.update_uda.
 
         Args:
             uda: The UdaConfig with updated fields.
@@ -668,7 +697,7 @@ class TaskWarrior:
         Raises:
             TaskOperationError: If applying the update fails.
         """
-        self.uda_service.update_uda(uda)
+        self._uda_service.define_uda(uda)
 
     def delete_uda(self, uda: UdaConfig) -> None:
         """Delete a UDA via the TaskWarrior facade.
@@ -682,7 +711,7 @@ class TaskWarrior:
         Raises:
             TaskOperationError: If deletion fails for reasons other than missing keys.
         """
-        self.uda_service.delete_uda(uda)
+        self._uda_service.delete_uda(uda)
 
     def get_projects(self) -> list[str]:
         """Get all projects defined in TaskWarrior.

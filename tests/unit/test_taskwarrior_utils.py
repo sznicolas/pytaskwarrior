@@ -26,7 +26,7 @@ class TestTaskWarriorUtils:
         """Test get_info method."""
         result = tw.get_info()
 
-        assert "version" in result
+        assert "backend_version" in result
         assert "task_cmd" in result
 
 
@@ -57,7 +57,7 @@ class TestTaskWarriorUdaMethods:
             label="Severity Level",
             values=["low", "medium", "high"],
         )
-        tw.uda_service.define_uda(uda)
+        tw.define_uda(uda)
 
         # Reload and verify
         tw.reload_udas()
@@ -70,7 +70,7 @@ class TestTaskWarriorUdaMethods:
         assert config.label == "Severity Level"
 
         # Cleanup
-        tw.uda_service.delete_uda(uda)
+        tw.delete_uda(uda)
 
     def test_uda_auto_loaded_on_init(self, taskwarrior_config: str):
         """Test that UDAs are auto-loaded when TaskWarrior is initialized."""

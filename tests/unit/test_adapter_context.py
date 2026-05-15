@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from src.taskwarrior.dto.context_dto import ContextDTO
 from src.taskwarrior.exceptions import TaskWarriorError
 from src.taskwarrior.services.context_service import ContextService
@@ -15,11 +14,7 @@ class TestTaskWarriorAdapterContext:
     def context_service(self, taskwarrior_config: str):
         from src.taskwarrior.config.config_store import ConfigStore
 
-        adapter = TaskWarriorAdapter(
-            config_store=ConfigStore(taskwarrior_config),
-            task_cmd="task",
-        )
-        return ContextService(ConfigStore(taskwarrior_config), adapter)
+        return ContextService(ConfigStore(taskwarrior_config))
 
     # ------------------------------------------------------------------
     # define_context

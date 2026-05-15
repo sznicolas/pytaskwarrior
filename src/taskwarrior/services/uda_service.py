@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
     from ..config.config_store import ConfigStore
 
 from ..dto.uda_dto import UdaConfig
@@ -36,21 +35,13 @@ class UdaService:
             tw.uda_service.define_uda(uda)
     """
 
-    def __init__(
-        self,
-        config_store: "ConfigStore",
-        adapter: "TaskWarriorAdapter | None" = None,
-    ) -> None:
+    def __init__(self, config_store: ConfigStore) -> None:
         """Initialize the UDA service.
 
         Args:
-            config_store: The configuration store instance (required).
-            adapter: Legacy parameter kept for backwards compatibility;
-                no longer used for write operations.
+            config_store: The configuration store instance.
         """
         self.config_store = config_store
-        # Kept for backwards compatibility; write ops no longer use it.
-        self.adapter = adapter
         self.registry = UdaRegistry()
 
     def load_udas_from_store(self) -> None:
@@ -93,17 +84,6 @@ class UdaService:
             raise TaskOperationError(f"Failed to define UDA '{uda.name}': {e}") from e
 
         self.registry.add_uda(uda)
-
-    def update_uda(self, uda: UdaConfig) -> None:
-        """Update an existing UDA in ``.taskrc`` and in the registry.
-
-        Args:
-            uda: The UdaConfig with updated settings to apply.
-
-        Raises:
-            TaskOperationError: If applying the updated configuration fails.
-        """
-        self.define_uda(uda)
 
     def delete_uda(self, uda: UdaConfig) -> None:
         """Delete a UDA by removing its keys from ``.taskrc``.

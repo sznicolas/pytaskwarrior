@@ -6,9 +6,7 @@ dependency).  The reference point is always a timezone-aware local datetime.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, datetime, timedelta, timezone
 
 from taskwarrior.utils.date_resolver import resolve_date
 
@@ -24,7 +22,7 @@ _NOW = datetime(2026, 3, 15, 14, 30, 0, tzinfo=_TZ_PLUS2)  # Sunday, UTC+2
 
 def _utc(*args: int) -> datetime:
     """Create a UTC-aware datetime from positional y/m/d/H/M/S args."""
-    return datetime(*args, tzinfo=timezone.utc)
+    return datetime(*args, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -46,12 +44,12 @@ class TestISO8601:
         # Resolution is valid (returns UTC-aware datetime)
         dt = resolve_date("2026-06-01T12:00:00", _NOW)
         assert dt is not None
-        assert dt.tzinfo == timezone.utc
+        assert dt.tzinfo == UTC
 
     def test_date_only_iso(self) -> None:
         dt = resolve_date("2026-06-01", _NOW)
         assert dt is not None
-        assert dt.tzinfo == timezone.utc
+        assert dt.tzinfo == UTC
 
     def test_unrecognised_returns_none(self) -> None:
         assert resolve_date("next friday", _NOW) is None
@@ -67,7 +65,7 @@ class TestISO8601:
 class TestNamedDates:
     def test_now(self) -> None:
         dt = resolve_date("now", _NOW)
-        assert dt == _NOW.astimezone(timezone.utc)
+        assert dt == _NOW.astimezone(UTC)
 
     def test_today_is_midnight_local(self) -> None:
         dt = resolve_date("today", _NOW)
@@ -152,22 +150,22 @@ class TestWeekdays:
 class TestRelative:
     def test_now_plus_days(self) -> None:
         dt = resolve_date("now+2d", _NOW)
-        expected = (_NOW + timedelta(days=2)).astimezone(timezone.utc)
+        expected = (_NOW + timedelta(days=2)).astimezone(UTC)
         assert dt == expected
 
     def test_now_minus_days(self) -> None:
         dt = resolve_date("now-1d", _NOW)
-        expected = (_NOW - timedelta(days=1)).astimezone(timezone.utc)
+        expected = (_NOW - timedelta(days=1)).astimezone(UTC)
         assert dt == expected
 
     def test_now_plus_weeks(self) -> None:
         dt = resolve_date("now+1w", _NOW)
-        expected = (_NOW + timedelta(weeks=1)).astimezone(timezone.utc)
+        expected = (_NOW + timedelta(weeks=1)).astimezone(UTC)
         assert dt == expected
 
     def test_now_plus_hours(self) -> None:
         dt = resolve_date("now+3h", _NOW)
-        expected = (_NOW + timedelta(hours=3)).astimezone(timezone.utc)
+        expected = (_NOW + timedelta(hours=3)).astimezone(UTC)
         assert dt == expected
 
     def test_now_plus_months(self) -> None:
@@ -214,12 +212,12 @@ class TestRelative:
 class TestISODurations:
     def test_p2w(self) -> None:
         dt = resolve_date("P2W", _NOW)
-        expected = (_NOW + timedelta(weeks=2)).astimezone(timezone.utc)
+        expected = (_NOW + timedelta(weeks=2)).astimezone(UTC)
         assert dt == expected
 
     def test_p3d(self) -> None:
         dt = resolve_date("P3D", _NOW)
-        expected = (_NOW + timedelta(days=3)).astimezone(timezone.utc)
+        expected = (_NOW + timedelta(days=3)).astimezone(UTC)
         assert dt == expected
 
     def test_p1m(self) -> None:
@@ -245,17 +243,17 @@ class TestCompound:
     def test_now_plus_iso_day(self) -> None:
         # now + P1D == now + 1d
         dt = resolve_date("now+P1D", _NOW)
-        expected = (_NOW + timedelta(days=1)).astimezone(timezone.utc)
+        expected = (_NOW + timedelta(days=1)).astimezone(UTC)
         assert dt == expected
 
     def test_now_plus_iso_day_with_spaces(self) -> None:
         dt = resolve_date("now + P1D", _NOW)
-        expected = (_NOW + timedelta(days=1)).astimezone(timezone.utc)
+        expected = (_NOW + timedelta(days=1)).astimezone(UTC)
         assert dt == expected
 
     def test_now_plus_iso_week(self) -> None:
         dt = resolve_date("now+P2W", _NOW)
-        expected = (_NOW + timedelta(weeks=2)).astimezone(timezone.utc)
+        expected = (_NOW + timedelta(weeks=2)).astimezone(UTC)
         assert dt == expected
 
     def test_today_plus_iso_day(self) -> None:
@@ -294,7 +292,7 @@ class TestCompound:
         for expr in exprs:
             dt = resolve_date(expr, _NOW)
             assert dt is not None, f"Expected result for {expr!r}"
-            assert dt.tzinfo == timezone.utc, f"{expr!r} result not UTC"
+            assert dt.tzinfo == UTC, f"{expr!r} result not UTC"
 
 
 # ---------------------------------------------------------------------------
@@ -321,4 +319,4 @@ class TestEdgeCases:
         for expr in exprs:
             result = resolve_date(expr, _NOW)
             assert result is not None, f"Expected result for {expr!r}"
-            assert result.tzinfo == timezone.utc, f"{expr!r} result not UTC"
+            assert result.tzinfo == UTC, f"{expr!r} result not UTC"

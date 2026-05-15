@@ -41,44 +41,87 @@ tw = TaskWarrior(task_cmd="task")  # → TaskWarriorAdapter (explicit CLI mode)
 Note: `task_cmd` was the first positional argument.  
 **If you were calling `TaskWarrior("task")` positionally, add the keyword: `TaskWarrior(task_cmd="task")`.**
 
-#### `TaskWarrior.get_info()` keys may be `None`
+#### `TaskWarrior.get_info()` shape change
 
-When using the default `TaskChampionAdapter`, `info["task_cmd"]`, `info["options"]`,
-and `info["version"]` are `None` (no CLI configured).
+The `"version"` key has been **removed** from the dict. `info["task_cmd"]` and
+`info["options"]` are `None` when the TC adapter is active (the default).
+Use `"backend_version"` for the version string.
 
 ```python
 info = tw.get_info()
-# Before: info["task_cmd"] always str
-# After:  info["task_cmd"] is None when using TC adapter (default)
-#         info["backend_type"] is "taskchampion" or "taskwarrior-cli"
+# Before (2.x / 3.0-pre): info["version"] → "3.4.0"  |  info["task_cmd"] → str
+# After (3.0): "version" key no longer exists — KeyError if accessed
+#              info["backend_version"] → version string (always present)
+#              info["backend_type"]    → "taskchampion" or "taskwarrior-cli"
+#              info["task_cmd"]        → None for TC adapter
 ```
 
-**Migration:** Guard with `if info["task_cmd"]` before using, or check `info["backend_type"]`.
+**Migration:** Replace `info["version"]` with `info["backend_version"]`.
+Guard `info["task_cmd"]` with `if info["task_cmd"]` before using.
 
-#### `ContextService.__init__` argument order changed
+#### `ContextService.__init__` signature simplified
+
+The `adapter` parameter has been removed. Services write directly to `.taskrc`
+via `ConfigStore` — no adapter is needed.
 
 ```python
 # Before (2.x)
 ContextService(adapter, config_store)
 
 # After (3.0)
-ContextService(config_store, adapter=None)  # adapter is now optional
+ContextService(config_store)
 ```
 
-**Migration:** Swap arguments or use keyword syntax.  
-Note: `ContextService` is not part of the typical public API (`tw.context_service` is).
+**Migration:** Remove the `adapter` argument. `ContextService` is an internal
+class; use the `TaskWarrior` facade methods (`tw.define_context()`,
+`tw.get_contexts()`, etc.) for all context operations.
 
-#### `UdaService.__init__` argument order changed
+#### `UdaService.__init__` signature simplified
+
+Same change as `ContextService`:
 
 ```python
 # Before (2.x)
 UdaService(adapter, config_store)
 
 # After (3.0)
-UdaService(config_store, adapter=None)  # adapter is now optional
+UdaService(config_store)
 ```
 
-**Migration:** Swap arguments or use keyword syntax.
+#### `TaskWarrior.context_service` and `.uda_service` properties removed
+
+The `context_service` and `uda_service` properties no longer exist on
+`TaskWarrior`. Use the facade methods directly:
+
+| Before (via property) | After (facade method) |
+|---|---|
+| `tw.context_service.define_context(ctx)` | `tw.define_context(ctx)` |
+| `tw.context_service.get_contexts()` | `tw.get_contexts()` |
+| `tw.context_service.apply_context(name)` | `tw.apply_context(name)` |
+| `tw.context_service.get_current_context()` | `tw.get_current_context()` |
+| `tw.context_service.has_context(name)` | `tw.has_context(name)` |
+| `tw.context_service.delete_context(name)` | `tw.delete_context(name)` |
+| `tw.context_service.unset_context()` | `tw.unset_context()` |
+| `tw.uda_service.define_uda(uda)` | `tw.define_uda(uda)` |
+| `tw.uda_service.delete_uda(uda)` | `tw.delete_uda(uda)` |
+| `tw.uda_service.update_uda(uda)` | `tw.define_uda(uda)` |
+| `tw.uda_service.get_udas()` | `tw.get_udas()` |
+| `tw.uda_service.get_uda_names()` | `tw.get_uda_names()` |
+
+**Migration:** Replace all `tw.context_service.*` and `tw.uda_service.*` calls with the
+corresponding `tw.*` facade methods shown above.
+
+#### `taskwarrior.version` alias removed
+
+The `version` module-level alias is removed. Use `__version__` instead:
+
+```python
+# Before
+from taskwarrior import version
+
+# After
+from taskwarrior import __version__
+```
 
 #### `taskchampion-py` minimum version bumped to `3.0.1.1`
 
@@ -226,8 +269,10 @@ Now includes `TASKWARRIOR_VIRTUAL_TAGS` (30 names) alongside user tags.
 - `ContextService` and `UdaService` no longer call the `task` CLI for any write
   operation; they write directly to `.taskrc` via `ConfigStore`.
 - `TaskWarrior.__init__`: services are always instantiated regardless of whether
-  the CLI adapter is available. Properties `context_service` and `uda_service` no
-  longer raise `TaskConfigurationError`.
+  the CLI adapter is available.
+- The `context_service` and `uda_service` properties have been **removed** from
+  `TaskWarrior`. Use the facade methods directly (e.g. `tw.define_context()`,
+  `tw.get_udas()`). See the **Breaking Changes** section above for the full mapping.
 - `task_calc()` docstring updated: compound expressions with spaces are now supported.
 - `get_tags(include_virtual_tags=True)`: now returns TW virtual tag names (not TC
   internal synthetic tag strings like `Synthetic(Pending)`).
@@ -241,24 +286,31 @@ Now includes `TASKWARRIOR_VIRTUAL_TAGS` (30 names) alongside user tags.
 tw = TaskWarrior()                    # was CLI, now TC (no binary)
 tw = TaskWarrior(task_cmd="task")     # explicit CLI mode
 
-# 2. get_info() keys may be None
+# 2. get_info(): "version" key removed — use backend_version
 info = tw.get_info()
+print(info["backend_version"])        # always present
 if info["task_cmd"]:                  # guard before use
     print(info["task_cmd"])
 print(info["backend_type"])           # "taskchampion" or "taskwarrior-cli"
+# info["version"]  →  KeyError — key is gone; migrate to info["backend_version"]
 
 # 3. Service constructors (internal use only)
-# ContextService(config_store, adapter=None)  — swapped
-# UdaService(config_store, adapter=None)      — swapped
-# Both are accessed via tw.context_service / tw.uda_service — unaffected
+# ContextService(config_store)   # adapter removed
+# UdaService(config_store)       # adapter removed
 
-# 4. New filter features
+# 4. context_service / uda_service properties removed — use facade methods
+# tw.context_service.define_context(ctx)  →  tw.define_context(ctx)
+# tw.uda_service.define_uda(uda)          →  tw.define_uda(uda)
+# (see breaking changes section for full mapping)
+
+# 5. version alias removed — use __version__
+from taskwarrior import __version__   # not: version
+
+# 6. New filter features
 tw.get_tasks("+OVERDUE")
 tw.get_tasks("due.before:tomorrow")
 tw.get_tasks("+READY project:work")
 ```
-
-
 
 ### Added
 

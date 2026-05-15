@@ -74,7 +74,7 @@ def test_uda_service_define_uda():
 
 
 def test_uda_service_update_uda():
-    """Test updating an existing UDA through UdaService."""
+    """Test updating an existing UDA through UdaService (via define_uda)."""
     mock_config_store = MagicMock()
     service = UdaService(config_store=mock_config_store)
 
@@ -83,7 +83,7 @@ def test_uda_service_update_uda():
     updated_uda = UdaConfig(
         name="test_uda", uda_type=UdaType.NUMERIC, label="Updated Label", default="new_default"
     )
-    service.update_uda(updated_uda)
+    service.define_uda(updated_uda)
 
     mock_config_store.set_value.assert_any_call("uda.test_uda.type", "numeric")
     mock_config_store.set_value.assert_any_call("uda.test_uda.label", "Updated Label")

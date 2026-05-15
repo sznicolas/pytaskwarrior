@@ -19,7 +19,7 @@ def test_get_tasks_applies_context_read_filter(monkeypatch):
     ctx = ContextDTO(
         name="work", read_filter="project:work", write_filter="project:work", active=True
     )
-    monkeypatch.setattr(tw.context_service, "get_contexts", lambda: [ctx])
+    monkeypatch.setattr(tw._context_service, "get_contexts", lambda: [ctx])
 
     captured = {}
 
@@ -45,7 +45,7 @@ def test_get_tasks_with_only_context_read_filter(monkeypatch):
     ctx = ContextDTO(
         name="work", read_filter="project:work", write_filter="project:work", active=True
     )
-    monkeypatch.setattr(tw.context_service, "get_contexts", lambda: [ctx])
+    monkeypatch.setattr(tw._context_service, "get_contexts", lambda: [ctx])
 
     captured = {}
 

@@ -31,6 +31,12 @@ def test_get_info_handles_context_errors_and_returns_basic_info():
         def get_version(self):
             return "2.6.1"
 
+        def get_data_location(self):
+            return "/tmp/.task"
+
+        def is_sync_configured(self):
+            return False
+
     tw.adapter = DummyAdapter()
     tw._cli_adapter = tw.adapter  # white-box: expose CLI adapter for get_info()
 
@@ -45,12 +51,12 @@ def test_get_info_handles_context_errors_and_returns_basic_info():
     tw.get_current_context = broken_get_current_context
 
     # context_service may be present but will not be used because get_current_context raises
-    tw.context_service = object()
+    tw._context_service = object()
 
     info = tw.get_info()
 
     assert info["task_cmd"] == "/usr/bin/task"
     assert info["taskrc_file"] == "/tmp/.taskrc"
-    assert info["version"] == "2.6.1"
+    assert info["backend_version"] == "2.6.1"
     assert info["current_context"] is None
     assert info["current_context_details"] is None

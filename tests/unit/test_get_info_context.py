@@ -12,6 +12,8 @@ def test_get_info_without_context(tmp_path, monkeypatch):
     assert "current_context" in info
     assert info["current_context"] is None
     assert info["current_context_details"] is None
+    assert info["data_location"] == str(tmp_path / "data")
+    assert info["sync_configured"] is False
 
 
 def test_get_info_with_active_context(tmp_path, monkeypatch):
@@ -22,7 +24,7 @@ def test_get_info_with_active_context(tmp_path, monkeypatch):
     ctx = ContextDTO(
         name="work", read_filter="project:work", write_filter="project:work", active=True
     )
-    monkeypatch.setattr(tw.context_service, "get_contexts", lambda *a, **k: [ctx])
+    monkeypatch.setattr(tw._context_service, "get_contexts", lambda *a, **k: [ctx])
 
     info = tw.get_info()
 

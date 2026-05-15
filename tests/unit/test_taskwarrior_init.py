@@ -23,7 +23,7 @@ class TestTaskWarriorInit:
         assert isinstance(info["task_cmd"], str)
         assert isinstance(info["taskrc_file"], str)
         assert isinstance(info["options"], list)
-        assert isinstance(info["version"], str)
+        assert isinstance(info["backend_version"], str)
         assert info["taskrc_file"] == str(taskwarrior_config)
 
     def test_get_info_comprehensive(self, taskwarrior_config: str):
@@ -34,7 +34,7 @@ class TestTaskWarriorInit:
         assert "task_cmd" in info
         assert "taskrc_file" in info
         assert "options" in info
-        assert "version" in info
+        assert "backend_version" in info
         assert "backend_type" in info
 
         # With default TC adapter: task_cmd and options are None
@@ -55,7 +55,7 @@ class TestTaskWarriorInit:
         assert isinstance(info["task_cmd"], str)
         assert isinstance(info["taskrc_file"], str)
         assert isinstance(info["options"], list)
-        assert isinstance(info["version"], str)
+        assert isinstance(info["backend_version"], str)
 
     def test_taskwarrior_init_defaults(self):
         """Test TaskWarrior and Adapter initialization with defaults (TaskChampion)."""

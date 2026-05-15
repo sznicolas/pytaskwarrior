@@ -49,16 +49,9 @@ class TestApplyContextCommandFailure:
 
     def test_apply_context_nonexistent_raises_error(self, taskwarrior_config: str):
         """apply_context should raise error for non-existent context."""
-        try:
-            from src.taskwarrior.config.config_store import ConfigStore
-
-            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
-        except TaskValidationError:
-            pytest.skip("TaskWarrior not installed")
-
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(ConfigStore(taskwarrior_config), adapter)
+        service = ContextService(ConfigStore(taskwarrior_config))
 
         # Trying to apply a context that doesn't exist should fail
         with pytest.raises(TaskWarriorError) as exc_info:
@@ -67,16 +60,9 @@ class TestApplyContextCommandFailure:
 
     def test_apply_context_empty_name_raises_error(self, taskwarrior_config: str):
         """apply_context should raise error for empty context name."""
-        try:
-            from src.taskwarrior.config.config_store import ConfigStore
-
-            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
-        except TaskValidationError:
-            pytest.skip("TaskWarrior not installed")
-
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(ConfigStore(taskwarrior_config), adapter)
+        service = ContextService(ConfigStore(taskwarrior_config))
 
         with pytest.raises(TaskWarriorError) as exc_info:
             service.apply_context("")
@@ -84,16 +70,9 @@ class TestApplyContextCommandFailure:
 
     def test_apply_context_whitespace_name_raises_error(self, taskwarrior_config: str):
         """apply_context should raise error for whitespace-only context name."""
-        try:
-            from src.taskwarrior.config.config_store import ConfigStore
-
-            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
-        except TaskValidationError:
-            pytest.skip("TaskWarrior not installed")
-
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(ConfigStore(taskwarrior_config), adapter)
+        service = ContextService(ConfigStore(taskwarrior_config))
 
         with pytest.raises(TaskWarriorError) as exc_info:
             service.apply_context("   ")
@@ -105,16 +84,9 @@ class TestHasContextReturnValue:
 
     def test_has_context_returns_false_for_nonexistent(self, taskwarrior_config: str):
         """has_context should return False for non-existent context."""
-        try:
-            from src.taskwarrior.config.config_store import ConfigStore
-
-            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
-        except TaskValidationError:
-            pytest.skip("TaskWarrior not installed")
-
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(ConfigStore(taskwarrior_config), adapter)
+        service = ContextService(ConfigStore(taskwarrior_config))
         result = service.has_context("definitely_not_a_real_context")
 
         assert result is False
@@ -122,16 +94,9 @@ class TestHasContextReturnValue:
 
     def test_has_context_returns_true_for_existing(self, taskwarrior_config: str):
         """has_context should return True for existing context."""
-        try:
-            from src.taskwarrior.config.config_store import ConfigStore
-
-            adapter = TaskWarriorAdapter(config_store=ConfigStore(taskwarrior_config))
-        except TaskValidationError:
-            pytest.skip("TaskWarrior not installed")
-
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(ConfigStore(taskwarrior_config), adapter)
+        service = ContextService(ConfigStore(taskwarrior_config))
 
         # Define a context first
         service.define_context(ContextDTO(name="test_ctx", read_filter="+test", write_filter="+test"))
@@ -143,14 +108,16 @@ class TestHasContextReturnValue:
         # Cleanup
         service.delete_context("test_ctx")
 
-    def test_has_context_handles_exception_gracefully(self, taskwarrior_config: str):
-        """has_context should return False when get_contexts fails."""
-        mock_adapter = MagicMock()
-        mock_adapter.run_task_command.side_effect = Exception("Simulated failure")
+    def test_has_context_handles_exception_gracefully(self):
+        """has_context returns False when the context key is absent from config."""
+        from unittest.mock import MagicMock
 
         from src.taskwarrior.config.config_store import ConfigStore
 
-        service = ContextService(mock_adapter, ConfigStore(taskwarrior_config))
+        mock_store = MagicMock(spec=ConfigStore)
+        mock_store.config = {}
+
+        service = ContextService(mock_store)
         result = service.has_context("any_context")
 
         assert result is False

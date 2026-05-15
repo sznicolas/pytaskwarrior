@@ -39,7 +39,7 @@ def test_context_delegation_methods_invoked():
             return name == "exists"
 
     svc = DummyContextService()
-    tw.context_service = svc
+    tw._context_service = svc
 
     tw.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))
     assert ("define", "work", "project:work", "project:work") in svc.calls
@@ -91,6 +91,12 @@ def test_get_info_with_active_context():
         def get_version(self):
             return "3.5.0"
 
+        def get_data_location(self):
+            return "/tmp/.task"
+
+        def is_sync_configured(self):
+            return False
+
     class DummyConfig:
         taskrc_path = "/tmp/.taskrc"
 
@@ -98,7 +104,7 @@ def test_get_info_with_active_context():
     tw._cli_adapter = tw.adapter  # white-box: expose CLI adapter for get_info()
     tw.config_store = DummyConfig()
     tw.get_current_context = lambda: "work"
-    tw.context_service = SimpleNamespace(
+    tw._context_service = SimpleNamespace(
         get_contexts=lambda: [
             SimpleNamespace(
                 name="work",
@@ -112,7 +118,7 @@ def test_get_info_with_active_context():
     info = tw.get_info()
     assert info["task_cmd"] == "/usr/bin/task"
     assert info["taskrc_file"] == "/tmp/.taskrc"
-    assert info["version"] == "3.5.0"
+    assert info["backend_version"] == "3.5.0"
     assert info["current_context"] == "work"
     assert info["current_context_details"] == {
         "name": "work",
@@ -137,7 +143,7 @@ def test_get_tasks_combines_filter_with_active_context():
     tw.adapter = adapter
 
     tw.get_current_context = lambda: "work"
-    tw.context_service = SimpleNamespace(
+    tw._context_service = SimpleNamespace(
         get_contexts=lambda: [
             SimpleNamespace(name="work", read_filter="project:work", write_filter="", active=False)
         ]

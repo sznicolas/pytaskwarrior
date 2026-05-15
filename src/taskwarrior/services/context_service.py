@@ -12,7 +12,6 @@ from ..dto.context_dto import ContextDTO
 from ..exceptions import TaskValidationError, TaskWarriorError
 
 if TYPE_CHECKING:
-    from ..adapters.taskwarrior_adapter import TaskWarriorAdapter
     from ..config.config_store import ConfigStore
 
 
@@ -24,13 +23,8 @@ class ContextService:
     binary is required.
     """
 
-    def __init__(
-        self,
-        config_store: "ConfigStore",
-        adapter: "TaskWarriorAdapter | None" = None,
-    ) -> None:
+    def __init__(self, config_store: ConfigStore) -> None:
         self.config_store = config_store
-        self.adapter = adapter  # kept for backwards compat; not used for writes
 
     def _validate_name(self, name: str) -> None:
         if not name or not name.strip():
@@ -92,7 +86,4 @@ class ContextService:
 
     def has_context(self, name: str) -> bool:
         """Return ``True`` if a context with *name* is defined."""
-        try:
-            return any(ctx.name == name for ctx in self.get_contexts())
-        except TaskWarriorError:
-            return False
+        return f"context.{name}.read" in self.config_store.config

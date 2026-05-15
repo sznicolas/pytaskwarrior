@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import re
 from calendar import monthrange
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -92,7 +92,7 @@ def resolve_date(expr: str, now: datetime | None = None) -> datetime | None:
     # --- Named absolute dates ---
     match expr_l:
         case "now":
-            return base.astimezone(timezone.utc)
+            return base.astimezone(UTC)
         case "today":
             return _local_midnight(base)
         case "tomorrow":
@@ -103,13 +103,13 @@ def resolve_date(expr: str, now: datetime | None = None) -> datetime | None:
     # --- End-of-period ---
     match expr_l:
         case "eod":
-            return base.replace(hour=23, minute=59, second=59, microsecond=0).astimezone(timezone.utc)
+            return base.replace(hour=23, minute=59, second=59, microsecond=0).astimezone(UTC)
         case "eow":
             return _eow(base)
         case "eom":
             return _eom(base)
         case "eoy":
-            return base.replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=0).astimezone(timezone.utc)
+            return base.replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=0).astimezone(UTC)
 
     # --- Weekday names (next occurrence after today) ---
     if expr_l in _WEEKDAYS:
@@ -136,14 +136,14 @@ def resolve_date(expr: str, now: datetime | None = None) -> datetime | None:
             m_iso = _RE_ISO_DURATION.match(dur_str)
             if m_iso:
                 return _apply_iso_duration(
-                    resolved_base.astimezone(base.tzinfo or timezone.utc),
+                    resolved_base.astimezone(base.tzinfo or UTC),
                     int(m_iso.group(1)) * (1 if sign == "+" else -1),
                     m_iso.group(2).upper(),
                 )
             m_compact = re.match(r"^(\d+)([hdwmy])$", dur_str, re.IGNORECASE)
             if m_compact:
                 return _apply_relative(
-                    resolved_base.astimezone(base.tzinfo or timezone.utc),
+                    resolved_base.astimezone(base.tzinfo or UTC),
                     sign,
                     int(m_compact.group(1)),
                     m_compact.group(2).lower(),
@@ -166,14 +166,14 @@ def _try_iso(expr: str) -> datetime | None:
         if dt.tzinfo is None:
             # Naive datetime — assume local timezone
             dt = dt.astimezone()
-        return dt.astimezone(timezone.utc)
+        return dt.astimezone(UTC)
     except ValueError:
         return None
 
 
 def _local_midnight(dt: datetime) -> datetime:
     """Return midnight of *dt* in its own timezone, converted to UTC."""
-    return dt.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(UTC)
 
 
 def _eow(base: datetime) -> datetime:
@@ -183,13 +183,13 @@ def _eow(base: datetime) -> datetime:
     """
     days_until_sunday = (6 - base.weekday()) % 7
     target = base + timedelta(days=days_until_sunday)
-    return target.replace(hour=23, minute=59, second=59, microsecond=0).astimezone(timezone.utc)
+    return target.replace(hour=23, minute=59, second=59, microsecond=0).astimezone(UTC)
 
 
 def _eom(base: datetime) -> datetime:
     """End of month: last day 23:59:59 local time → UTC."""
     last_day = monthrange(base.year, base.month)[1]
-    return base.replace(day=last_day, hour=23, minute=59, second=59, microsecond=0).astimezone(timezone.utc)
+    return base.replace(day=last_day, hour=23, minute=59, second=59, microsecond=0).astimezone(UTC)
 
 
 def _next_weekday(base: datetime, target_wd: int) -> datetime:
@@ -208,30 +208,30 @@ def _apply_relative(base: datetime, sign: str, n: int, unit: str) -> datetime:
     delta = 1 if sign == "+" else -1
     match unit:
         case "h":
-            return (base + timedelta(hours=n * delta)).astimezone(timezone.utc)
+            return (base + timedelta(hours=n * delta)).astimezone(UTC)
         case "d":
-            return (base + timedelta(days=n * delta)).astimezone(timezone.utc)
+            return (base + timedelta(days=n * delta)).astimezone(UTC)
         case "w":
-            return (base + timedelta(weeks=n * delta)).astimezone(timezone.utc)
+            return (base + timedelta(weeks=n * delta)).astimezone(UTC)
         case "m":
             return _add_months(base, n * delta)
         case "y":
             return _add_years(base, n * delta)
-    return base.astimezone(timezone.utc)  # unreachable
+    return base.astimezone(UTC)  # unreachable
 
 
 def _apply_iso_duration(base: datetime, n: int, unit: str) -> datetime:
     """Apply an ISO 8601 duration (PnX) to *base*."""
     match unit:
         case "D":
-            return (base + timedelta(days=n)).astimezone(timezone.utc)
+            return (base + timedelta(days=n)).astimezone(UTC)
         case "W":
-            return (base + timedelta(weeks=n)).astimezone(timezone.utc)
+            return (base + timedelta(weeks=n)).astimezone(UTC)
         case "M":
             return _add_months(base, n)
         case "Y":
             return _add_years(base, n)
-    return base.astimezone(timezone.utc)  # unreachable
+    return base.astimezone(UTC)  # unreachable
 
 
 def _add_months(base: datetime, months: int) -> datetime:
@@ -240,13 +240,13 @@ def _add_months(base: datetime, months: int) -> datetime:
     year = base.year + total_months // 12
     month = total_months % 12 + 1
     day = min(base.day, monthrange(year, month)[1])
-    return base.replace(year=year, month=month, day=day).astimezone(timezone.utc)
+    return base.replace(year=year, month=month, day=day).astimezone(UTC)
 
 
 def _add_years(base: datetime, years: int) -> datetime:
     """Add *years* to *base*, handling Feb-29 leap-year edge case."""
     try:
-        return base.replace(year=base.year + years).astimezone(timezone.utc)
+        return base.replace(year=base.year + years).astimezone(UTC)
     except ValueError:
         # Feb 29 → Feb 28 in non-leap year
-        return base.replace(year=base.year + years, day=28).astimezone(timezone.utc)
+        return base.replace(year=base.year + years, day=28).astimezone(UTC)

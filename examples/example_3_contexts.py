@@ -13,11 +13,6 @@ base_dir = os.path.dirname(__file__)
 taskrc_path = os.path.join(base_dir, "taskrc_example")
 data_dir = os.path.join(base_dir, "task_data")
 tw = TaskWarrior(taskrc_file=taskrc_path, data_location=data_dir)
-# Show how to run the task CLI with the same resources
-info = tw.get_info()
-task_cmd = str(info["task_cmd"])
-options = " ".join(info["options"])
-print(f"Use the task CLI with the same resources: {task_cmd} {options} <command>")
 
 # Define contexts
 tw.define_context(ContextDTO(name="work", read_filter="project:work", write_filter="project:work"))

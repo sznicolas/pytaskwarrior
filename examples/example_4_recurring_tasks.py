@@ -20,11 +20,6 @@ taskrc_path = os.path.join(base_dir, "taskrc_example")
 data_dir = os.path.join(base_dir, "task_data")
 tw = TaskWarrior(taskrc_file=taskrc_path, data_location=data_dir)
 
-# Show how to run the task CLI with the same resources
-info = tw.get_info()
-task_cmd = str(info["task_cmd"])
-options = " ".join(info["options"])
-print(f"Use the task CLI with the same resources: {task_cmd} {options} <command>\n")
 
 # === Create a daily recurring task ===
 print("=== Creating a daily recurring task ===")

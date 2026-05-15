@@ -6,20 +6,17 @@ deterministic tests without any filesystem or subprocess dependency.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, datetime, timedelta
 
 from taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
-from taskwarrior.adapters.tc_filter import apply_filter, _parse_tokens, _DateRangeToken
+from taskwarrior.adapters.tc_filter import _DateRangeToken, _parse_tokens, apply_filter
 from taskwarrior.dto.task_dto import TaskInputDTO
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-NOW = datetime(2026, 6, 10, 12, 0, 0, tzinfo=timezone.utc)  # Wednesday
+NOW = datetime(2026, 6, 10, 12, 0, 0, tzinfo=UTC)  # Wednesday
 
 
 def _adapter():
@@ -62,6 +59,44 @@ class TestDateRangeParsing:
         t = tokens[0]
         assert isinstance(t, _DateRangeToken)
         assert t.op == "by"
+
+    def test_compound_space_operator_consumed(self):
+        """'due.before:now + P7D' — the '+ P7D' must be part of the expr."""
+        tokens = _parse_tokens("due.before:now + P7D")
+        assert len(tokens) == 1
+        t = tokens[0]
+        assert isinstance(t, _DateRangeToken)
+        assert t.field == "due"
+        assert t.op == "before"
+        assert t.expr == "now + P7D"
+
+    def test_compound_minus_operator_consumed(self):
+        """'due.after:eom - P1W' — the '- P1W' must be part of the expr."""
+        tokens = _parse_tokens("due.after:eom - P1W")
+        assert len(tokens) == 1
+        t = tokens[0]
+        assert isinstance(t, _DateRangeToken)
+        assert t.expr == "eom - P1W"
+
+    def test_compound_with_following_token(self):
+        """Compound date expr followed by another filter token."""
+        from taskwarrior.adapters.tc_filter import _AttributeToken
+        tokens = _parse_tokens("due.before:now + P7D priority:H")
+        assert len(tokens) == 2
+        assert isinstance(tokens[0], _DateRangeToken)
+        assert tokens[0].expr == "now + P7D"
+        assert isinstance(tokens[1], _AttributeToken)
+        assert tokens[1].key == "priority"
+
+    def test_tag_after_date_expr_not_consumed(self):
+        """+OVERDUE after a date expr is NOT consumed as arithmetic."""
+        from taskwarrior.adapters.tc_filter import _TagToken
+        tokens = _parse_tokens("due.before:tomorrow +OVERDUE")
+        assert len(tokens) == 2
+        assert isinstance(tokens[0], _DateRangeToken)
+        assert tokens[0].expr == "tomorrow"
+        assert isinstance(tokens[1], _TagToken)
+        assert tokens[1].name == "OVERDUE"
 
     def test_unknown_field_dot_op_falls_back_to_attribute(self):
         """Fields not in _DATE_FIELDS should not become _DateRangeToken."""
@@ -256,7 +291,7 @@ class TestVirtualTagPROJECT:
 class TestVirtualTagPENDING:
     def test_pending_matches(self):
         ad = _adapter()
-        dto = ad.add_task(TaskInputDTO(description="pending"))
+        ad.add_task(TaskInputDTO(description="pending"))
         result = apply_filter(_tasks(ad), "+PENDING", now=NOW)
         assert len(result) == 1
 

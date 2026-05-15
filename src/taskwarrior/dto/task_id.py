@@ -100,3 +100,8 @@ class TaskID:
 
 # Type alias to reduce repeated unions across the codebase
 type TaskRef = str | int | UUID | TaskID
+
+def to_taskid(value: TaskRef) -> TaskID:
+    """Normalize a TaskRef into a TaskID instance."""
+    return value if isinstance(value, TaskID) else TaskID(value)
+

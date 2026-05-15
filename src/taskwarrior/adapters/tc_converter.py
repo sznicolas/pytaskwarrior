@@ -9,7 +9,7 @@ and are silently skipped with a warning.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from taskchampion import Annotation, Operations, Status, Tag, Task, WorkingSet
@@ -82,7 +82,7 @@ def _ts_to_dt(ts: str | int | None) -> datetime | None:
     if ts is None:
         return None
     try:
-        return datetime.fromtimestamp(int(ts), tz=timezone.utc)
+        return datetime.fromtimestamp(int(ts), tz=UTC)
     except (ValueError, OSError):
         logger.debug("_ts_to_dt: cannot convert %r to datetime", ts)
         return None
@@ -297,12 +297,12 @@ def _sync_depends(task: Task, new_deps: list[str], ops: Operations) -> None:
 def _add_annotations(task: Task, texts: list[str], ops: Operations) -> None:
     """Add each string as a new annotation, ensuring unique timestamps."""
     existing_ts = {int(ann.entry.timestamp()) for ann in task.get_annotations()}
-    next_ts = int(datetime.now(tz=timezone.utc).timestamp())
+    next_ts = int(datetime.now(tz=UTC).timestamp())
     for text in texts:
         while next_ts in existing_ts:
             next_ts += 1
         existing_ts.add(next_ts)
-        entry = datetime.fromtimestamp(next_ts, tz=timezone.utc)
+        entry = datetime.fromtimestamp(next_ts, tz=UTC)
         task.add_annotation(Annotation(entry, text), ops)
         next_ts += 1
 
@@ -317,4 +317,4 @@ def _apply_udas(task: Task, udas: dict[str, object], ops: Operations) -> None:
             ns, _, k = key.partition(".")
             task.set_uda(ns, k, str_val, ops)
         else:
-            task.set_legacy_uda(key, str_val, ops)
+            task.set_uda("", key, str_val, ops)

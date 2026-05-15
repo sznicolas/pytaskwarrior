@@ -19,8 +19,12 @@ This guide covers every breaking change and all new features.
 | `task_cmd` positional | `TaskWarrior("task")` | `TaskWarrior(task_cmd="task")` |
 | `get_info()["task_cmd"]` | always `str` | `None` when TC adapter |
 | `get_info()["backend_type"]` | key didn't exist | `"taskchampion"` or `"taskwarrior-cli"` |
-| `ContextService(adapter, cfg)` | positional order | `ContextService(cfg, adapter=None)` |
-| `UdaService(adapter, cfg)` | positional order | `UdaService(cfg, adapter=None)` |
+| `get_info()["version"]` | CLI version string | **key removed** → use `backend_version` |
+| `ContextService(adapter, cfg)` | positional order | `ContextService(cfg)` |
+| `UdaService(adapter, cfg)` | positional order | `UdaService(cfg)` |
+| `tw.context_service` property | public | **removed** → use facade methods |
+| `tw.uda_service` property | public | **removed** → use facade methods |
+| `taskwarrior.version` alias | module export | **removed** → use `__version__` |
 | `task sync` (CLI) | default sync path | only when `task_cmd="task"` |
 | `sync.server.url` key | accepted | **removed** → use `sync.server.origin` |
 | `sync.client.id` key | accepted | **removed** → use `sync.server.client_id` |
@@ -71,9 +75,9 @@ TaskWarrior(adapter=my_adapter)   # ✅ still works
 
 ### 3. `get_info()` shape change
 
-`info["task_cmd"]`, `info["options"]`, and `info["version"]` are `None` when
-the TC adapter is active (the default). A new `"backend_type"` key identifies
-the active backend.
+The `"version"` key has been **removed** from the dict. `info["task_cmd"]` and
+`info["options"]` are `None` when the TC adapter is active (the default). A new
+`"backend_type"` key identifies the active backend.
 
 ```python
 # 2.x — always had values
@@ -81,22 +85,22 @@ info = tw.get_info()
 print(info["task_cmd"])   # "/usr/bin/task"
 print(info["version"])    # "3.4.0"
 
-# 3.0 — may be None
+# 3.0
 info = tw.get_info()
-print(info["backend_type"])   # "taskchampion"  or  "taskwarrior-cli"
+print(info["backend_type"])     # "taskchampion"  or  "taskwarrior-cli"
 print(info["backend_version"])  # "taskchampion-py/3.0.1"  or  "3.4.0"
-print(info["task_cmd"])       # None  (TC)  or  "/usr/bin/task"  (CLI)
-print(info["version"])        # None  (TC)  or  "3.4.0"  (CLI)
+print(info["task_cmd"])         # None  (TC)  or  "/usr/bin/task"  (CLI)
+# info["version"]  →  KeyError — key removed entirely
 ```
 
-**Action required:** guard any access to `info["task_cmd"]` or `info["version"]`
-with `if info["task_cmd"]: ...`, or switch to `info["backend_type"]`.
+**Action required:** Replace `info["version"]` with `info["backend_version"]`.
+Guard `info["task_cmd"]` with `if info["task_cmd"]: ...`.
 
 ### 4. `ContextService.__init__` argument order
 
-The `adapter` parameter moved to second position and is now optional.
-This affects code that instantiates `ContextService` directly (rare — most
-code uses `tw.context_service`).
+The `adapter` parameter has been removed. This affects code that instantiates
+`ContextService` directly (rare). Use `TaskWarrior` facade methods for all
+context operations.
 
 ```python
 # 2.x
@@ -104,9 +108,7 @@ from taskwarrior.services.context_service import ContextService
 svc = ContextService(adapter, config_store)
 
 # 3.0
-svc = ContextService(config_store)              # adapter optional
-svc = ContextService(config_store, adapter)     # explicit adapter
-svc = ContextService(config_store, adapter=adapter)  # keyword form
+svc = ContextService(config_store)
 ```
 
 ### 5. `UdaService.__init__` argument order
@@ -120,7 +122,38 @@ svc = UdaService(adapter, config_store)
 
 # 3.0
 svc = UdaService(config_store)
-svc = UdaService(config_store, adapter=adapter)
+```
+
+### 6. `TaskWarrior.context_service` and `.uda_service` properties removed
+
+These properties no longer exist on `TaskWarrior`. Use the facade methods directly:
+
+| Before | After |
+|--------|-------|
+| `tw.context_service.define_context(ctx)` | `tw.define_context(ctx)` |
+| `tw.context_service.get_contexts()` | `tw.get_contexts()` |
+| `tw.context_service.apply_context(name)` | `tw.apply_context(name)` |
+| `tw.context_service.get_current_context()` | `tw.get_current_context()` |
+| `tw.context_service.has_context(name)` | `tw.has_context(name)` |
+| `tw.context_service.delete_context(name)` | `tw.delete_context(name)` |
+| `tw.context_service.unset_context()` | `tw.unset_context()` |
+| `tw.uda_service.define_uda(uda)` | `tw.define_uda(uda)` |
+| `tw.uda_service.update_uda(uda)` | `tw.define_uda(uda)` |
+| `tw.uda_service.delete_uda(uda)` | `tw.delete_uda(uda)` |
+| `tw.uda_service.get_udas()` | `tw.get_udas()` |
+| `tw.uda_service.get_uda_names()` | `tw.get_uda_names()` |
+
+**Action required:** replace all `tw.context_service.*` and `tw.uda_service.*`
+calls with the corresponding `tw.*` facade methods.
+
+### 7. `taskwarrior.version` alias removed
+
+```python
+# 2.x
+from taskwarrior import version   # module-level alias
+
+# 3.0 — use the standard dunder
+from taskwarrior import __version__
 ```
 
 ### 6. Sync `.taskrc` key names
@@ -345,9 +378,10 @@ tw = TaskWarrior()                   # switch to TC adapter (no binary)
 # Before: TaskWarrior("/usr/bin/task")
 TaskWarrior(task_cmd="/usr/bin/task")
 
-# ✅ 3. Guard get_info() access
+# ✅ 3. Replace info["version"] with info["backend_version"]
 info = tw.get_info()
-if info["task_cmd"]:
+print(info["backend_version"])        # always present
+if info["task_cmd"]:                  # guard before use
     print(info["task_cmd"])
 
 # ✅ 4. Update sync keys in .taskrc
@@ -360,6 +394,14 @@ if task.urgency is not None:   # guard
     ...
 
 # ✅ 6. Update ContextService / UdaService if used directly
-# ContextService(config_store, adapter=adapter)   # new order
-# UdaService(config_store, adapter=adapter)       # new order
+# ContextService(config_store)   # adapter removed
+# UdaService(config_store)       # adapter removed
+
+# ✅ 7. Replace tw.context_service / tw.uda_service with facade methods
+# tw.context_service.define_context(ctx)  →  tw.define_context(ctx)
+# tw.uda_service.define_uda(uda)          →  tw.define_uda(uda)
+# (see section 6 for full mapping)
+
+# ✅ 8. Replace taskwarrior.version with __version__
+from taskwarrior import __version__
 ```

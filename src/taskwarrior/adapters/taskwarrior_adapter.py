@@ -14,7 +14,7 @@ from uuid import UUID
 
 from ..config.config_store import ConfigStore
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
-from ..dto.task_id import TaskID, TaskRef
+from ..dto.task_id import TaskRef, to_taskid
 from ..enums import TaskStatus
 from ..exceptions import (
     TaskConfigurationError,
@@ -26,10 +26,6 @@ from ..exceptions import (
 )
 
 logger = logging.getLogger(__name__)
-
-def _to_taskid(value: TaskRef) -> TaskID:
-    """Normalize a TaskRef into a TaskID instance."""
-    return value if isinstance(value, TaskID) else TaskID(value)
 
 from ..utils.virtual_tags import TASKWARRIOR_VIRTUAL_TAG_SET, TASKWARRIOR_VIRTUAL_TAGS  # noqa: E402
 
@@ -63,6 +59,7 @@ class TaskWarriorAdapter:
         self.task_cmd: Path = self._check_binary_path(task_cmd)
         self._cli_options: list[str] = config_store.cli_options
         self._sync_configured: bool = bool(config_store.get_sync_config())
+        self._data_location: str = str(config_store.data_location)
 
     @property
     def cli_options(self) -> list[str]:
@@ -79,6 +76,23 @@ class TaskWarriorAdapter:
     def is_sync_configured(self) -> bool:
         """Return True if sync settings are present in taskrc (any ``sync.*`` key)."""
         return self._sync_configured
+
+    def has_local_changes(self) -> bool:
+        """Always returns ``False`` for the CLI adapter.
+
+        The TaskWarrior CLI manages its own sync state internally; there is no
+        Python-accessible count of pending local operations.  Use
+        ``task sync`` to synchronize and ``task diagnostics`` to inspect sync
+        state from the command line.
+        """
+        return False
+
+    def pending_local_ops_count(self) -> int:
+        """Always returns ``0`` for the CLI adapter.
+
+        See :meth:`has_local_changes` for the rationale.
+        """
+        return 0
 
     def run_task_command(
         self, args: list[str], no_opt: bool = False
@@ -141,24 +155,6 @@ class TaskWarriorAdapter:
         result = self.run_task_command(["sync"])
         if result.returncode != 0:
             raise TaskSyncError(f"Synchronization failed: {result.stderr or result.stdout}")
-
-    @staticmethod
-    def _wrap_filter(f: str) -> str:
-        """Wrap a non-empty filter expression in parentheses.
-
-        Taskwarrior requires parentheses around compound expressions (those
-        containing ``or`` or ``and``) when they are passed as a single CLI
-        argument.  Wrapping unconditionally is safe: ``(x)`` and ``((x))``
-        are equivalent to Taskwarrior.
-
-        Args:
-            f: Raw filter string, possibly empty.
-
-        Returns:
-            ``"(f)"`` if *f* is non-empty after stripping, else ``""``.
-        """
-        f = f.strip()
-        return f"({f})" if f else ""
 
     def _build_args(self, task: TaskInputDTO) -> list[str]:
         """Build CLI arguments from a TaskInputDTO."""
@@ -231,10 +227,10 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully added task with UUID: {added_task.uuid}")
         return added_task
 
-    def modify_task(self, task: TaskInputDTO, task_id: str | int | UUID | TaskID) -> TaskOutputDTO:
+    def modify_task(self, task: TaskInputDTO, task_id: TaskRef) -> TaskOutputDTO:
         """Modify an existing task. Returns the updated task."""
         logger.info(f"Modifying task with UUID: {task_id}")
-        tid = _to_taskid(task_id)
+        tid = to_taskid(task_id)
 
         args = self._build_args(task)
         result = self.run_task_command([str(tid), "modify"] + args)
@@ -248,12 +244,12 @@ class TaskWarriorAdapter:
         logger.info(f"Successfully modified task with UUID: {tid}")
         return updated_task
 
-    def get_task(self, task_id: str | int | UUID | TaskID, filter_args: str = "") -> TaskOutputDTO:
+    def get_task(self, task_id: TaskRef) -> TaskOutputDTO:
         """Retrieve a single task by ID or UUID."""
-        tid = _to_taskid(task_id)
+        tid = to_taskid(task_id)
         logger.debug(f"Retrieving task with ID/UUID: {tid}")
 
-        args = [filter_args, str(tid), "export"]
+        args = [str(tid), "export"]
         result = self.run_task_command(args)
         if result.returncode == 0:
             try:
@@ -263,13 +259,9 @@ class TaskWarriorAdapter:
                     logger.debug(f"Successfully retrieved task: {task.uuid}")
                     return task
                 elif len(tasks_data) == 0:
-                    raise TaskNotFound(
-                        f"No task ID/UUID {tid} with filter {filter_args}"
-                    )
+                    raise TaskNotFound(f"No task ID/UUID {tid}")
                 else:
-                    raise TaskWarriorError(
-                        f"More than one task returned for ID/UUID {tid} with filter '{filter_args}'"
-                    )
+                    raise TaskWarriorError(f"More than one task returned for ID/UUID {tid}")
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
                 raise TaskWarriorError(f"Invalid response from TaskWarrior: {result.stdout}") from e
@@ -313,8 +305,8 @@ class TaskWarriorAdapter:
         status_clause = " and ".join(status_parts)
 
         # Combine user filter (wrapped) with status clause
-        wrapped = self._wrap_filter(filter)
-        wrapped_status = self._wrap_filter(status_clause)
+        wrapped = f"({f})" if (f := filter.strip()) else ""
+        wrapped_status = f"({s})" if (s := status_clause.strip()) else ""
         if wrapped and wrapped_status:
             combined = f"{wrapped} and {wrapped_status}"
         else:
@@ -338,14 +330,12 @@ class TaskWarriorAdapter:
             logger.error(f"Failed to parse JSON response: {e}")
             raise TaskWarriorError(f"Invalid response from TaskWarrior: {result.stdout}") from e
 
-    def get_recurring_task(self, task_id: str | int | UUID | TaskID) -> TaskOutputDTO:
+    def get_recurring_task(self, task_id: TaskRef) -> TaskOutputDTO:
         """Get the parent recurring task template."""
-        tid = _to_taskid(task_id)
+        tid = to_taskid(task_id)
         logger.debug(f"Getting recurring task with UUID: {tid}")
 
-        result = self.run_task_command(
-            [str(tid), "status:" + TaskStatus.RECURRING, "export"]
-        )
+        result = self.run_task_command([str(tid), "status:" + TaskStatus.RECURRING, "export"])
 
         if result.returncode == 0:
             try:
@@ -358,14 +348,12 @@ class TaskWarriorAdapter:
                 logger.debug(f"Successfully retrieved recurring task: {task.uuid}")
                 return task
 
-        logger.debug(
-            f"Recurring task {tid} not found as recurring, trying normal retrieval"
-        )
+        logger.debug(f"Recurring task {tid} not found as recurring, trying normal retrieval")
         return self.get_task(tid)
 
-    def get_recurring_instances(self, task_id: str | int | UUID | TaskID) -> list[TaskOutputDTO]:
+    def get_recurring_instances(self, task_id: TaskRef) -> list[TaskOutputDTO]:
         """Get all instances of a recurring task."""
-        tid = _to_taskid(task_id)
+        tid = to_taskid(task_id)
         logger.debug(f"Getting recurring instances for parent UUID: {tid}")
 
         result = self.run_task_command([f"parent:{str(tid)}", "export"])
@@ -394,9 +382,9 @@ class TaskWarriorAdapter:
             logger.error(f"Failed to parse JSON response: {e}")
             raise TaskWarriorError(f"Invalid response from TaskWarrior: {result.stdout}") from e
 
-    def delete_task(self, task_id: str | int | UUID | TaskID) -> None:
+    def delete_task(self, task_id: TaskRef) -> None:
         """Mark a task as deleted."""
-        task_ref = str(_to_taskid(task_id))
+        task_ref = str(to_taskid(task_id))
         logger.info(f"Deleting task: {task_ref}")
 
         result = self.run_task_command([task_ref, "delete"])
@@ -408,9 +396,9 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully deleted task: {task_ref}")
 
-    def purge_task(self, task_id: str | int | UUID | TaskID) -> None:
+    def purge_task(self, task_id: TaskRef) -> None:
         """Permanently remove a task."""
-        task_ref = str(_to_taskid(task_id))
+        task_ref = str(to_taskid(task_id))
         logger.info(f"Purging task: {task_ref}")
 
         result = self.run_task_command([task_ref, "purge"])
@@ -422,9 +410,9 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully purged task: {task_ref}")
 
-    def done_task(self, task_id: str | int | UUID | TaskID) -> None:
+    def done_task(self, task_id: TaskRef) -> None:
         """Mark a task as completed."""
-        task_ref = str(_to_taskid(task_id))
+        task_ref = str(to_taskid(task_id))
         logger.info(f"Completing task: {task_ref}")
 
         result = self.run_task_command([task_ref, "done"])
@@ -436,9 +424,9 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully completed task: {task_ref}")
 
-    def start_task(self, task_id: str | int | UUID | TaskID) -> None:
+    def start_task(self, task_id: TaskRef) -> None:
         """Start working on a task."""
-        task_ref = str(_to_taskid(task_id))
+        task_ref = str(to_taskid(task_id))
         logger.info(f"Starting task: {task_ref}")
 
         result = self.run_task_command([task_ref, "start"])
@@ -450,9 +438,9 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully started task: {task_ref}")
 
-    def stop_task(self, task_id: str | int | UUID | TaskID) -> None:
+    def stop_task(self, task_id: TaskRef) -> None:
         """Stop working on a task."""
-        task_ref = str(_to_taskid(task_id))
+        task_ref = str(to_taskid(task_id))
         logger.info(f"Stopping task: {task_ref}")
 
         result = self.run_task_command([task_ref, "stop"])
@@ -464,9 +452,9 @@ class TaskWarriorAdapter:
 
         logger.info(f"Successfully stopped task: {task_ref}")
 
-    def annotate_task(self, task_id: str | int | UUID | TaskID, annotation: str) -> None:
+    def annotate_task(self, task_id: TaskRef, annotation: str) -> None:
         """Add an annotation to a task."""
-        task_ref = str(_to_taskid(task_id))
+        task_ref = str(to_taskid(task_id))
         logger.info(f"Annotating task {task_ref} with: {annotation}")
 
         sanitized_annotation = shlex.quote(annotation)
@@ -509,6 +497,10 @@ class TaskWarriorAdapter:
         if version_result.returncode == 0 and version_result.stdout:
             return version_result.stdout.strip()
         return "unknown"
+
+    def get_data_location(self) -> str | None:
+        """Return the TaskWarrior data directory path."""
+        return self._data_location
 
     def get_projects(self) -> list[str]:
         """Get all projects defined in TaskWarrior.

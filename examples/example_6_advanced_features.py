@@ -22,12 +22,6 @@ taskrc_path = os.path.join(base_dir, "taskrc_example")
 data_dir = os.path.join(base_dir, "task_data")
 tw = TaskWarrior(taskrc_file=taskrc_path, data_location=data_dir)
 
-# Show how to run the task CLI with the same resources
-info = tw.get_info()
-task_cmd = str(info["task_cmd"])
-options = " ".join(info["options"])
-print(f"Use the task CLI with the same resources: {task_cmd} {options} <command>\n")
-
 # === Date calculations ===
 print("=== Date calculations using TaskWarrior expressions ===")
 
@@ -35,7 +29,7 @@ print("=== Date calculations using TaskWarrior expressions ===")
 tomorrow = tw.task_calc("tomorrow")
 print(f"Tomorrow: {tomorrow}")
 
-next_week = tw.task_calc("today + 1week")
+next_week = tw.task_calc("today + P1W")
 print(f"Today + 1 week: {next_week}")
 
 next_month = tw.task_calc("eom")  # End of month
@@ -45,7 +39,7 @@ next_monday = tw.task_calc("monday")
 print(f"Next Monday: {next_monday}")
 
 # Custom expression
-custom = tw.task_calc("today + 2weeks - 3days")
+custom = tw.task_calc("today + P2W - P3D")
 print(f"Today + 2 weeks - 3 days: {custom}")
 
 # === Date validation ===
@@ -98,7 +92,7 @@ task3 = TaskInputDTO(
     description="Vacation planning",
     priority=Priority.LOW,
     project="personal",
-    scheduled=tw.task_calc("today + 1month")
+    scheduled=tw.task_calc("today + P1M")
 )
 added3 = tw.add_task(task3)
 print(f"Created task with scheduled date: {added3.description}")

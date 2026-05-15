@@ -7,7 +7,6 @@ so no filesystem I/O is required and tests are fully isolated.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -21,7 +20,6 @@ from taskwarrior.exceptions import (
     TaskSyncError,
     TaskValidationError,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -554,6 +552,38 @@ class TestUtilityMethods:
         with pytest.raises(TaskSyncError, match="network error"):
             a.synchronize()
 
+    def test_has_local_changes_false_on_empty_replica(
+        self, adapter: TaskChampionAdapter
+    ) -> None:
+        """Fresh in-memory replica has no pending operations."""
+        assert adapter.has_local_changes() is False
+        assert adapter.pending_local_ops_count() == 0
+
+    def test_has_local_changes_true_after_add(
+        self, adapter: TaskChampionAdapter
+    ) -> None:
+        """Adding a task creates pending local operations."""
+        adapter.add_task(TaskInputDTO(description="Unpushed task"))
+        assert adapter.has_local_changes() is True
+        assert adapter.pending_local_ops_count() > 0
+
+    def test_has_local_changes_false_after_local_sync(self, tmp_path) -> None:
+        """After a successful local sync, pending operations should be 0."""
+        server_dir = tmp_path / "srv"
+        server_dir.mkdir()
+        data_dir = tmp_path / "data"
+
+        a = TaskChampionAdapter(
+            data_location=str(data_dir),
+            sync_local_server_dir=str(server_dir),
+        )
+        a.add_task(TaskInputDTO(description="Will be synced"))
+        assert a.has_local_changes() is True
+
+        a.synchronize()
+        assert a.has_local_changes() is False
+        assert a.pending_local_ops_count() == 0
+
 
 # ---------------------------------------------------------------------------
 # AdapterProtocol compliance
@@ -606,6 +636,72 @@ class TestFacadeInjection:
         info = tw.get_info()
         assert info["backend_type"] == "taskchampion"
         assert "taskchampion" in info["backend_version"]
+
+    def test_get_info_data_location_in_memory(self, tw_tc: object) -> None:
+        """In-memory adapter reports data_location as None."""
+        from taskwarrior.main import TaskWarrior
+
+        tw: TaskWarrior = tw_tc  # type: ignore[assignment]
+        info = tw.get_info()
+        assert info["data_location"] is None
+
+    def test_get_info_data_location_on_disk(self, tmp_path) -> None:
+        """On-disk adapter reports the resolved data directory."""
+        from taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
+        from taskwarrior.main import TaskWarrior
+
+        data_dir = tmp_path / "task_data"
+        tw = TaskWarrior(adapter=TaskChampionAdapter(data_location=str(data_dir)))
+        info = tw.get_info()
+        assert info["data_location"] == str(data_dir)
+
+    def test_get_info_sync_no_sync(self, tw_tc: object) -> None:
+        """No sync configured → sync_configured False, all sync keys None/absent."""
+        from taskwarrior.main import TaskWarrior
+
+        tw: TaskWarrior = tw_tc  # type: ignore[assignment]
+        info = tw.get_info()
+        assert info["sync_configured"] is False
+        assert info["sync_backend"] is None
+        assert info["sync_server_url"] is None
+        assert info["sync_local_server_dir"] is None
+        assert info["sync_client_id"] is None
+
+    def test_get_info_sync_remote(self, tmp_path) -> None:
+        """Remote sync configured → correct keys populated."""
+        from taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
+        from taskwarrior.main import TaskWarrior
+
+        tw = TaskWarrior(adapter=TaskChampionAdapter(
+            data_location=None,
+            sync_server_url="https://sync.example.com",
+            sync_client_id="test-uuid",
+            sync_encryption_secret="secret",
+        ))
+        info = tw.get_info()
+        assert info["sync_configured"] is True
+        assert info["sync_backend"] == "remote"
+        assert info["sync_server_url"] == "https://sync.example.com"
+        assert info["sync_client_id"] == "test-uuid"
+        assert info["sync_local_server_dir"] is None
+
+    def test_get_info_sync_local(self, tmp_path) -> None:
+        """Local sync configured → sync_backend is 'local'."""
+        from taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
+        from taskwarrior.main import TaskWarrior
+
+        server_dir = tmp_path / "srv"
+        server_dir.mkdir()
+        tw = TaskWarrior(adapter=TaskChampionAdapter(
+            data_location=None,
+            sync_local_server_dir=str(server_dir),
+        ))
+        info = tw.get_info()
+        assert info["sync_configured"] is True
+        assert info["sync_backend"] == "local"
+        assert info["sync_local_server_dir"] == str(server_dir)
+        assert info["sync_server_url"] is None
+        assert info["sync_client_id"] is None
 
     def test_delete_and_done(self, tw_tc: object) -> None:
         from taskwarrior.main import TaskWarrior

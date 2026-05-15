@@ -1,4 +1,3 @@
-import types
 from unittest.mock import MagicMock
 
 from taskwarrior.dto.uda_dto import UdaConfig, UdaType

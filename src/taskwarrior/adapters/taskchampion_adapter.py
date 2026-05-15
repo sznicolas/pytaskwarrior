@@ -26,14 +26,14 @@ from __future__ import annotations
 
 import logging
 import uuid as _uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
 from taskchampion import Annotation, Operations, Replica, Status
 
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
-from ..dto.task_id import TaskID, TaskRef
+from ..dto.task_id import TaskRef, to_taskid
 from ..exceptions import (
     TaskNotFound,
     TaskOperationError,
@@ -41,16 +41,14 @@ from ..exceptions import (
     TaskValidationError,
     TaskWarriorError,
 )
+from ..utils.date_resolver import resolve_date
 from .tc_converter import apply_input_dto_to_task, tc_task_to_output_dto
 from .tc_filter import apply_filter
 
 logger = logging.getLogger(__name__)
 
 _VERSION = "taskchampion-py/3.0.1"
-
-
-def _to_taskid(value: TaskRef) -> TaskID:
-    return value if isinstance(value, TaskID) else TaskID(value)
+_AVOID_SNAPSHOTS: bool = False
 
 
 class TaskChampionAdapter:
@@ -89,10 +87,11 @@ class TaskChampionAdapter:
     ) -> None:
         if data_location is None:
             self._replica = Replica.new_in_memory()
+            self._data_location: str | None = None
         else:
-            self._replica = Replica.new_on_disk(
-                str(Path(data_location).expanduser()), create_if_missing
-            )
+            resolved = str(Path(data_location).expanduser())
+            self._replica = Replica.new_on_disk(resolved, create_if_missing)
+            self._data_location = resolved
 
         self._sync_local_server_dir = sync_local_server_dir
         self._sync_server_url = sync_server_url
@@ -110,7 +109,7 @@ class TaskChampionAdapter:
         An integer reference is looked up in the current working set.
         A string is first tried as an integer, then validated as a UUID.
         """
-        tid = _to_taskid(task_id)
+        tid = to_taskid(task_id)
         ref_str = str(tid)
 
         try:
@@ -178,7 +177,7 @@ class TaskChampionAdapter:
         logger.info("Modified task %s", uuid_str)
         return self._fetch_dto(uuid_str)
 
-    def get_task(self, task_id: TaskRef, filter_args: str = "") -> TaskOutputDTO:
+    def get_task(self, task_id: TaskRef) -> TaskOutputDTO:
         """Retrieve a single task by ID, index, or UUID."""
         uuid_str = self._resolve_ref(task_id)
         return self._fetch_dto(uuid_str)
@@ -280,10 +279,10 @@ class TaskChampionAdapter:
         # Use a timestamp that doesn't collide with existing annotations
         # (taskchampion uses the entry datetime as a key).
         existing_ts = {int(ann.entry.timestamp()) for ann in tc_task.get_annotations()}
-        ts = int(datetime.now(tz=timezone.utc).timestamp())
+        ts = int(datetime.now(tz=UTC).timestamp())
         while ts in existing_ts:
             ts += 1
-        entry = datetime.fromtimestamp(ts, tz=timezone.utc)
+        entry = datetime.fromtimestamp(ts, tz=UTC)
 
         ops = Operations()
         tc_task.add_annotation(Annotation(entry, annotation), ops)
@@ -312,14 +311,14 @@ class TaskChampionAdapter:
             if self._sync_local_server_dir:
                 self._replica.sync_to_local(
                     str(Path(self._sync_local_server_dir).expanduser()),
-                    False,  # avoid_snapshots
+                    _AVOID_SNAPSHOTS,
                 )
             else:
                 self._replica.sync_to_remote(
                     self._sync_server_url,
                     self._sync_client_id,
                     self._sync_encryption_secret,
-                    False,  # avoid_snapshots
+                    _AVOID_SNAPSHOTS,
                 )
             logger.info("Sync completed")
         except Exception as exc:
@@ -328,6 +327,30 @@ class TaskChampionAdapter:
     def is_sync_configured(self) -> bool:
         """Return ``True`` if a sync server URL was provided."""
         return self._sync_configured
+
+    def has_local_changes(self) -> bool:
+        """Return ``True`` if there are local operations not yet pushed to the sync server.
+
+        Uses :pymeth:`taskchampion.Replica.num_local_operations` to count
+        pending operations.  A return value of ``True`` means a call to
+        :meth:`synchronize` would push changes; ``False`` means the local
+        replica is in sync with the last known server state.
+
+        .. note::
+            This method only reflects the *local* side.  There is no way to
+            check whether the remote server has new operations without actually
+            performing a sync.  Call :meth:`synchronize` to pull remote
+            changes.
+        """
+        return self._replica.num_local_operations() > 0
+
+    def pending_local_ops_count(self) -> int:
+        """Return the number of local operations not yet pushed to the sync server.
+
+        Useful for logging or debugging.  ``0`` means fully synced (local side).
+        See :meth:`has_local_changes` for the boolean shorthand.
+        """
+        return self._replica.num_local_operations()
 
     # ------------------------------------------------------------------
     # Utility / metadata
@@ -345,8 +368,6 @@ class TaskChampionAdapter:
         Raises:
             TaskWarriorError: If the expression cannot be resolved.
         """
-        from ..utils.date_resolver import resolve_date
-
         result = resolve_date(date_str)
         if result is None:
             raise TaskWarriorError(
@@ -363,13 +384,30 @@ class TaskChampionAdapter:
         Accepts ISO 8601 strings and the TaskWarrior date synonyms supported
         by :func:`~taskwarrior.utils.date_resolver.resolve_date`.
         """
-        from ..utils.date_resolver import resolve_date
-
         return resolve_date(date_str) is not None
 
     def get_version(self) -> str:
         """Return the adapter version string."""
         return _VERSION
+
+    def get_data_location(self) -> str | None:
+        """Return the resolved data directory path, or ``None`` for in-memory."""
+        return self._data_location
+
+    def get_sync_info(self) -> dict[str, str | None]:
+        """Return sync configuration details."""
+        if self._sync_local_server_dir:
+            sync_backend: str | None = "local"
+        elif self._sync_server_url:
+            sync_backend = "remote"
+        else:
+            sync_backend = None
+        return {
+            "sync_backend": sync_backend,
+            "sync_server_url": self._sync_server_url,
+            "sync_local_server_dir": self._sync_local_server_dir,
+            "sync_client_id": self._sync_client_id if self._sync_server_url else None,
+        }
 
     def get_projects(self) -> list[str]:
         """Return a sorted list of all project names across all tasks."""
@@ -396,5 +434,6 @@ class TaskChampionAdapter:
                     tags.add(str(t))
         if include_virtual_tags:
             from ..utils.virtual_tags import TASKWARRIOR_VIRTUAL_TAGS
+
             tags.update(TASKWARRIOR_VIRTUAL_TAGS)
         return sorted(tags)

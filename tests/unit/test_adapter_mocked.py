@@ -313,7 +313,7 @@ class TestGetInfo:
             tw.adapter, "run_task_command", return_value=_completed(stdout="3.4.0\n", returncode=0)
         ):
             info = tw.get_info()
-        assert info["version"] == "3.4.0"
+        assert info["backend_version"] == "3.4.0"
 
 
 # ---------------------------------------------------------------------------

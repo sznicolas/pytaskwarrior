@@ -29,7 +29,9 @@ Example:
 
 Requirements:
     - Python 3.12+
-    - TaskWarrior 3.4+ installed and accessible via `task` command
+    - The ``task`` binary is only required when passing ``task_cmd`` to
+      :class:`~taskwarrior.TaskWarrior`; the default backend (TaskChampion)
+      works without it.
 """
 
 import importlib.metadata
@@ -53,13 +55,10 @@ from .registry.uda_registry import UdaRegistry
 from .utils.dto_converter import task_output_to_input
 
 __version__ = importlib.metadata.version("pytaskwarrior")
-# Backwards-compatible alias
-version = __version__
 
 __all__ = [
     "AnnotationDTO",
     "ContextDTO",
-    "version",
     "Priority",
     "RecurrencePeriod",
     "TaskID",

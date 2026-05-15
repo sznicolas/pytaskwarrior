@@ -24,13 +24,12 @@ Supported tokens
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from taskchampion import Status, Tag, Task
 
 from ..utils.date_resolver import resolve_date
 from ..utils.virtual_tags import TASKWARRIOR_VIRTUAL_TAG_SET
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -63,7 +62,7 @@ def apply_filter(
     date-range evaluation (useful in tests).
     """
     if now is None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
     result = _apply_status_filter(tasks, include_completed, include_deleted)
 
@@ -124,7 +123,10 @@ _Token = _TagToken | _StatusToken | _UUIDToken | _AttributeToken | _DateRangeTok
 
 def _parse_tokens(filter_str: str) -> list[_Token]:
     tokens: list[_Token] = []
-    for part in filter_str.split():
+    parts = filter_str.split()
+    i = 0
+    while i < len(parts):
+        part = parts[i]
         upper = part.upper()
         if upper == "+LATEST":
             tokens.append(_TagToken(name="LATEST", include=True))
@@ -144,9 +146,18 @@ def _parse_tokens(filter_str: str) -> list[_Token]:
             if "." in key:
                 field, _, op = key.partition(".")
                 if field in _DATE_FIELDS and op in _DATE_OPS:
-                    tokens.append(_DateRangeToken(field=field, op=op, expr=value))
+                    # Consume a trailing arithmetic operator and operand so that
+                    # compound expressions like "due.before:now + P7D" or
+                    # "due.after:eom - P1W" are captured as a single expr.
+                    expr = value
+                    while i + 2 < len(parts) and parts[i + 1] in ("+", "-"):
+                        expr += f" {parts[i + 1]} {parts[i + 2]}"
+                        i += 2
+                    tokens.append(_DateRangeToken(field=field, op=op, expr=expr))
+                    i += 1
                     continue
             tokens.append(_AttributeToken(key=key, value=value))
+        i += 1
     return tokens
 
 
@@ -205,8 +216,8 @@ def _tc_status_str(task: Task) -> str:
 def _ensure_utc(dt: datetime) -> datetime:
     """Return *dt* as a UTC-aware datetime; treat naive datetimes as UTC."""
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def _get_task_date(task: Task, field: str) -> datetime | None:
@@ -228,7 +239,7 @@ def _get_task_date(task: Task, field: str) -> datetime | None:
     if raw is None:
         return None
     try:
-        return datetime.fromtimestamp(int(raw), tz=timezone.utc)
+        return datetime.fromtimestamp(int(raw), tz=UTC)
     except (ValueError, OSError):
         return None
 
@@ -299,7 +310,7 @@ def _compute_virtual_tag(task: Task, name: str, now: datetime) -> bool | None:
     if name == "SCHEDULED":
         return task.get_value("scheduled") is not None
     if name == "UDA":
-        return bool(task.get_legacy_udas())
+        return bool(list(task.get_udas()))
 
     # --- Date-based virtual tags ---
     due = _get_task_date(task, "due")
