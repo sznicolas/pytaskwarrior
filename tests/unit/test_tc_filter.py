@@ -344,3 +344,21 @@ class TestCombinedFilters:
         ad.add_task(TaskInputDTO(description="late+L", due=past.isoformat(), priority="L"))
         result = _desc(apply_filter(_tasks(ad), "due.before:today priority:H", now=NOW))
         assert result == ["late+H"]
+
+
+class TestVirtualTagUDA:
+    def test_task_with_uda_matches_plus_uda(self):
+        ad = _adapter()
+        ad.add_task(TaskInputDTO(description="with-uda", udas={"severity": "high"}))
+        ad.add_task(TaskInputDTO(description="no-uda"))
+        result = _desc(apply_filter(_tasks(ad), "+UDA", now=NOW))
+        assert "with-uda" in result
+        assert "no-uda" not in result
+
+    def test_task_without_uda_matches_minus_uda(self):
+        ad = _adapter()
+        ad.add_task(TaskInputDTO(description="with-uda", udas={"severity": "low"}))
+        ad.add_task(TaskInputDTO(description="no-uda"))
+        result = _desc(apply_filter(_tasks(ad), "-UDA", now=NOW))
+        assert "no-uda" in result
+        assert "with-uda" not in result

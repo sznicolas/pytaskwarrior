@@ -5,6 +5,47 @@ All notable changes to pytaskwarrior will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### `TaskChampionAdapter` — `access_mode` parameter
+
+`TaskChampionAdapter.__init__` now accepts an optional `access_mode` parameter
+(`AccessMode.ReadWrite` by default) to control how the underlying SQLite database
+is opened. `AccessMode` is re-exported from `taskwarrior.adapters` for convenience.
+
+```python
+from taskwarrior.adapters import AccessMode
+from taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
+
+# Read-only — safe for concurrent readers, no write lock acquired
+adapter = TaskChampionAdapter(access_mode=AccessMode.ReadOnly)
+
+# Default — read/write (unchanged behaviour)
+adapter = TaskChampionAdapter()
+```
+
+See the [TaskChampion Adapter docs](docs/taskchampion-adapter.md#thread-safety) for
+thread-safety constraints when sharing a `Replica` across threads (e.g. FastAPI).
+
+#### `AccessMode` re-exported from `taskwarrior.adapters`
+
+```python
+from taskwarrior.adapters import AccessMode
+```
+
+### Changed
+
+- Upgraded underlying `taskchampion-py` dependency to `taskchampion3-py-fork >= 3.0.1.1`
+  (package renamed upstream; module import name `taskchampion` is unchanged).
+  The new library source is `tmp/taskchampion-py-dev/`.
+- Internal UDA storage API migrated to `taskchampion-py` 3.0.1 bindings:
+  `Task.get_udas()` / `set_uda()` → `get_user_defined_attributes()` / `set_user_defined_attribute()`.
+  This is a transparent internal change — no public API impact.
+
+---
+
 ## [3.0.0] - 2026-05-15
 
 **Major release.** The default backend is now `TaskChampionAdapter` — direct SQLite

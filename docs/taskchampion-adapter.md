@@ -39,9 +39,62 @@ tw = TaskWarrior(data_location="/path/to/mydata")
 from taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
 tw = TaskWarrior(adapter=TaskChampionAdapter(data_location=None))
 
+# Read-only access (safe for concurrent readers)
+from taskwarrior.adapters import AccessMode
+tw = TaskWarrior(adapter=TaskChampionAdapter(access_mode=AccessMode.ReadOnly))
+
 # Explicit CLI mode (requires task binary)
 tw = TaskWarrior(task_cmd="task")
 ```
+
+## Thread Safety
+
+`TaskChampionAdapter` wraps a PyO3 `Replica` object that is **not thread-safe**.
+The Rust binding (`#[pyclass(unsendable)]`) enforces that every method call must
+occur on the same OS thread that created the instance. Crossing thread boundaries
+causes a non-recoverable `PanicException`.
+
+**Rule: one `TaskChampionAdapter` (and its `Replica`) per thread.**
+
+### FastAPI patterns
+
+```python
+# ✅ async def — runs on the event-loop thread; one shared adapter is safe
+adapter = TaskChampionAdapter()
+
+@app.get("/tasks")
+async def list_tasks():
+    return adapter.get_tasks()
+
+# ✅ sync def — each request runs in a worker thread; use thread-local storage
+import threading
+_local = threading.local()
+
+def get_adapter():
+    if not hasattr(_local, "adapter"):
+        _local.adapter = TaskChampionAdapter()
+    return _local.adapter
+
+@app.get("/tasks")
+def list_tasks():
+    return get_adapter().get_tasks()
+
+# ✅ Read-only concurrent access — multiple threads may each hold a ReadOnly adapter
+@app.get("/tasks")
+def list_tasks():
+    # short-lived per-request adapter is fine for reads
+    with TaskChampionAdapter(access_mode=AccessMode.ReadOnly) as adapter:
+        return adapter.get_tasks()
+```
+
+### SQLite concurrency
+
+The underlying SQLite database uses `journal_mode=WAL`, which allows multiple
+concurrent readers alongside a single writer. A `busy_timeout` of 5 seconds
+means a second writer will wait rather than fail immediately.
+
+`AccessMode.ReadOnly` opens the database read-only — no write lock is ever
+acquired, making it safe for many concurrent connections.
 
 ## Supported Filter Syntax
 
@@ -175,12 +228,14 @@ See **[Synchronization](sync.md)** for the full guide, including direct
 | TC sync protocol | ✅ | ❌ |
 | Binary required | ❌ | ✅ |
 
-## Compatibility with taskchampion-py Fork
+## Compatibility with taskchampion-py
 
-This library depends on a fork of `taskchampion-py` (version `3.0.1.1`) that
-tracks taskchampion `3.0.1`. The fork is located at
-`tmp/taskchampion-py-fork/` and must be built locally until merged upstream:
+This library depends on `taskchampion3-py-fork` (version `>= 3.0.1.1`) that
+tracks taskchampion `3.0.1`. The package is located at
+`tmp/taskchampion-py-dev/` and must be built locally until published upstream:
 
 ```bash
-uv sync  # builds and installs the fork automatically
+uv sync  # builds and installs the package automatically
 ```
+
+The Python import name is unchanged: `import taskchampion`.

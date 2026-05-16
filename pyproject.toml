@@ -21,7 +21,8 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.11.7",
-    "taskchampion-py>=3.0.1.1",
+    #    "taskchampion-py-dev>=3.0.1.1a1"
+    "taskchampion3-py-dev>=3.0.1.1a0",
 ]
 
 [dependency-groups]
@@ -99,12 +100,6 @@ disallow_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--tb=short -q --ignore=tests/integration"
-filterwarnings = [
-    "ignore::DeprecationWarning:taskchampion",
-]
-
-[tool.uv.sources]
-taskchampion-py = { path = "tmp/taskchampion-py-fork", editable = true }
 
 [tool.coverage.run]
 source = ["src/taskwarrior"]

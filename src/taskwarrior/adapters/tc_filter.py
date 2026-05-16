@@ -310,7 +310,7 @@ def _compute_virtual_tag(task: Task, name: str, now: datetime) -> bool | None:
     if name == "SCHEDULED":
         return task.get_value("scheduled") is not None
     if name == "UDA":
-        return bool(list(task.get_udas()))
+        return bool(task.get_user_defined_attributes())
 
     # --- Date-based virtual tags ---
     due = _get_task_date(task, "due")

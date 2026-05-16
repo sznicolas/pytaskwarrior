@@ -2,14 +2,21 @@
 
 This module exposes the :class:`AdapterProtocol` that any backend adapter
 must satisfy, enabling dependency injection and testability.
+
+It also re-exports :class:`~taskchampion.AccessMode` for convenience, so
+callers do not need to import directly from ``taskchampion``.
 """
 
 from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from taskchampion import AccessMode
+
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 from ..dto.task_id import TaskRef
+
+__all__ = ["AdapterProtocol", "AccessMode"]
 
 
 @runtime_checkable

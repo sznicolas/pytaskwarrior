@@ -30,7 +30,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
-from taskchampion import Annotation, Operations, Replica, Status
+from taskchampion import AccessMode, Annotation, Operations, Replica, Status
 
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 from ..dto.task_id import TaskRef, to_taskid
@@ -62,6 +62,11 @@ class TaskChampionAdapter:
         database (useful for tests).
     create_if_missing:
         When *data_location* is given, create the directory / DB if absent.
+    access_mode:
+        ``AccessMode.ReadWrite`` (default) for full CRUD access.
+        ``AccessMode.ReadOnly`` for read-only access, which is safe to use
+        from multiple concurrent threads or processes (SQLite WAL allows
+        many concurrent readers alongside a single writer).
     sync_server_url:
         Remote taskchampion sync server URL (``sync.server.origin`` in taskrc).
         When set, :meth:`synchronize` will use ``sync_to_remote``.
@@ -74,12 +79,34 @@ class TaskChampionAdapter:
         Local directory used as a sync server (``sync.local.server_dir`` in
         taskrc).  When set, :meth:`synchronize` will use ``sync_to_local``.
         Takes precedence over *sync_server_url*.
+
+    Thread safety
+    -------------
+    Each :class:`TaskChampionAdapter` instance **must be used only from the
+    thread that created it**.  The underlying :class:`taskchampion.Replica`
+    is ``unsendable`` (a PyO3 constraint): calling any method from a
+    different thread will raise a :exc:`PanicException` at the Rust level.
+
+    Concurrency patterns:
+
+    * **FastAPI / asyncio** — use ``async def`` endpoints with a single
+      shared adapter instance; the event loop runs on one thread so the
+      constraint is automatically satisfied.
+    * **FastAPI sync endpoints** (thread-pool execution) — create one
+      :class:`TaskChampionAdapter` per request (or per thread) so each
+      worker thread owns its own :class:`~taskchampion.Replica`.
+    * **Read-only concurrent access** — pass ``access_mode=AccessMode.ReadOnly``
+      and create one instance per thread; SQLite WAL allows many concurrent
+      readers without blocking.
+    * **In-memory mode** (``data_location=None``) — each instance is fully
+      isolated; do not share between threads.
     """
 
     def __init__(
         self,
         data_location: str | Path | None = None,
         create_if_missing: bool = True,
+        access_mode: AccessMode = AccessMode.ReadWrite,
         sync_server_url: str | None = None,
         sync_client_id: str | None = None,
         sync_encryption_secret: str | None = None,
@@ -90,7 +117,7 @@ class TaskChampionAdapter:
             self._data_location: str | None = None
         else:
             resolved = str(Path(data_location).expanduser())
-            self._replica = Replica.new_on_disk(resolved, create_if_missing)
+            self._replica = Replica.new_on_disk(resolved, create_if_missing, access_mode)
             self._data_location = resolved
 
         self._sync_local_server_dir = sync_local_server_dir

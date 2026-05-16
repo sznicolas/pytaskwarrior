@@ -155,10 +155,9 @@ def tc_task_to_output_dto(task: Task, working_set: WorkingSet) -> TaskOutputDTO:
 
     # UDAs: exclude known generic fields to avoid duplicates
     udas: dict[str, object] = {}
-    for (ns, key), val in task.get_udas():
-        full_key = f"{ns}.{key}" if ns else key
-        if full_key not in _TC_KNOWN_GENERIC_PROPS:
-            udas[full_key] = val
+    for key, val in task.get_user_defined_attributes():
+        if key not in _TC_KNOWN_GENERIC_PROPS:
+            udas[key] = val
 
     # User tags only (filter synthetic tags like PENDING, ACTIVE, …)
     tags = [str(t) for t in task.get_tags() if t.is_user()]
@@ -308,13 +307,8 @@ def _add_annotations(task: Task, texts: list[str], ops: Operations) -> None:
 
 
 def _apply_udas(task: Task, udas: dict[str, object], ops: Operations) -> None:
-    """Write UDA values.  Keys containing a dot are treated as ``ns.key``."""
+    """Write UDA values. The key is used as-is (e.g. ``"ns.key"`` or ``"legacy-key"``)."""
     for key, val in udas.items():
         if val is None:
             continue
-        str_val = str(val)
-        if "." in key:
-            ns, _, k = key.partition(".")
-            task.set_uda(ns, k, str_val, ops)
-        else:
-            task.set_uda("", key, str_val, ops)
+        task.set_user_defined_attribute(key, str(val), ops)
