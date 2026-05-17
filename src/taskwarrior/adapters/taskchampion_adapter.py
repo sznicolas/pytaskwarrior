@@ -25,9 +25,14 @@ Limitations vs :class:`~taskwarrior.adapters.taskwarrior_adapter.TaskWarriorAdap
 from __future__ import annotations
 
 import logging
+import threading
+import time
 import uuid as _uuid
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, TypeVar
 from uuid import UUID
 
 from taskchampion import AccessMode, Annotation, Operations, Replica, Status
@@ -49,6 +54,47 @@ logger = logging.getLogger(__name__)
 
 _VERSION = "taskchampion-py/3.0.1"
 _AVOID_SNAPSHOTS: bool = False
+_LOCK_TIMEOUT: float = 30.0
+_T = TypeVar("_T")
+
+
+@dataclass
+class AdapterMetrics:
+    """Thread-safe metrics for :class:`TaskChampionAdapter` operations.
+
+    Attributes track cumulative counts and timings across all calls made
+    through :meth:`TaskChampionAdapter._locked_call`.  All fields are
+    updated atomically behind an internal lock.
+    """
+
+    calls_total: int = 0
+    errors_total: int = 0
+    wait_seconds_total: float = 0.0
+    run_seconds_total: float = 0.0
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+
+    def record(self, wait: float, run: float, *, error: bool = False) -> None:
+        """Record timing and error status for one completed call."""
+        with self._lock:
+            self.calls_total += 1
+            self.wait_seconds_total += wait
+            self.run_seconds_total += run
+            if error:
+                self.errors_total += 1
+
+    def snapshot(self) -> dict[str, Any]:
+        """Return a point-in-time copy of the metrics."""
+        with self._lock:
+            avg_wait = (
+                round(self.wait_seconds_total / self.calls_total, 3)
+                if self.calls_total
+                else 0.0
+            )
+            return {
+                "calls_total": self.calls_total,
+                "errors_total": self.errors_total,
+                "avg_wait_seconds": avg_wait,
+            }
 
 
 class TaskChampionAdapter:
@@ -82,10 +128,17 @@ class TaskChampionAdapter:
 
     Thread safety
     -------------
-    Each :class:`TaskChampionAdapter` instance **must be used only from the
-    thread that created it**.  The underlying :class:`taskchampion.Replica`
-    is ``unsendable`` (a PyO3 constraint): calling any method from a
-    different thread will raise a :exc:`PanicException` at the Rust level.
+    Each :class:`TaskChampionAdapter` instance is **bound to the thread that
+    created it**.  The underlying :class:`taskchampion.Replica` is
+    ``unsendable`` (a PyO3 constraint): calling any method from a different
+    thread raises a Rust-level :exc:`pyo3_runtime.PanicException`.
+
+    To surface this early as a clear Python error, every method that accesses
+    the :class:`~taskchampion.Replica` calls :meth:`_check_thread_affinity`
+    on entry and raises :exc:`RuntimeError` immediately if the call originates
+    from a foreign thread.  A :class:`threading.Lock` is also held during each
+    operation for internal consistency (e.g. coroutines sharing the adapter on
+    the same asyncio event loop).
 
     Concurrency patterns:
 
@@ -100,6 +153,12 @@ class TaskChampionAdapter:
       readers without blocking.
     * **In-memory mode** (``data_location=None``) — each instance is fully
       isolated; do not share between threads.
+
+    Metrics
+    -------
+    Call :meth:`get_metrics` to retrieve a snapshot of operation counts,
+    error counts, and average wait/run times recorded by the internal
+    :class:`AdapterMetrics` instance.
     """
 
     def __init__(
@@ -112,6 +171,9 @@ class TaskChampionAdapter:
         sync_encryption_secret: str | None = None,
         sync_local_server_dir: str | None = None,
     ) -> None:
+        self._owner_thread_id = threading.current_thread().ident
+        self._db_lock = threading.Lock()
+        self._metrics = AdapterMetrics()
         if data_location is None:
             self._replica = Replica.new_in_memory()
             self._data_location: str | None = None
@@ -171,12 +233,64 @@ class TaskChampionAdapter:
         ws = self._replica.working_set()
         return tc_task_to_output_dto(task, ws)
 
+    def _check_thread_affinity(self) -> None:
+        """Raise :exc:`RuntimeError` if called from a thread other than the owner.
+
+        The underlying :class:`taskchampion.Replica` is PyO3 *unsendable*:
+        calling it from a foreign thread would trigger a Rust-level panic.
+        This method turns that panic into an explicit Python error.
+        """
+        if threading.current_thread().ident != self._owner_thread_id:
+            raise RuntimeError(
+                f"TaskChampionAdapter instance was created on thread "
+                f"{self._owner_thread_id} but is being accessed from thread "
+                f"{threading.current_thread().ident}. "
+                "The underlying taskchampion.Replica is thread-bound "
+                "(PyO3 unsendable constraint). "
+                "Create a separate TaskChampionAdapter instance per thread, "
+                "or adopt a per-request adapter pattern."
+            )
+
+    def _locked_call(self, fn: Callable[..., _T], /, *args: Any, **kwargs: Any) -> _T:
+        """Run *fn* under the instance lock, recording metrics.
+
+        Raises
+        ------
+        RuntimeError
+            If called from a thread other than the owner thread.
+        TaskOperationError
+            If the lock cannot be acquired within :data:`_LOCK_TIMEOUT` seconds.
+        """
+        self._check_thread_affinity()
+        t_wait_start = time.monotonic()
+        acquired = self._db_lock.acquire(timeout=_LOCK_TIMEOUT)
+        wait = time.monotonic() - t_wait_start
+        if not acquired:
+            self._metrics.record(wait=_LOCK_TIMEOUT, run=0.0, error=True)
+            raise TaskOperationError(
+                f"Lock timeout after {_LOCK_TIMEOUT}s waiting for {fn.__name__}"
+            )
+        error = False
+        t_run_start = time.monotonic()
+        try:
+            return fn(*args, **kwargs)
+        except Exception:
+            error = True
+            raise
+        finally:
+            run = time.monotonic() - t_run_start
+            self._metrics.record(wait=wait, run=run, error=error)
+            self._db_lock.release()
+
     # ------------------------------------------------------------------
     # CRUD
     # ------------------------------------------------------------------
 
     def add_task(self, task: TaskInputDTO) -> TaskOutputDTO:
         """Create a new task and return the persisted DTO."""
+        return self._locked_call(self._add_task_internal, task)
+
+    def _add_task_internal(self, task: TaskInputDTO) -> TaskOutputDTO:
         if not task.description or not task.description.strip():
             raise TaskValidationError("Task description cannot be empty")
 
@@ -193,6 +307,9 @@ class TaskChampionAdapter:
 
     def modify_task(self, task: TaskInputDTO, task_id: TaskRef) -> TaskOutputDTO:
         """Modify an existing task and return the updated DTO."""
+        return self._locked_call(self._modify_task_internal, task, task_id)
+
+    def _modify_task_internal(self, task: TaskInputDTO, task_id: TaskRef) -> TaskOutputDTO:
         uuid_str = self._resolve_ref(task_id)
         tc_task = self._get_tc_task(uuid_str)
 
@@ -206,6 +323,9 @@ class TaskChampionAdapter:
 
     def get_task(self, task_id: TaskRef) -> TaskOutputDTO:
         """Retrieve a single task by ID, index, or UUID."""
+        return self._locked_call(self._get_task_internal, task_id)
+
+    def _get_task_internal(self, task_id: TaskRef) -> TaskOutputDTO:
         uuid_str = self._resolve_ref(task_id)
         return self._fetch_dto(uuid_str)
 
@@ -223,6 +343,16 @@ class TaskChampionAdapter:
         The filter is applied in Python; see :mod:`~taskwarrior.adapters.tc_filter`
         for the supported syntax.
         """
+        return self._locked_call(
+            self._get_tasks_internal, filter, include_completed, include_deleted
+        )
+
+    def _get_tasks_internal(
+        self,
+        filter: str = "",
+        include_completed: bool = False,
+        include_deleted: bool = False,
+    ) -> list[TaskOutputDTO]:
         if not include_completed and not include_deleted:
             all_tasks = self._replica.pending_tasks()
         else:
@@ -233,11 +363,17 @@ class TaskChampionAdapter:
 
     def get_recurring_task(self, task_id: TaskRef) -> TaskOutputDTO:
         """Retrieve a recurring task template."""
+        return self._locked_call(self._get_recurring_task_internal, task_id)
+
+    def _get_recurring_task_internal(self, task_id: TaskRef) -> TaskOutputDTO:
         uuid_str = self._resolve_ref(task_id)
         return self._fetch_dto(uuid_str)
 
     def get_recurring_instances(self, task_id: TaskRef) -> list[TaskOutputDTO]:
         """Return all child instances of a recurring task template."""
+        return self._locked_call(self._get_recurring_instances_internal, task_id)
+
+    def _get_recurring_instances_internal(self, task_id: TaskRef) -> list[TaskOutputDTO]:
         uuid_str = self._resolve_ref(task_id)
         all_tasks = list(self._replica.all_tasks().values())
         ws = self._replica.working_set()
@@ -250,6 +386,9 @@ class TaskChampionAdapter:
 
     def delete_task(self, task_id: TaskRef) -> None:
         """Mark a task as deleted (soft delete)."""
+        self._locked_call(self._delete_task_internal, task_id)
+
+    def _delete_task_internal(self, task_id: TaskRef) -> None:
         uuid_str = self._resolve_ref(task_id)
         tc_task = self._get_tc_task(uuid_str)
         ops = Operations()
@@ -260,6 +399,9 @@ class TaskChampionAdapter:
 
     def purge_task(self, task_id: TaskRef) -> None:
         """Permanently remove a task from the database."""
+        self._locked_call(self._purge_task_internal, task_id)
+
+    def _purge_task_internal(self, task_id: TaskRef) -> None:
         uuid_str = self._resolve_ref(task_id)
         tc_task = self._get_tc_task(uuid_str)
         ops = Operations()
@@ -270,6 +412,9 @@ class TaskChampionAdapter:
 
     def done_task(self, task_id: TaskRef) -> None:
         """Mark a task as completed."""
+        self._locked_call(self._done_task_internal, task_id)
+
+    def _done_task_internal(self, task_id: TaskRef) -> None:
         uuid_str = self._resolve_ref(task_id)
         tc_task = self._get_tc_task(uuid_str)
         ops = Operations()
@@ -280,6 +425,9 @@ class TaskChampionAdapter:
 
     def start_task(self, task_id: TaskRef) -> None:
         """Start working on a task (set start timestamp)."""
+        self._locked_call(self._start_task_internal, task_id)
+
+    def _start_task_internal(self, task_id: TaskRef) -> None:
         uuid_str = self._resolve_ref(task_id)
         tc_task = self._get_tc_task(uuid_str)
         ops = Operations()
@@ -289,6 +437,9 @@ class TaskChampionAdapter:
 
     def stop_task(self, task_id: TaskRef) -> None:
         """Stop working on a task (clear start timestamp)."""
+        self._locked_call(self._stop_task_internal, task_id)
+
+    def _stop_task_internal(self, task_id: TaskRef) -> None:
         uuid_str = self._resolve_ref(task_id)
         tc_task = self._get_tc_task(uuid_str)
         ops = Operations()
@@ -298,6 +449,9 @@ class TaskChampionAdapter:
 
     def annotate_task(self, task_id: TaskRef, annotation: str) -> None:
         """Add an annotation to a task."""
+        self._locked_call(self._annotate_task_internal, task_id, annotation)
+
+    def _annotate_task_internal(self, task_id: TaskRef, annotation: str) -> None:
         if not annotation or not annotation.strip():
             raise TaskOperationError("Annotation text cannot be empty")
         uuid_str = self._resolve_ref(task_id)
@@ -329,6 +483,9 @@ class TaskChampionAdapter:
         Raises :exc:`~taskwarrior.exceptions.TaskSyncError` if no sync backend
         is configured or if the sync operation fails.
         """
+        self._locked_call(self._synchronize_internal)
+
+    def _synchronize_internal(self) -> None:
         if not self._sync_configured:
             raise TaskSyncError(
                 "No sync server configured. "
@@ -369,6 +526,9 @@ class TaskChampionAdapter:
             performing a sync.  Call :meth:`synchronize` to pull remote
             changes.
         """
+        return self._locked_call(self._has_local_changes_internal)
+
+    def _has_local_changes_internal(self) -> bool:
         return self._replica.num_local_operations() > 0
 
     def pending_local_ops_count(self) -> int:
@@ -377,6 +537,9 @@ class TaskChampionAdapter:
         Useful for logging or debugging.  ``0`` means fully synced (local side).
         See :meth:`has_local_changes` for the boolean shorthand.
         """
+        return self._locked_call(self._pending_local_ops_count_internal)
+
+    def _pending_local_ops_count_internal(self) -> int:
         return self._replica.num_local_operations()
 
     # ------------------------------------------------------------------
@@ -438,6 +601,9 @@ class TaskChampionAdapter:
 
     def get_projects(self) -> list[str]:
         """Return a sorted list of all project names across all tasks."""
+        return self._locked_call(self._get_projects_internal)
+
+    def _get_projects_internal(self) -> list[str]:
         projects: set[str] = set()
         for task in self._replica.all_tasks().values():
             proj = task.get_value("project")
@@ -454,6 +620,9 @@ class TaskChampionAdapter:
             When ``True``, TaskWarrior virtual tags (``TODAY``, ``READY``,
             ``OVERDUE``, …) are appended in addition to user-defined tags.
         """
+        return self._locked_call(self._get_tags_internal, include_virtual_tags)
+
+    def _get_tags_internal(self, include_virtual_tags: bool = False) -> list[str]:
         tags: set[str] = set()
         for task in self._replica.all_tasks().values():
             for t in task.get_tags():
@@ -464,3 +633,11 @@ class TaskChampionAdapter:
 
             tags.update(TASKWARRIOR_VIRTUAL_TAGS)
         return sorted(tags)
+
+    def get_metrics(self) -> dict[str, Any]:
+        """Return a snapshot of adapter operation metrics.
+
+        Returns a dict with ``calls_total``, ``errors_total``, and
+        ``avg_wait_seconds`` — useful for monitoring lock contention.
+        """
+        return self._metrics.snapshot()

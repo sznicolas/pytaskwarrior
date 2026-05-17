@@ -49,12 +49,37 @@ tw = TaskWarrior(task_cmd="task")
 
 ## Thread Safety
 
-`TaskChampionAdapter` wraps a PyO3 `Replica` object that is **not thread-safe**.
-The Rust binding (`#[pyclass(unsendable)]`) enforces that every method call must
-occur on the same OS thread that created the instance. Crossing thread boundaries
-causes a non-recoverable `PanicException`.
+`TaskChampionAdapter` is **bound to the thread that created it**.  The underlying
+`Replica` object (a PyO3 `#[pyclass(unsendable)]`) must be accessed exclusively
+from its owner thread.
+
+Starting with pytaskwarrior 3.1, the adapter enforces this at the Python level:
+every method that touches the `Replica` calls an internal `_check_thread_affinity()`
+guard on entry.  If called from the wrong thread, it raises `RuntimeError`
+immediately — **a clear Python error instead of an opaque Rust panic**.
+
+A `threading.Lock` is also held for the duration of each operation, providing
+internal consistency for callers sharing one adapter across coroutines on the
+same asyncio event loop.
 
 **Rule: one `TaskChampionAdapter` (and its `Replica`) per thread.**
+
+```python
+import threading
+from taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
+
+adapter = TaskChampionAdapter()
+
+def worker():
+    adapter.get_tasks()  # ❌ raises RuntimeError — wrong thread
+
+t = threading.Thread(target=worker)
+t.start()
+t.join()
+# RuntimeError: TaskChampionAdapter instance was created on thread 1
+# but is being accessed from thread 3. Create a separate
+# TaskChampionAdapter instance per thread…
+```
 
 ### FastAPI patterns
 
@@ -79,12 +104,12 @@ def get_adapter():
 def list_tasks():
     return get_adapter().get_tasks()
 
-# ✅ Read-only concurrent access — multiple threads may each hold a ReadOnly adapter
+# ✅ Read-only concurrent access — one ReadOnly adapter per thread
 @app.get("/tasks")
 def list_tasks():
     # short-lived per-request adapter is fine for reads
-    with TaskChampionAdapter(access_mode=AccessMode.ReadOnly) as adapter:
-        return adapter.get_tasks()
+    adapter = TaskChampionAdapter(access_mode=AccessMode.ReadOnly)
+    return adapter.get_tasks()
 ```
 
 ### SQLite concurrency
@@ -95,6 +120,35 @@ means a second writer will wait rather than fail immediately.
 
 `AccessMode.ReadOnly` opens the database read-only — no write lock is ever
 acquired, making it safe for many concurrent connections.
+
+## Metrics
+
+Each `TaskChampionAdapter` instance records cumulative operation metrics.
+Retrieve a snapshot with `get_metrics()`:
+
+```python
+adapter = TaskChampionAdapter()
+adapter.add_task(TaskInputDTO(description="Buy milk"))
+adapter.get_tasks()
+
+print(adapter.get_metrics())
+# {
+#   'calls_total': 2,
+#   'errors_total': 0,
+#   'avg_wait_seconds': 0.0,
+# }
+```
+
+| Key | Description |
+|-----|-------------|
+| `calls_total` | Total number of operations that went through `_locked_call` |
+| `errors_total` | Number of those that raised an exception |
+| `avg_wait_seconds` | Average time (seconds) spent waiting to acquire the internal lock |
+
+Metrics are useful for diagnosing lock contention in high-concurrency
+same-thread scenarios (e.g., many asyncio coroutines on one event loop).
+The lock is non-reentrant and held only briefly, so contention should
+normally be negligible.
 
 ## Supported Filter Syntax
 

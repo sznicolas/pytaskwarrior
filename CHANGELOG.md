@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Thread-safety enforcement in `TaskChampionAdapter`
+
+`TaskChampionAdapter` now enforces **thread affinity** on every method that
+accesses the underlying `taskchampion.Replica`.  The `Replica` object is
+PyO3 *unsendable*: calling it from a thread other than the one that created it
+previously caused an opaque Rust-level panic.  It now raises
+:exc:`RuntimeError` immediately with a clear message identifying the owner and
+caller thread IDs.
+
+A `threading.Lock` is also held for the duration of each operation, providing
+internal consistency for callers sharing an adapter across coroutines on the
+same asyncio event loop.
+
+```python
+# Same-thread use is unchanged
+adapter = TaskChampionAdapter(data_location="~/.local/share/task")
+tasks = adapter.get_tasks()  # fine
+
+# Wrong-thread access now fails fast with a Python error instead of a Rust panic
+import threading
+def worker():
+    adapter.get_tasks()  # raises RuntimeError immediately
+
+t = threading.Thread(target=worker)
+t.start()
+t.join()
+```
+
+For multi-threaded environments, create one `TaskChampionAdapter` instance per
+thread (or per request in FastAPI sync endpoints).
+
+#### `AdapterMetrics` and `get_metrics()`
+
+`TaskChampionAdapter` now tracks call counts, error counts, and lock
+wait/run times via an internal `AdapterMetrics` dataclass.  Retrieve a
+snapshot with `get_metrics()`:
+
+```python
+metrics = adapter.get_metrics()
+# {'calls_total': 42, 'errors_total': 1, 'avg_wait_seconds': 0.001}
+```
+
 #### `TaskChampionAdapter` — `access_mode` parameter
 
 `TaskChampionAdapter.__init__` now accepts an optional `access_mode` parameter
@@ -35,9 +77,23 @@ thread-safety constraints when sharing a `Replica` across threads (e.g. FastAPI)
 from taskwarrior.adapters import AccessMode
 ```
 
+### Fixed
+
+#### `poc_taskchampion_undo_interactive_fr.py` — delete and sync
+
+- **`delete_task`** now correctly calls `task.set_status(Status.Deleted, ops)` instead
+  of attempting the non-existent `replica.delete_task()` and `task.delete()` methods that
+  failed silently, leaving the task as `Status.Pending`.
+- **Interactive session** now runs on the **disk replica** instead of a separate
+  in-memory replica.  Previously, session operations were applied to an in-memory
+  clone that was discarded on exit, so pressing `s` (checkpoint) followed by `q`
+  never persisted any changes.  All session ops are now immediately durable.
+- **`main()`** wipes `DATA_DIR` on startup to guarantee a reproducible demo state.
+- The `s` command message now clearly states that it creates a checkpoint and locks
+  in the current state, instead of reporting the misleading `"baseline ops: 0"`.
+
 ### Changed
 
-- Upgraded underlying `taskchampion-py` dependency to `taskchampion3-py-fork >= 3.0.1.1`
   (package renamed upstream; module import name `taskchampion` is unchanged).
   The new library source is `tmp/taskchampion-py-dev/`.
 - Internal UDA storage API migrated to `taskchampion-py` 3.0.1 bindings:

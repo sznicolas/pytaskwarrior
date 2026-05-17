@@ -6,6 +6,7 @@ so no filesystem I/O is required and tests are fully isolated.
 
 from __future__ import annotations
 
+import threading
 import uuid
 from pathlib import Path
 
@@ -713,3 +714,83 @@ class TestFacadeInjection:
         tw.done_task(t2.uuid)
         pending = tw.get_tasks()
         assert all(t.uuid not in (t1.uuid, t2.uuid) for t in pending)
+
+
+# ---------------------------------------------------------------------------
+# Thread affinity
+# ---------------------------------------------------------------------------
+
+
+class TestThreadAffinity:
+    def test_wrong_thread_raises_runtime_error(self) -> None:
+        """Accessing the adapter from a foreign thread raises RuntimeError, not a Rust panic."""
+        adapter = TaskChampionAdapter()
+        error: list[BaseException] = []
+
+        def worker() -> None:
+            try:
+                adapter.get_tasks()
+            except RuntimeError as exc:
+                error.append(exc)
+
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join()
+
+        assert len(error) == 1
+        assert "thread" in str(error[0]).lower()
+
+    def test_same_thread_does_not_raise(self, adapter: TaskChampionAdapter) -> None:
+        """Calling the adapter on the creator thread is always allowed."""
+        tasks = adapter.get_tasks()
+        assert isinstance(tasks, list)
+
+    def test_error_message_contains_thread_ids(self) -> None:
+        """The RuntimeError message identifies both owner and caller thread IDs."""
+        adapter = TaskChampionAdapter()
+        error: list[RuntimeError] = []
+
+        def worker() -> None:
+            try:
+                adapter.get_tasks()
+            except RuntimeError as exc:
+                error.append(exc)
+
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join()
+
+        assert error
+        msg = str(error[0])
+        assert str(adapter._owner_thread_id) in msg
+
+
+# ---------------------------------------------------------------------------
+# Metrics
+# ---------------------------------------------------------------------------
+
+
+class TestAdapterMetrics:
+    def test_calls_total_increments(self, adapter: TaskChampionAdapter) -> None:
+        adapter.add_task(TaskInputDTO(description="m1"))
+        adapter.add_task(TaskInputDTO(description="m2"))
+        metrics = adapter.get_metrics()
+        assert metrics["calls_total"] >= 2
+
+    def test_errors_total_increments_on_failure(self, adapter: TaskChampionAdapter) -> None:
+        from taskwarrior.exceptions import TaskNotFound
+
+        with pytest.raises(TaskNotFound):
+            adapter.get_task(str(uuid.uuid4()))  # non-existent UUID goes through _locked_call
+        metrics = adapter.get_metrics()
+        assert metrics["errors_total"] >= 1
+
+    def test_avg_wait_seconds_is_non_negative(self, adapter: TaskChampionAdapter) -> None:
+        adapter.get_tasks()
+        metrics = adapter.get_metrics()
+        assert metrics["avg_wait_seconds"] >= 0.0
+
+    def test_metrics_snapshot_keys(self, adapter: TaskChampionAdapter) -> None:
+        adapter.get_tasks()
+        metrics = adapter.get_metrics()
+        assert set(metrics) == {"calls_total", "errors_total", "avg_wait_seconds"}
