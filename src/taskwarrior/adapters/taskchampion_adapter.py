@@ -11,6 +11,16 @@ Usage::
     dto = adapter.add_task(TaskInputDTO(description="Buy milk"))
     print(dto.uuid, dto.index)
 
+Live configuration updates
+--------------------------
+Pass a :class:`~taskwarrior.config.config_store.ConfigStore` instance to keep
+sync parameters in sync with the taskrc file at all times::
+
+    adapter = TaskChampionAdapter(config_store=my_config_store)
+    # Later — no adapter recreation required:
+    my_config_store.set_value("sync.server.origin", "https://sync.example.com")
+    adapter.synchronize()  # picks up the new URL automatically
+
 Limitations vs :class:`~taskwarrior.adapters.taskwarrior_adapter.TaskWarriorAdapter`
 -------------------------------------------------------------------------------------
 * :meth:`task_calc` raises :exc:`NotImplementedError` — no TW date parser.
@@ -19,7 +29,7 @@ Limitations vs :class:`~taskwarrior.adapters.taskwarrior_adapter.TaskWarriorAdap
   supported; see :mod:`~taskwarrior.adapters.tc_filter` for what is.
 * Urgency is always ``None`` (not computed).
 * UDA config / context support requires separate configuration.
-* Sync requires ``sync_server_url`` (remote) or ``sync_local_server_dir`` (local directory).
+* Changing ``data_location`` at runtime requires creating a new adapter instance.
 """
 
 from __future__ import annotations
@@ -37,6 +47,7 @@ from uuid import UUID
 
 from taskchampion import AccessMode, Annotation, Operations, Replica, Status
 
+from ..config.config_store import ConfigStore
 from ..dto.task_dto import TaskInputDTO, TaskOutputDTO
 from ..dto.task_id import TaskRef, to_taskid
 from ..exceptions import (
@@ -105,7 +116,8 @@ class TaskChampionAdapter:
     data_location:
         Path to the taskchampion data directory (the one that contains
         ``task.sqlite``).  Pass ``None`` to use a temporary in-memory
-        database (useful for tests).
+        database (useful for tests).  When *config_store* is supplied and
+        *data_location* is omitted, ``config_store.data_location`` is used.
     create_if_missing:
         When *data_location* is given, create the directory / DB if absent.
     access_mode:
@@ -113,18 +125,36 @@ class TaskChampionAdapter:
         ``AccessMode.ReadOnly`` for read-only access, which is safe to use
         from multiple concurrent threads or processes (SQLite WAL allows
         many concurrent readers alongside a single writer).
+    config_store:
+        When provided, sync parameters (server URL, client ID, encryption
+        secret, local server dir) are **read lazily** from the store on every
+        :meth:`synchronize` call.  This means that a
+        ``config_store.set_value(…)`` call is immediately reflected the next
+        time sync is invoked — no adapter recreation required.  This is the
+        recommended mode when the adapter is created via
+        :class:`~taskwarrior.main.TaskWarrior`.
     sync_server_url:
         Remote taskchampion sync server URL (``sync.server.origin`` in taskrc).
-        When set, :meth:`synchronize` will use ``sync_to_remote``.
+        Used only when *config_store* is ``None``.
     sync_client_id:
         Client identifier sent to the sync server.  A random UUID is used
         when not supplied (not recommended — prefer persisting in taskrc).
+        Used only when *config_store* is ``None``.
     sync_encryption_secret:
         Encryption secret for the remote sync server.
+        Used only when *config_store* is ``None``.
     sync_local_server_dir:
         Local directory used as a sync server (``sync.local.server_dir`` in
         taskrc).  When set, :meth:`synchronize` will use ``sync_to_local``.
         Takes precedence over *sync_server_url*.
+        Used only when *config_store* is ``None``.
+
+    Note
+    ----
+    Changing ``data_location`` at runtime requires creating a new
+    :class:`TaskChampionAdapter` instance because the underlying
+    :class:`taskchampion.Replica` (SQLite connection) is opened once at
+    construction time.
 
     Thread safety
     -------------
@@ -166,6 +196,7 @@ class TaskChampionAdapter:
         data_location: str | Path | None = None,
         create_if_missing: bool = True,
         access_mode: AccessMode = AccessMode.ReadWrite,
+        config_store: ConfigStore | None = None,
         sync_server_url: str | None = None,
         sync_client_id: str | None = None,
         sync_encryption_secret: str | None = None,
@@ -174,14 +205,25 @@ class TaskChampionAdapter:
         self._owner_thread_id = threading.current_thread().ident
         self._db_lock = threading.Lock()
         self._metrics = AdapterMetrics()
-        if data_location is None:
+
+        # When a ConfigStore is provided it becomes the live source of truth for
+        # sync parameters; they are re-read on every sync() call so that
+        # config_store.set_value() changes take effect without recreating the adapter.
+        self._config_store: ConfigStore | None = config_store
+
+        effective_data_location = (
+            config_store.data_location if (config_store is not None and data_location is None) else data_location
+        )
+
+        if effective_data_location is None:
             self._replica = Replica.new_in_memory()
             self._data_location: str | None = None
         else:
-            resolved = str(Path(data_location).expanduser())
+            resolved = str(Path(effective_data_location).expanduser())
             self._replica = Replica.new_on_disk(resolved, create_if_missing, access_mode)
             self._data_location = resolved
 
+        # Legacy / direct-construction params (used when config_store is None).
         self._sync_local_server_dir = sync_local_server_dir
         self._sync_server_url = sync_server_url
         self._sync_client_id = sync_client_id or str(_uuid.uuid4())
@@ -486,22 +528,36 @@ class TaskChampionAdapter:
         self._locked_call(self._synchronize_internal)
 
     def _synchronize_internal(self) -> None:
-        if not self._sync_configured:
+        if self._config_store is not None:
+            cfg = self._config_store.get_sync_config()
+            sync_local = cfg.get("sync.local.server_dir")
+            sync_url = cfg.get("sync.server.origin")
+            sync_client_id = cfg.get("sync.server.client_id") or self._sync_client_id
+            sync_secret = cfg.get("sync.encryption.secret") or ""
+            is_configured = bool(sync_local or sync_url)
+        else:
+            sync_local = self._sync_local_server_dir
+            sync_url = self._sync_server_url
+            sync_client_id = self._sync_client_id
+            sync_secret = self._sync_encryption_secret
+            is_configured = self._sync_configured
+
+        if not is_configured:
             raise TaskSyncError(
                 "No sync server configured. "
                 "Pass sync_local_server_dir or sync_server_url to TaskChampionAdapter()."
             )
         try:
-            if self._sync_local_server_dir:
+            if sync_local:
                 self._replica.sync_to_local(
-                    str(Path(self._sync_local_server_dir).expanduser()),
+                    str(Path(sync_local).expanduser()),
                     _AVOID_SNAPSHOTS,
                 )
             else:
                 self._replica.sync_to_remote(
-                    self._sync_server_url,
-                    self._sync_client_id,
-                    self._sync_encryption_secret,
+                    sync_url,
+                    sync_client_id,
+                    sync_secret,
                     _AVOID_SNAPSHOTS,
                 )
             logger.info("Sync completed")
@@ -510,6 +566,9 @@ class TaskChampionAdapter:
 
     def is_sync_configured(self) -> bool:
         """Return ``True`` if a sync server URL was provided."""
+        if self._config_store is not None:
+            cfg = self._config_store.get_sync_config()
+            return bool(cfg.get("sync.server.origin") or cfg.get("sync.local.server_dir"))
         return self._sync_configured
 
     def has_local_changes(self) -> bool:
@@ -586,17 +645,27 @@ class TaskChampionAdapter:
 
     def get_sync_info(self) -> dict[str, str | None]:
         """Return sync configuration details."""
-        if self._sync_local_server_dir:
+        if self._config_store is not None:
+            cfg = self._config_store.get_sync_config()
+            sync_url = cfg.get("sync.server.origin")
+            sync_local = cfg.get("sync.local.server_dir")
+            sync_client_id = cfg.get("sync.server.client_id")
+        else:
+            sync_url = self._sync_server_url
+            sync_local = self._sync_local_server_dir
+            sync_client_id = self._sync_client_id if self._sync_server_url else None
+
+        if sync_local:
             sync_backend: str | None = "local"
-        elif self._sync_server_url:
+        elif sync_url:
             sync_backend = "remote"
         else:
             sync_backend = None
         return {
             "sync_backend": sync_backend,
-            "sync_server_url": self._sync_server_url,
-            "sync_local_server_dir": self._sync_local_server_dir,
-            "sync_client_id": self._sync_client_id if self._sync_server_url else None,
+            "sync_server_url": sync_url,
+            "sync_local_server_dir": sync_local,
+            "sync_client_id": sync_client_id,
         }
 
     def get_projects(self) -> list[str]:

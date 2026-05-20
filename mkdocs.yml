@@ -62,6 +62,7 @@ nav:
       - Contexts: examples/contexts.md
       - Advanced: examples/advanced.md
   - Tips & Tricks: tips-and-tricks.md
+  - Runtime Configuration: runtime-config.md
   - Synchronization: sync.md
   - LLMs Guides:
       - Overview: llms/llms-taskwarrior.md

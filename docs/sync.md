@@ -10,6 +10,10 @@ pytaskwarrior supports two synchronization modes via the default
 
 Both modes expose the same Python API: `tw.synchronize()` and `tw.is_sync_configured()`.
 
+!!! tip "Runtime configuration"
+    Sync settings can be modified at any time without recreating the adapter.
+    See the [Runtime Configuration guide](runtime-config.md) for step-by-step instructions.
+
 ---
 
 ## Prerequisites

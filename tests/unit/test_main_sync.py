@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -45,3 +46,24 @@ def test_synchronize_propagates_task_sync_error() -> None:
 
     with pytest.raises(TaskSyncError, match="sync failed"):
         tw.synchronize()
+
+
+def test_set_value_live_updates_is_sync_configured(tmp_path: Path) -> None:
+    """Calling config_store.set_value() must be reflected by is_sync_configured()
+    on the next call — no adapter recreation required."""
+    from src.taskwarrior.adapters.taskchampion_adapter import TaskChampionAdapter
+    from src.taskwarrior.config.config_store import ConfigStore
+
+    taskrc = tmp_path / ".taskrc"
+    data_dir = tmp_path / "task"
+    taskrc.write_text(f"rc.data.location={data_dir}\n")
+    data_dir.mkdir()
+
+    config_store = ConfigStore(str(taskrc), str(data_dir))
+    adapter = TaskChampionAdapter(config_store=config_store)
+
+    assert adapter.is_sync_configured() is False
+
+    config_store.set_value("sync.local.server_dir", "/tmp/server")
+
+    assert adapter.is_sync_configured() is True

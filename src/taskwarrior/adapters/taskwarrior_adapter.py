@@ -33,9 +33,11 @@ from ..utils.virtual_tags import TASKWARRIOR_VIRTUAL_TAG_SET, TASKWARRIOR_VIRTUA
 class TaskWarriorAdapter:
     """Low-level adapter for TaskWarrior CLI commands.
 
-    This class handles direct communication with the TaskWarrior binary,
-    including command execution, argument building, and response parsing.
-    It is used internally by the TaskWarrior facade class.
+    Communicates with the TaskWarrior binary via subprocess.  Configuration
+    (CLI options, data location, sync settings) is read **lazily** from the
+    injected :class:`~taskwarrior.config.config_store.ConfigStore` on every
+    call, so a ``config_store.set_value(…)`` change is automatically reflected
+    without recreating the adapter.
 
     Attributes:
         task_cmd: Path to the TaskWarrior binary.
@@ -49,22 +51,23 @@ class TaskWarriorAdapter:
         """Initialize the adapter.
 
         Args:
+            config_store: Live configuration store.  CLI options, data
+                location, and sync settings are re-read from this store on
+                every operation so that runtime changes to the taskrc are
+                immediately effective.
             task_cmd: TaskWarrior binary name or path.
-            config_store: The configuration store instance (required).
 
         Raises:
             TaskConfigurationError: If TaskWarrior binary not found.
         """
 
         self.task_cmd: Path = self._check_binary_path(task_cmd)
-        self._cli_options: list[str] = config_store.cli_options
-        self._sync_configured: bool = bool(config_store.get_sync_config())
-        self._data_location: str = str(config_store.data_location)
+        self._config_store: ConfigStore = config_store
 
     @property
     def cli_options(self) -> list[str]:
-        """Public accessor for CLI options."""
-        return self._cli_options
+        """Public accessor for CLI options (always reflects current config)."""
+        return self._config_store.cli_options
 
     def _check_binary_path(self, task_cmd: str) -> Path:
         """Verify TaskWarrior binary exists in PATH."""
@@ -75,7 +78,7 @@ class TaskWarriorAdapter:
 
     def is_sync_configured(self) -> bool:
         """Return True if sync settings are present in taskrc (any ``sync.*`` key)."""
-        return self._sync_configured
+        return bool(self._config_store.get_sync_config())
 
     def has_local_changes(self) -> bool:
         """Always returns ``False`` for the CLI adapter.
@@ -109,7 +112,7 @@ class TaskWarriorAdapter:
         cmd = [str(self.task_cmd)]
         # Options (rc:...) must come before command and filter arguments so they are applied properly.
         if not no_opt:
-            cmd.extend(self._cli_options)
+            cmd.extend(self._config_store.cli_options)
         cmd.extend(args)
         logger.debug(f"Running command: {' '.join(cmd)}")
 
@@ -147,7 +150,7 @@ class TaskWarriorAdapter:
             TaskSyncError: If no sync settings are configured, or if the sync
                 command exits with a non-zero return code.
         """
-        if not self._sync_configured:
+        if not self.is_sync_configured():
             raise TaskSyncError(
                 "No sync server is configured. "
                 "Add sync.* settings to your taskrc (e.g. sync.local.server_dir)."
@@ -500,7 +503,7 @@ class TaskWarriorAdapter:
 
     def get_data_location(self) -> str | None:
         """Return the TaskWarrior data directory path."""
-        return self._data_location
+        return str(self._config_store.data_location)
 
     def get_projects(self) -> list[str]:
         """Get all projects defined in TaskWarrior.

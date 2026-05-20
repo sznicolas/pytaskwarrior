@@ -51,7 +51,7 @@ class TestTaskWarriorInit:
 
         assert "task" in info["task_cmd"]
         assert info["taskrc_file"] == str(taskwarrior_config)
-        assert isinstance(tw.adapter._cli_options, list)
+        assert isinstance(tw.adapter.cli_options, list)
         assert isinstance(info["task_cmd"], str)
         assert isinstance(info["taskrc_file"], str)
         assert isinstance(info["options"], list)

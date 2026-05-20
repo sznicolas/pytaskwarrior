@@ -216,13 +216,23 @@ rc.bulk=0
         ``key=value`` is appended at the end.  The in-memory cache is refreshed
         automatically after the write.
 
+        Because both :class:`~taskwarrior.adapters.taskchampion_adapter.TaskChampionAdapter`
+        and :class:`~taskwarrior.adapters.taskwarrior_adapter.TaskWarriorAdapter`
+        read configuration lazily from this store, changes are effective on the
+        **next** adapter call without requiring an adapter restart.
+
         Args:
-            key: Dotted taskrc key (e.g. ``"uda.severity.type"``).
+            key: Dotted taskrc key (e.g. ``"sync.server.origin"``).
             value: New value (may be empty string to clear the value without
                 removing the key).
 
         Raises:
             TaskConfigurationError: If the file cannot be written.
+
+        Example::
+
+            tw.config_store.set_value("sync.server.origin", "https://sync.example.com")
+            tw.synchronize()  # picks up the new URL immediately
         """
         pattern = re.compile(r"^\s*" + re.escape(key) + r"\s*=.*$", re.IGNORECASE)
         try:

@@ -31,7 +31,21 @@ class TaskWarrior:
     ``task_cmd="task"`` (or any path to the binary) to use the classic CLI
     adapter instead.
 
+    Both adapters read configuration **lazily** from
+    :attr:`config_store`, so changes made via
+    ``tw.config_store.set_value(…)`` are immediately effective on the next
+    adapter call — no adapter recreation required.
+
+    .. note::
+        Changing ``data_location`` at runtime is not supported; create a new
+        :class:`TaskWarrior` instance in that case.
+
     Attributes:
+        config_store: Live view of the taskrc configuration.  Use
+            :meth:`~taskwarrior.config.config_store.ConfigStore.set_value`,
+            :meth:`~taskwarrior.config.config_store.ConfigStore.delete_value`,
+            and :meth:`~taskwarrior.config.config_store.ConfigStore.set_sync_config`
+            to modify settings at runtime.
         adapter: The underlying adapter instance (TaskChampion or CLI).
         context_service: Service for managing contexts.
         uda_service: Service for managing UDAs.
@@ -45,6 +59,13 @@ class TaskWarrior:
             task = TaskInputDTO(description="Buy groceries")
             added = tw.add_task(task)
             print(f"Added task: {added.uuid}")
+
+        Live configuration update (sync config, UDA, context, …)::
+
+            tw = TaskWarrior()
+            tw.config_store.set_value("sync.server.origin", "https://sync.example.com")
+            tw.config_store.set_value("sync.encryption.secret", "my-passphrase")
+            tw.synchronize()  # uses the new config immediately
 
         Explicit CLI adapter::
 
@@ -108,24 +129,13 @@ class TaskWarrior:
             # Default mode: TaskChampionAdapter — no binary required.
             import uuid as _uuid
 
-            sync_cfg = self.config_store.get_sync_config()
-            sync_server_url = sync_cfg.get("sync.server.origin")
-            sync_local_dir = sync_cfg.get("sync.local.server_dir")
-            sync_client_id = sync_cfg.get("sync.server.client_id")
-            sync_encryption_secret = sync_cfg.get("sync.encryption.secret")
-
             # Persist a stable client_id if remote sync is configured but none is set.
-            if sync_server_url and not sync_client_id:
-                sync_client_id = str(_uuid.uuid4())
-                self.config_store.set_value("sync.server.client_id", sync_client_id)
+            sync_cfg = self.config_store.get_sync_config()
+            if sync_cfg.get("sync.server.origin") and not sync_cfg.get("sync.server.client_id"):
+                self.config_store.set_value("sync.server.client_id", str(_uuid.uuid4()))
 
-            self.adapter = TaskChampionAdapter(
-                data_location=self.config_store.data_location,
-                sync_server_url=sync_server_url,
-                sync_client_id=sync_client_id,
-                sync_encryption_secret=sync_encryption_secret,
-                sync_local_server_dir=sync_local_dir,
-            )
+            # Pass config_store directly so sync params are re-read on every sync() call.
+            self.adapter = TaskChampionAdapter(config_store=self.config_store)
 
         self._cli_adapter: TaskWarriorAdapter | None = _cli
 

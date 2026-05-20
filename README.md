@@ -88,6 +88,30 @@ tw = TaskWarrior(
 )
 ```
 
+### Live configuration updates
+
+`config_store` is the live interface to the taskrc file.  Changes made via
+`set_value()` or `set_sync_config()` are immediately effective on the next
+adapter call — no restart or adapter recreation required.
+
+```python
+tw = TaskWarrior()
+
+# Configure remote sync at runtime
+tw.config_store.set_value("sync.server.origin", "https://sync.example.com")
+tw.config_store.set_value("sync.encryption.secret", "my-passphrase")
+tw.synchronize()  # uses the new config immediately
+
+# Or replace the whole sync block at once
+tw.config_store.set_sync_config({
+    "sync.local.server_dir": "/mnt/shared/taskserver",
+})
+tw.synchronize()
+```
+
+> **Note:** Changing `data_location` at runtime is not supported.  Create a
+> new `TaskWarrior` instance if you need a different data directory.
+
 ## Architecture
 
 ```

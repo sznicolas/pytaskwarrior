@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -12,12 +12,22 @@ from src.taskwarrior.adapters.taskwarrior_adapter import TaskWarriorAdapter
 from src.taskwarrior.exceptions import TaskSyncError
 
 
+def _make_config_store(sync_configured: bool = True) -> MagicMock:
+    """Build a minimal ConfigStore mock."""
+    cfg = MagicMock()
+    cfg.get_sync_config.return_value = (
+        {"sync.local.server_dir": "/tmp/server"} if sync_configured else {}
+    )
+    cfg.cli_options = []
+    cfg.data_location = Path("/tmp/task")
+    return cfg
+
+
 def _make_adapter(sync_configured: bool = True) -> TaskWarriorAdapter:
     """Build an adapter stub without touching the filesystem."""
     adapter = TaskWarriorAdapter.__new__(TaskWarriorAdapter)
     adapter.task_cmd = Path("task")
-    adapter._cli_options = []
-    adapter._sync_configured = sync_configured
+    adapter._config_store = _make_config_store(sync_configured)
     return adapter
 
 
