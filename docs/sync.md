@@ -138,6 +138,55 @@ tw.is_sync_configured() -> bool
 
 Returns `True` if at least one sync backend is configured in the active adapter.
 
+### `ConfigStore.get_sync_config()`
+
+```python
+tw.config_store.get_sync_config() -> dict[str, str]
+```
+
+Returns all ``sync.*`` keys currently stored in the taskrc file as a plain dict.
+
+### `ConfigStore.set_sync_config()`
+
+```python
+tw.config_store.set_sync_config(config: dict[str, str | None]) -> None
+```
+
+**Write-symmetric counterpart of `get_sync_config()`.**  
+Replaces the entire ``sync.*`` section of the taskrc file in one call:
+
+- Keys provided in *config* are written (upserted) to the file.
+- Keys currently in the file but **absent** from *config* are deleted.
+- A value of ``None`` explicitly removes that key (no-op when absent).
+- Keys may be provided with or without the ``"sync."`` prefix — it is added automatically.
+
+The in-memory config cache is refreshed automatically after the write.
+
+**Example — switch to remote sync:**
+
+```python
+tw.config_store.set_sync_config({
+    "sync.server.origin": "https://taskchampion.example.com",
+    "sync.server.client_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "sync.encryption.secret": "my-passphrase",
+})
+```
+
+**Example — switch to local sync (removes any previous remote keys):**
+
+```python
+tw.config_store.set_sync_config({
+    "sync.local.server_dir": "/mnt/shared/taskserver",
+})
+```
+
+**Example — wipe all sync configuration:**
+
+```python
+tw.config_store.set_sync_config({})
+print(tw.config_store.get_sync_config())  # {}
+```
+
 ---
 
 ## `.taskrc` key reference

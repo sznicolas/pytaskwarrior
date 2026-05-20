@@ -1,6 +1,6 @@
 [project]
 name = "pytaskwarrior"
-version = "3.0.0a3"
+version = "3.0.0a4"
 description = "Taskwarrior wrapper python module"
 readme = "PYPI_README.md"
 requires-python = ">=3.12"
@@ -21,8 +21,7 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.11.7",
-    #    "taskchampion-py-dev>=3.0.1.1a1"
-    "taskchampion3-py-dev>=3.0.1.1a0",
+    "taskchampion3-py-dev>=3.0.1.2a1",
 ]
 
 [dependency-groups]

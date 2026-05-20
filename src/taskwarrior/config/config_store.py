@@ -126,6 +126,60 @@ rc.bulk=0
         # Accept both 'sync.' and 'taskrc.sync.' keys for compatibility
         return {k: v for k, v in self.config.items() if k.startswith("sync.")}
 
+    def set_sync_config(self, config: dict[str, str | None]) -> None:
+        """Write (or clear) the ``sync.*`` section of the taskrc file.
+
+        This is the write-symmetric counterpart of :meth:`get_sync_config`.  It
+        **replaces** the current ``sync.*`` keys entirely: keys present in the
+        file but absent from *config* are deleted; keys provided in *config*
+        are written (or removed when their value is ``None``).
+
+        Keys may be supplied with or without the ``"sync."`` prefix — the prefix
+        is added automatically when missing.
+
+        Args:
+            config: Mapping of sync key → value.  Pass ``None`` as the value
+                to explicitly delete a key (e.g.
+                ``{"sync.encryption.secret": None}``).  Pass an empty dict to
+                wipe all ``sync.*`` keys.
+
+        Raises:
+            TaskConfigurationError: If the taskrc file cannot be read or
+                written.
+
+        Example::
+
+            tw.config_store.set_sync_config({
+                "sync.server.origin": "https://taskchampion.example.com",
+                "sync.server.client_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                "sync.encryption.secret": "my-passphrase",
+            })
+            # Replace with local sync, removing any previous remote config:
+            tw.config_store.set_sync_config({
+                "sync.local.server_dir": "/mnt/shared/taskserver",
+            })
+        """
+        # Normalise keys so callers may omit the "sync." prefix.
+        normalised: dict[str, str | None] = {}
+        for k, v in config.items():
+            full_key = k if k.startswith("sync.") else f"sync.{k}"
+            normalised[full_key] = v
+
+        # Delete keys currently in the file that are not present in the new config.
+        for existing_key in list(self.get_sync_config().keys()):
+            if existing_key not in normalised:
+                self.delete_value(existing_key)
+
+        # Write or delete each supplied key.
+        for key, value in normalised.items():
+            if value is None:
+                self.delete_value(key)
+            else:
+                self.set_value(key, value)
+
+        # Final refresh ensures the in-memory cache reflects the final state.
+        self.refresh()
+
     def get_contexts_config(self) -> dict[str, str]:
         # Extract context config directly from self.config
         return {k: v for k, v in self.config.items() if k.startswith("context.")}
